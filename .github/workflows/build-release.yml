@@ -1,0 +1,209 @@
+# ============================================================
+# Executa 多平台二进制构建 — GitHub Actions
+# ============================================================
+# 在 GitHub Release 创建时自动构建所有平台的二进制并上传
+#
+# 支持：Python (PyInstaller)、Node.js (pkg)、Go (go build)
+# ============================================================
+
+name: Build & Release Executa Binaries
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      language:
+        description: "Language to build"
+        required: true
+        default: "all"
+        type: choice
+        options:
+          - all
+          - python
+          - nodejs
+          - go
+
+jobs:
+  # ── Go 构建（最简单，原生交叉编译）──────────────────────────
+  build-go:
+    if: >-
+      github.event_name == 'release' ||
+      inputs.language == 'all' ||
+      inputs.language == 'go'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: darwin
+            goarch: arm64
+            platform: darwin-arm64
+          - goos: darwin
+            goarch: amd64
+            platform: darwin-x86_64
+          - goos: linux
+            goarch: amd64
+            platform: linux-x86_64
+          - goos: linux
+            goarch: arm64
+            platform: linux-aarch64
+          - goos: windows
+            goarch: amd64
+            platform: windows-x86_64
+            ext: .exe
+          - goos: windows
+            goarch: arm64
+            platform: windows-arm64
+            ext: .exe
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Build
+        working-directory: examples/go
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          go build -ldflags="-s -w" -o "../../dist/example-go-tool-${{ matrix.platform }}${{ matrix.ext }}" .
+
+      - name: Package
+        run: |
+          cd dist
+          if [[ "${{ matrix.goos }}" == "windows" ]]; then
+            zip "example-go-tool-${{ matrix.platform }}.zip" "example-go-tool-${{ matrix.platform }}${{ matrix.ext }}"
+          else
+            tar czf "example-go-tool-${{ matrix.platform }}.tar.gz" "example-go-tool-${{ matrix.platform }}"
+          fi
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/example-go-tool-${{ matrix.platform }}.*
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-${{ matrix.platform }}
+          path: dist/example-go-tool-${{ matrix.platform }}.*
+
+  # ── Python 构建（需要对应 OS 的 runner）─────────────────────
+  build-python:
+    if: >-
+      github.event_name == 'release' ||
+      inputs.language == 'all' ||
+      inputs.language == 'python'
+    strategy:
+      matrix:
+        include:
+          - os: macos-14        # Apple Silicon
+            platform: darwin-arm64
+          - os: macos-13        # Intel
+            platform: darwin-x86_64
+          - os: ubuntu-latest
+            platform: linux-x86_64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build
+        working-directory: examples/python
+        run: |
+          pyinstaller \
+            --onefile \
+            --name example-text-tool \
+            --clean \
+            --strip \
+            --noupx \
+            example_plugin.py
+
+      - name: Test Binary
+        working-directory: examples/python
+        run: |
+          echo '{"jsonrpc":"2.0","method":"describe","id":1}' | ./dist/example-text-tool 2>/dev/null | \
+            python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['name']=='example-text-tool'; print('✅ Protocol test passed')"
+
+      - name: Package
+        working-directory: examples/python
+        run: |
+          cd dist
+          tar czf "example-text-tool-${{ matrix.platform }}.tar.gz" example-text-tool
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: examples/python/dist/example-text-tool-${{ matrix.platform }}.tar.gz
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-${{ matrix.platform }}
+          path: examples/python/dist/example-text-tool-${{ matrix.platform }}.tar.gz
+
+  # ── Node.js 构建（pkg 支持交叉编译）────────────────────────
+  build-nodejs:
+    if: >-
+      github.event_name == 'release' ||
+      inputs.language == 'all' ||
+      inputs.language == 'nodejs'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - target: node18-macos-arm64
+            platform: darwin-arm64
+          - target: node18-macos-x64
+            platform: darwin-x86_64
+          - target: node18-linux-x64
+            platform: linux-x86_64
+          - target: node18-linux-arm64
+            platform: linux-aarch64
+          - target: node18-win-x64
+            platform: windows-x86_64
+            ext: .exe
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Build with pkg
+        working-directory: examples/nodejs
+        run: |
+          npx pkg example_plugin.js \
+            --target "${{ matrix.target }}" \
+            --output "../../dist/example-node-tool-${{ matrix.platform }}${{ matrix.ext }}"
+
+      - name: Package
+        run: |
+          cd dist
+          if [[ "${{ matrix.platform }}" == windows-* ]]; then
+            zip "example-node-tool-${{ matrix.platform }}.zip" "example-node-tool-${{ matrix.platform }}${{ matrix.ext }}"
+          else
+            tar czf "example-node-tool-${{ matrix.platform }}.tar.gz" "example-node-tool-${{ matrix.platform }}"
+          fi
+
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/example-node-tool-${{ matrix.platform }}.*
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nodejs-${{ matrix.platform }}
+          path: dist/example-node-tool-${{ matrix.platform }}.*

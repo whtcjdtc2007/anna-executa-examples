@@ -1,0 +1,9 @@
+dist/
+build/
+__pycache__/
+*.pyc
+*.egg-info/
+node_modules/
+sea-prep/
+*.blob
+*.spec.bak

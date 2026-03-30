@@ -1,0 +1,23 @@
+{
+  "name": "example-node-tool",
+  "version": "1.0.0",
+  "description": "示例 Executa 插件 — Node.js 实现，演示 JSON 格式化和 Base64 编解码工具",
+  "author": "Anna Developer",
+  "license": "MIT",
+  "main": "example_plugin.js",
+  "bin": {
+    "example-node-tool": "./example_plugin.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node example_plugin.js",
+    "test": "echo '{\"jsonrpc\":\"2.0\",\"method\":\"describe\",\"id\":1}' | node example_plugin.js 2>/dev/null",
+    "build": "./build_binary.sh",
+    "build:test": "./build_binary.sh --test"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.0"
+  }
+}
