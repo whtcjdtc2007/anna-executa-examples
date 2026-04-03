@@ -92,6 +92,26 @@ const MANIFEST = {
         },
       ],
     },
+    {
+      name: "batch_hash",
+      description: "批量计算多段文本的哈希值（演示 array 参数用法）",
+      parameters: [
+        {
+          name: "texts",
+          type: "array",
+          items: { type: "string" },
+          description: "要计算哈希的文本列表",
+          required: true,
+        },
+        {
+          name: "algorithm",
+          type: "string",
+          description: "哈希算法: sha256 / md5（默认 sha256）",
+          required: false,
+          default: "sha256",
+        },
+      ],
+    },
   ],
   runtime: {
     type: "npm",
@@ -141,11 +161,30 @@ function toolHashText(args) {
   return { hash, algorithm, input_length: text.length };
 }
 
+function toolBatchHash(args) {
+  const { texts, algorithm = "sha256" } = args;
+  const supported = ["sha256", "md5", "sha1", "sha512"];
+  if (!supported.includes(algorithm)) {
+    return {
+      error: `Unsupported algorithm: ${algorithm}. Available: ${supported.join(", ")}`,
+    };
+  }
+  const results = texts.map((text) => {
+    const hash = crypto
+      .createHash(algorithm)
+      .update(text, "utf-8")
+      .digest("hex");
+    return { text_preview: text.slice(0, 50), hash, algorithm };
+  });
+  return { count: results.length, results };
+}
+
 const TOOL_DISPATCH = {
   json_format: toolJsonFormat,
   base64_encode: toolBase64Encode,
   base64_decode: toolBase64Decode,
   hash_text: toolHashText,
+  batch_hash: toolBatchHash,
 };
 
 // ─── JSON-RPC 处理 ───────────────────────────────────────────────

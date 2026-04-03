@@ -93,6 +93,19 @@ MANIFEST = {
                 },
             ],
         },
+        {
+            "name": "batch_word_count",
+            "description": "批量统计多段文本的字数（演示 array 参数用法）",
+            "parameters": [
+                {
+                    "name": "texts",
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "要分析的文本列表",
+                    "required": True,
+                },
+            ],
+        },
     ],
     "runtime": {
         "type": "uv",
@@ -140,12 +153,22 @@ def tool_text_repeat(text: str, count: int = 2, separator: str = " ") -> dict:
     return {"result": result, "count": count}
 
 
+def tool_batch_word_count(texts: list) -> dict:
+    """批量统计多段文本的字数（演示 array 参数用法）"""
+    results = []
+    for text in texts:
+        words = text.split()
+        results.append({"text_preview": text[:50], "words": len(words), "characters": len(text)})
+    return {"count": len(results), "results": results}
+
+
 # ─── 工具分发表 ───────────────────────────────────────────────────
 
 TOOL_DISPATCH = {
     "word_count": tool_word_count,
     "text_transform": tool_text_transform,
     "text_repeat": tool_text_repeat,
+    "batch_word_count": tool_batch_word_count,
 }
 
 
