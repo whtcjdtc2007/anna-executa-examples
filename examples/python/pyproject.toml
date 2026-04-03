@@ -5,9 +5,16 @@ description = "示例 Executa 插件 — 演示如何创建可被 Anna Agent 调
 requires-python = ">=3.10"
 authors = [{ name = "Anna Developer" }]
 license = { text = "MIT" }
+dependencies = [
+    "pyinstaller>=6.19.0",
+]
 
 [project.scripts]
 example-text-tool = "example_plugin:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["example_plugin.py"]
 
 [build-system]
 requires = ["hatchling"]

@@ -89,6 +89,26 @@ var manifest = map[string]any{
 				},
 			},
 		},
+		{
+			"name":        "batch_hash",
+			"description": "批量计算多段文本的哈希值（演示 array 参数用法）",
+			"parameters": []map[string]any{
+				{
+					"name":        "texts",
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "要计算哈希的文本列表",
+					"required":    true,
+				},
+				{
+					"name":        "algorithm",
+					"type":        "string",
+					"description": "哈希算法: sha256 / md5（默认 sha256）",
+					"required":    false,
+					"default":     "sha256",
+				},
+			},
+		},
 	},
 	"runtime": map[string]any{
 		"type":        "binary",
@@ -216,6 +236,46 @@ func toolStringUtils(args map[string]any) map[string]any {
 
 // ─── 请求处理 ─────────────────────────────────────────────────────
 
+func toolBatchHash(args map[string]any) map[string]any {
+	textsRaw, _ := args["texts"].([]any)
+	algorithm, ok := args["algorithm"].(string)
+	if !ok || algorithm == "" {
+		algorithm = "sha256"
+	}
+
+	var results []map[string]any
+	for _, raw := range textsRaw {
+		text, _ := raw.(string)
+		var hashHex string
+		switch algorithm {
+		case "sha256":
+			h := sha256.Sum256([]byte(text))
+			hashHex = hex.EncodeToString(h[:])
+		case "md5":
+			h := md5.Sum([]byte(text))
+			hashHex = hex.EncodeToString(h[:])
+		default:
+			return map[string]any{
+				"error": fmt.Sprintf("Unsupported algorithm: %s. Available: sha256, md5", algorithm),
+			}
+		}
+		preview := text
+		if len(preview) > 50 {
+			preview = preview[:50]
+		}
+		results = append(results, map[string]any{
+			"text_preview": preview,
+			"hash":         hashHex,
+			"algorithm":    algorithm,
+		})
+	}
+
+	return map[string]any{
+		"count":   len(results),
+		"results": results,
+	}
+}
+
 func handleRequest(req rpcRequest) rpcResponse {
 	switch req.Method {
 	case "describe":
@@ -262,11 +322,13 @@ func handleInvoke(req rpcRequest) rpcResponse {
 		result = toolHashText(args)
 	case "string_utils":
 		result = toolStringUtils(args)
+	case "batch_hash":
+		result = toolBatchHash(args)
 	default:
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcErr{
 			Code:    -32601,
 			Message: fmt.Sprintf("Unknown tool: %s", toolName),
-			Data:    map[string]any{"available_tools": []string{"system_info", "hash_text", "string_utils"}},
+			Data:    map[string]any{"available_tools": []string{"system_info", "hash_text", "string_utils", "batch_hash"}},
 		}}
 	}
 
@@ -281,7 +343,7 @@ func handleInvoke(req rpcRequest) rpcResponse {
 
 func main() {
 	fmt.Fprintln(os.Stderr, "🔌 Example Go Executa plugin started")
-	fmt.Fprintf(os.Stderr, "   Tools: system_info, hash_text, string_utils\n")
+	fmt.Fprintf(os.Stderr, "   Tools: system_info, hash_text, string_utils, batch_hash\n")
 	fmt.Fprintf(os.Stderr, "   Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 
 	scanner := bufio.NewScanner(os.Stdin)
