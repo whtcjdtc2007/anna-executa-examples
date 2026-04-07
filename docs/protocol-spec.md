@@ -270,3 +270,71 @@ Agent 定期调用，确认插件进程仍在正常运行。
 - [ ] 未知 method 返回 `-32601` 错误
 - [ ] 异常时返回 JSON-RPC error 而非崩溃
 - [ ] 主循环不会因单条请求异常而退出
+- [ ] 大型响应（>512KB）使用文件传输（见下文）
+
+## 大型响应 — 文件传输（File Transport）
+
+当工具返回的 JSON 响应超过 **512KB** 时，通过 stdio 管道传输可能导致缓冲区阻塞甚至进程崩溃。为此协议支持**文件传输**作为大型消息的安全通道。
+
+### 工作原理
+
+插件将完整的 JSON-RPC 响应写入临时文件，然后通过 stdout 返回一条包含文件路径的轻量指针消息：
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "__file_transport": "/tmp/executa-resp-xxxx.json"
+}
+```
+
+Agent 读到 `__file_transport` 字段后：
+1. 打开该文件，读取完整的 JSON-RPC 响应
+2. 删除临时文件
+3. 按正常响应处理
+
+### 插件侧实现示例（Python）
+
+```python
+import json, tempfile, sys
+
+def send_response(response: dict) -> None:
+    """发送响应，大型结果自动走文件传输"""
+    payload = json.dumps(response, ensure_ascii=False)
+
+    if len(payload.encode("utf-8")) > 512 * 1024:
+        # 写入临时文件
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", prefix="executa-resp-",
+            delete=False, encoding="utf-8"
+        ) as f:
+            f.write(payload)
+            tmp_path = f.name
+        # 发送文件指针
+        pointer = json.dumps({
+            "jsonrpc": "2.0",
+            "id": response["id"],
+            "__file_transport": tmp_path,
+        })
+        sys.stdout.write(pointer + "\n")
+    else:
+        sys.stdout.write(payload + "\n")
+
+    sys.stdout.flush()
+```
+
+### 注意事项
+
+- 临时文件必须对 Agent 进程可读（同一用户/同一机器）
+- Agent 读取后会自动删除临时文件
+- 文件必须包含完整的 JSON-RPC 响应（包括 `jsonrpc`、`id`、`result`/`error` 字段）
+- 即使不使用文件传输，插件也应确保每次 `write` 后调用 `flush`
+
+## stdout 缓冲注意事项
+
+许多语言的 stdout 默认使用**块缓冲**（非行缓冲），这在 stdio IPC 场景中会导致消息延迟甚至阻塞。请确保：
+
+- **Python**: `sys.stdout.reconfigure(line_buffering=True)` 或每次 `write` 后 `flush()`
+- **Node.js**: `process.stdout` 默认行缓冲，通常无需处理
+- **Go**: 使用 `bufio.Writer` 并在每条消息后 `Flush()`
+- **Rust**: 使用 `BufWriter` 并在每条消息后 `flush()`
