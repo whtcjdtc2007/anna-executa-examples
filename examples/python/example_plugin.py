@@ -20,8 +20,13 @@ Anna Agent 可以自动发现、加载并调用此插件暴露的工具。
 """
 
 import json
+import os
 import sys
+import tempfile
 from datetime import datetime, timezone
+
+# 单条 stdio 消息大小阈值（字节），超过后自动使用文件传输
+MAX_STDIO_MESSAGE_BYTES = 512 * 1024
 
 
 # ─── Manifest（自描述清单） ──────────────────────────────────────────
@@ -106,6 +111,26 @@ MANIFEST = {
                 },
             ],
         },
+        {
+            "name": "generate_dataset",
+            "description": "生成模拟数据集（可产生大型响应，演示文件传输机制）",
+            "parameters": [
+                {
+                    "name": "rows",
+                    "type": "integer",
+                    "description": "生成的数据行数（1-100000，超过约 5000 行时会触发文件传输）",
+                    "required": False,
+                    "default": 100,
+                },
+                {
+                    "name": "columns",
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "要包含的列名列表，可选: id / name / email / score / timestamp / description",
+                    "required": False,
+                },
+            ],
+        },
     ],
     "runtime": {
         "type": "uv",
@@ -115,6 +140,11 @@ MANIFEST = {
 
 
 # ─── 工具实现 ─────────────────────────────────────────────────────
+
+
+import hashlib
+import string
+import random as _random
 
 
 def tool_word_count(text: str) -> dict:
@@ -162,6 +192,63 @@ def tool_batch_word_count(texts: list) -> dict:
     return {"count": len(results), "results": results}
 
 
+def _make_fake_name(rng: _random.Random) -> str:
+    """生成模拟姓名"""
+    first = rng.choice(["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank",
+                        "Grace", "Hank", "Ivy", "Jack", "Karen", "Leo"])
+    last = rng.choice(["Smith", "Johnson", "Williams", "Brown", "Jones",
+                       "Garcia", "Miller", "Davis", "Wilson", "Taylor"])
+    return f"{first} {last}"
+
+
+def tool_generate_dataset(rows: int = 100, columns: list | None = None) -> dict:
+    """生成模拟数据集。行数较大时会产生大型 JSON 响应，自动触发文件传输。"""
+    rows = max(1, min(100000, rows))
+    available_cols = ["id", "name", "email", "score", "timestamp", "description"]
+    if not columns:
+        columns = ["id", "name", "email", "score"]
+    # 过滤无效列名
+    columns = [c for c in columns if c in available_cols] or ["id"]
+
+    rng = _random.Random(42)  # 固定种子保证可复现
+    dataset = []
+    for i in range(rows):
+        row = {}
+        for col in columns:
+            if col == "id":
+                row["id"] = i + 1
+            elif col == "name":
+                row["name"] = _make_fake_name(rng)
+            elif col == "email":
+                name = _make_fake_name(rng).lower().replace(" ", ".")
+                row["email"] = f"{name}@example.com"
+            elif col == "score":
+                row["score"] = round(rng.uniform(0, 100), 2)
+            elif col == "timestamp":
+                ts = 1700000000 + rng.randint(0, 10000000)
+                row["timestamp"] = datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+            elif col == "description":
+                words = rng.choices(string.ascii_lowercase.split() + [
+                    "lorem", "ipsum", "dolor", "sit", "amet", "consectetur",
+                    "adipiscing", "elit", "sed", "do", "eiusmod", "tempor",
+                    "incididunt", "ut", "labore", "et", "dolore", "magna",
+                ], k=rng.randint(10, 30))
+                row["description"] = " ".join(words)
+        dataset.append(row)
+
+    # 估算响应大小
+    sample_json = json.dumps(dataset[:1], ensure_ascii=False)
+    estimated_bytes = len(sample_json.encode("utf-8")) * rows
+
+    return {
+        "rows": rows,
+        "columns": columns,
+        "estimated_bytes": estimated_bytes,
+        "file_transport": estimated_bytes > MAX_STDIO_MESSAGE_BYTES,
+        "dataset": dataset,
+    }
+
+
 # ─── 工具分发表 ───────────────────────────────────────────────────
 
 TOOL_DISPATCH = {
@@ -169,6 +256,7 @@ TOOL_DISPATCH = {
     "text_transform": tool_text_transform,
     "text_repeat": tool_text_repeat,
     "batch_word_count": tool_batch_word_count,
+    "generate_dataset": tool_generate_dataset,
 }
 
 
@@ -271,6 +359,47 @@ def handle_request(line: str) -> str:
     return json.dumps(response)
 
 
+# ─── 响应发送（支持文件传输） ───────────────────────────────────
+
+
+def send_response(response_dict: dict) -> None:
+    """发送 JSON-RPC 响应，大型结果自动使用文件传输。
+
+    当序列化后的 JSON 超过 MAX_STDIO_MESSAGE_BYTES 时，将完整响应
+    写入临时文件，通过 stdout 只发送一条包含文件路径的轻量指针。
+    Agent 读取后会自动删除临时文件。
+    """
+    payload = json.dumps(response_dict, ensure_ascii=False)
+    payload_bytes = payload.encode("utf-8")
+
+    if len(payload_bytes) > MAX_STDIO_MESSAGE_BYTES:
+        # 写入临时文件（Agent 读取后自动删除）
+        fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="executa-resp-")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(payload)
+        except Exception:
+            os.close(fd)
+            raise
+
+        # 通过 stdout 发送文件指针
+        pointer = json.dumps({
+            "jsonrpc": "2.0",
+            "id": response_dict.get("id"),
+            "__file_transport": tmp_path,
+        })
+        print(
+            f"📦 Response too large ({len(payload_bytes)} bytes), "
+            f"using file transport: {tmp_path}",
+            file=sys.stderr,
+        )
+        sys.stdout.write(pointer + "\n")
+    else:
+        sys.stdout.write(payload + "\n")
+
+    sys.stdout.flush()
+
+
 # ─── 主循环（stdio JSON-RPC 服务） ──────────────────────────────
 
 
@@ -289,12 +418,12 @@ def main():
 
         print(f"← {line}", file=sys.stderr)
 
-        response = handle_request(line)
+        response_str = handle_request(line)
+        response_dict = json.loads(response_str)
 
-        # 响应通过 stdout — 必须 flush，避免缓冲阻塞
-        print(response, flush=True)
+        send_response(response_dict)
 
-        print(f"→ {response}", file=sys.stderr)
+        print(f"→ (sent, {len(response_str)} bytes)", file=sys.stderr)
 
 
 if __name__ == "__main__":

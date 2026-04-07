@@ -24,11 +24,16 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
 )
+
+// 单条 stdio 消息大小阈值（字节），超过后自动使用文件传输
+const maxStdioMessageBytes = 512 * 1024
 
 // ─── Manifest ──────────────────────────────────────────────────────
 
@@ -109,6 +114,26 @@ var manifest = map[string]any{
 				},
 			},
 		},
+		{
+			"name":        "generate_dataset",
+			"description": "生成模拟数据集（可产生大型响应，演示文件传输机制）",
+			"parameters": []map[string]any{
+				{
+					"name":        "rows",
+					"type":        "integer",
+					"description": "生成的数据行数（1-100000，超过约 5000 行时会触发文件传输）",
+					"required":    false,
+					"default":     100,
+				},
+				{
+					"name":        "columns",
+					"type":        "array",
+					"items":       map[string]any{"type": "string"},
+					"description": "要包含的列名列表，可选: id / name / email / score / timestamp / description",
+					"required":    false,
+				},
+			},
+		},
 	},
 	"runtime": map[string]any{
 		"type":        "binary",
@@ -136,6 +161,13 @@ type rpcErr struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
+}
+
+// fileTransportPointer 是文件传输时通过 stdout 发送的轻量指针
+type fileTransportPointer struct {
+	JSONRPC       string `json:"jsonrpc"`
+	ID            any    `json:"id"`
+	FileTransport string `json:"__file_transport"`
 }
 
 // ─── 工具实现 ─────────────────────────────────────────────────────
@@ -195,9 +227,9 @@ func toolStringUtils(args map[string]any) map[string]any {
 	switch operation {
 	case "length":
 		return map[string]any{
-			"length":       len(text),
-			"rune_count":   len([]rune(text)),
-			"byte_count":   len([]byte(text)),
+			"length":     len(text),
+			"rune_count": len([]rune(text)),
+			"byte_count": len([]byte(text)),
 		}
 	case "reverse":
 		runes := []rune(text)
@@ -276,6 +308,88 @@ func toolBatchHash(args map[string]any) map[string]any {
 	}
 }
 
+var (
+	firstNames = []string{"Alice", "Bob", "Charlie", "Diana", "Eve", "Frank",
+		"Grace", "Hank", "Ivy", "Jack", "Karen", "Leo"}
+	lastNames = []string{"Smith", "Johnson", "Williams", "Brown", "Jones",
+		"Garcia", "Miller", "Davis", "Wilson", "Taylor"}
+	loremWords = []string{"lorem", "ipsum", "dolor", "sit", "amet", "consectetur",
+		"adipiscing", "elit", "sed", "do", "eiusmod", "tempor",
+		"incididunt", "ut", "labore", "et", "dolore", "magna"}
+	availableCols = map[string]bool{
+		"id": true, "name": true, "email": true,
+		"score": true, "timestamp": true, "description": true,
+	}
+)
+
+func toolGenerateDataset(args map[string]any) map[string]any {
+	rowsF, _ := args["rows"].(float64)
+	rows := int(rowsF)
+	if rows < 1 {
+		rows = 100
+	}
+	if rows > 100000 {
+		rows = 100000
+	}
+
+	// 解析列名
+	colsRaw, _ := args["columns"].([]any)
+	var columns []string
+	for _, c := range colsRaw {
+		if s, ok := c.(string); ok && availableCols[s] {
+			columns = append(columns, s)
+		}
+	}
+	if len(columns) == 0 {
+		columns = []string{"id", "name", "email", "score"}
+	}
+
+	rng := rand.New(rand.NewSource(42)) //nolint:gosec // 固定种子保证可复现
+
+	dataset := make([]map[string]any, 0, rows)
+	for i := 0; i < rows; i++ {
+		row := map[string]any{}
+		for _, col := range columns {
+			switch col {
+			case "id":
+				row["id"] = i + 1
+			case "name":
+				row["name"] = firstNames[rng.Intn(len(firstNames))] + " " +
+					lastNames[rng.Intn(len(lastNames))]
+			case "email":
+				n := strings.ToLower(firstNames[rng.Intn(len(firstNames))] + "." +
+					lastNames[rng.Intn(len(lastNames))])
+				row["email"] = n + "@example.com"
+			case "score":
+				row["score"] = float64(rng.Intn(10001)) / 100.0
+			case "timestamp":
+				ts := int64(1700000000 + rng.Intn(10000001))
+				row["timestamp"] = time.Unix(ts, 0).UTC().Format(time.RFC3339)
+			case "description":
+				wc := 10 + rng.Intn(21)
+				words := make([]string, wc)
+				for w := 0; w < wc; w++ {
+					words[w] = loremWords[rng.Intn(len(loremWords))]
+				}
+				row["description"] = strings.Join(words, " ")
+			}
+		}
+		dataset = append(dataset, row)
+	}
+
+	// 估算响应大小
+	sampleJSON, _ := json.Marshal(dataset[:1])
+	estimatedBytes := len(sampleJSON) * rows
+
+	return map[string]any{
+		"rows":            rows,
+		"columns":         columns,
+		"estimated_bytes": estimatedBytes,
+		"file_transport":  estimatedBytes > maxStdioMessageBytes,
+		"dataset":         dataset,
+	}
+}
+
 func handleRequest(req rpcRequest) rpcResponse {
 	switch req.Method {
 	case "describe":
@@ -324,11 +438,13 @@ func handleInvoke(req rpcRequest) rpcResponse {
 		result = toolStringUtils(args)
 	case "batch_hash":
 		result = toolBatchHash(args)
+	case "generate_dataset":
+		result = toolGenerateDataset(args)
 	default:
 		return rpcResponse{JSONRPC: "2.0", ID: req.ID, Error: &rpcErr{
 			Code:    -32601,
 			Message: fmt.Sprintf("Unknown tool: %s", toolName),
-			Data:    map[string]any{"available_tools": []string{"system_info", "hash_text", "string_utils", "batch_hash"}},
+			Data:    map[string]any{"available_tools": []string{"system_info", "hash_text", "string_utils", "batch_hash", "generate_dataset"}},
 		}}
 	}
 
@@ -339,11 +455,50 @@ func handleInvoke(req rpcRequest) rpcResponse {
 	}}
 }
 
+// ─── 响应发送（支持文件传输） ──────────────────────────────────────
+
+// sendResponse 发送 JSON-RPC 响应，大型结果自动使用文件传输。
+// 当序列化后的 JSON 超过 maxStdioMessageBytes 时，将完整响应
+// 写入临时文件，通过 stdout 只发送一条包含文件路径的轻量指针。
+// Agent 读取后会自动删除临时文件。
+func sendResponse(resp rpcResponse) {
+	out, err := json.Marshal(resp)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Failed to marshal response: %v\n", err)
+		return
+	}
+
+	if len(out) > maxStdioMessageBytes {
+		// 写入临时文件
+		tmpPath := filepath.Join(os.TempDir(),
+			fmt.Sprintf("executa-resp-%d.json", time.Now().UnixNano()))
+		if writeErr := os.WriteFile(tmpPath, out, 0600); writeErr != nil {
+			fmt.Fprintf(os.Stderr, "❌ Failed to write file transport: %v\n", writeErr)
+			// 回退到直接输出
+			fmt.Fprintln(os.Stdout, string(out))
+			return
+		}
+
+		// 发送文件指针
+		pointer := fileTransportPointer{
+			JSONRPC:       "2.0",
+			ID:            resp.ID,
+			FileTransport: tmpPath,
+		}
+		ptrOut, _ := json.Marshal(pointer)
+		fmt.Fprintf(os.Stderr, "📦 Response too large (%d bytes), using file transport: %s\n",
+			len(out), tmpPath)
+		fmt.Fprintln(os.Stdout, string(ptrOut))
+	} else {
+		fmt.Fprintln(os.Stdout, string(out))
+	}
+}
+
 // ─── 主循环 ────────────────────────────────────────────────────────
 
 func main() {
 	fmt.Fprintln(os.Stderr, "🔌 Example Go Executa plugin started")
-	fmt.Fprintf(os.Stderr, "   Tools: system_info, hash_text, string_utils, batch_hash\n")
+	fmt.Fprintf(os.Stderr, "   Tools: system_info, hash_text, string_utils, batch_hash, generate_dataset\n")
 	fmt.Fprintf(os.Stderr, "   Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -370,8 +525,7 @@ func main() {
 		}
 
 		resp := handleRequest(req)
-		out, _ := json.Marshal(resp)
-		fmt.Fprintln(os.Stdout, string(out))
-		fmt.Fprintf(os.Stderr, "→ %s\n", string(out))
+		sendResponse(resp)
+		fmt.Fprintf(os.Stderr, "→ (sent)\n")
 	}
 }
