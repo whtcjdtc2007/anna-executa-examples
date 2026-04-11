@@ -1,30 +1,32 @@
-# Executa Binary 分发指南
+中文版本请参阅 [binary-distribution.zh-CN.md](binary-distribution.zh-CN.md)
 
-本文档面向开发者，介绍如何将 Executa 插件构建为独立二进制文件，并通过 Anna 的 Binary 分发机制部署到 Agent。
+# Executa Binary Distribution Guide
 
-## 概述
+This document is for developers, explaining how to build Executa plugins as standalone binary files and deploy them to an Agent via Anna's Binary distribution mechanism.
 
-Binary 分发允许你将插件编译为**独立可执行文件**，无需目标机器安装 Python/Node.js 等运行时。Anna Agent 通过 HTTP 下载二进制、自动解压并加载为 Executa 插件。
+## Overview
 
-**适用场景：**
-- 插件包含敏感逻辑，不希望以源码分发
-- 目标机器无法安装 Python/Node.js 运行时
-- 需要最快的冷启动速度
-- 使用 Go/Rust/C++ 等编译型语言编写的插件
+Binary distribution allows you to compile plugins into **standalone executables**, without requiring the target machine to have Python/Node.js or other runtimes installed. The Anna Agent downloads binaries via HTTP, automatically extracts them, and loads them as Executa plugins.
 
-## 构建二进制
+**Applicable Scenarios:**
+- Plugin contains sensitive logic and you prefer not to distribute source code
+- Target machine cannot install Python/Node.js runtimes
+- Fastest cold start speed is required
+- Plugins written in compiled languages such as Go/Rust/C++
 
-各语言均有完整示例：
+## Building Binaries
 
-| 语言 | 构建工具 | 示例目录 | 构建命令 |
-|------|---------|---------|---------|
+Complete examples are available for each language:
+
+| Language | Build Tool | Example Directory | Build Command |
+|----------|-----------|-------------------|---------------|
 | Python | PyInstaller / Nuitka | `examples/python/` | `./build_binary.sh` |
 | Node.js | pkg / nexe / esbuild+sea | `examples/nodejs/` | `./build_binary.sh` |
 | Go | `go build` | `examples/go/` | `make all` |
 
-### Python → 二进制
+### Python → Binary
 
-#### PyInstaller（推荐，简单快速）
+#### PyInstaller (Recommended, Simple and Fast)
 
 ```bash
 pip install pyinstaller
@@ -38,9 +40,9 @@ pyinstaller \
     my_plugin.py
 ```
 
-产物：`dist/my-tool`
+Output: `dist/my-tool`
 
-#### Nuitka（更高性能，体积更小）
+#### Nuitka (Higher Performance, Smaller Size)
 
 ```bash
 pip install nuitka ordered-set
@@ -54,59 +56,59 @@ python3 -m nuitka \
     my_plugin.py
 ```
 
-### Node.js → 二进制
+### Node.js → Binary
 
-#### Node.js SEA（Single Executable Application，Node.js 20+，推荐）
+#### Node.js SEA (Single Executable Application, Node.js 20+, Recommended)
 
 ```bash
-# 1. 生成 sea-config.json
+# 1. Generate sea-config.json
 # 2. node --experimental-sea-config sea-config.json
-# 3. 复制 node 可执行文件
-# 4. 注入 blob
+# 3. Copy the node executable
+# 4. Inject the blob
 ```
 
-详见 `examples/nodejs/build_binary.sh`。
+See `examples/nodejs/build_binary.sh` for details.
 
-#### pkg（兼容性好，Node.js 18+）
+#### pkg (Good Compatibility, Node.js 18+)
 
 ```bash
 npx pkg example_plugin.js \
     --targets node18-linux-x64,node18-macos-arm64,node18-win-x64
 ```
 
-### Go → 二进制
+### Go → Binary
 
-Go 天然编译为独立二进制：
+Go naturally compiles to standalone binaries:
 
 ```bash
-# 本机
+# Native
 go build -o dist/my-tool .
 
-# 交叉编译
+# Cross-compilation
 GOOS=darwin  GOARCH=arm64 go build -o dist/my-tool-darwin-arm64 .
 GOOS=linux   GOARCH=amd64 go build -o dist/my-tool-linux-x86_64 .
 GOOS=windows GOARCH=amd64 go build -o dist/my-tool-windows-x86_64.exe .
 ```
 
-## 多平台构建
+## Multi-Platform Builds
 
-Anna 支持为同一个插件配置多平台二进制，Agent 安装时**自动检测 OS 和 CPU 架构**选择下载链接。
+Anna supports configuring multi-platform binaries for the same plugin. During installation, the Agent **automatically detects the OS and CPU architecture** to select the appropriate download link.
 
-### 标准平台 Key
+### Standard Platform Keys
 
-| Platform Key | 说明 |
+| Platform Key | Description |
 |---|---|
 | `darwin-arm64` | macOS Apple Silicon (M1/M2/M3/M4) |
 | `darwin-x86_64` | macOS Intel |
 | `linux-x86_64` | Linux x86_64 / AMD64 |
-| `linux-aarch64` | Linux ARM64 (树莓派 4/5、ARM 服务器) |
-| `linux-armv7l` | Linux ARMv7 (旧版树莓派) |
+| `linux-aarch64` | Linux ARM64 (Raspberry Pi 4/5, ARM servers) |
+| `linux-armv7l` | Linux ARMv7 (older Raspberry Pi) |
 | `windows-x86_64` | Windows x86_64 |
 | `windows-arm64` | Windows ARM64 |
 
-### 在 Anna Admin 中配置
+### Configuring in Anna Admin
 
-在 Admin → Executa 管理页面，选择 **Binary** 分发方式后，可以在「多平台二进制下载 URL」区域为每个平台配置独立的下载链接：
+In Admin → Executa management page, after selecting the **Binary** distribution method, you can configure independent download links for each platform in the "Multi-platform binary download URLs" section:
 
 ```
 darwin-arm64    →  https://github.com/you/repo/releases/download/v1.0/my-tool-darwin-arm64.tar.gz
@@ -114,28 +116,28 @@ darwin-x86_64   →  https://github.com/you/repo/releases/download/v1.0/my-tool-
 linux-x86_64    →  https://github.com/you/repo/releases/download/v1.0/my-tool-linux-x86_64.tar.gz
 ```
 
-若只有一个版本，直接在「包名」字段填入 URL 即可，无需配置多平台映射。
+If there is only one version, simply enter the URL in the "Package name" field without configuring multi-platform mappings.
 
-### 平台匹配策略
+### Platform Matching Strategy
 
-Agent 安装时的匹配优先级：
+Priority order when the Agent installs:
 
-1. **精确匹配** — Agent 平台为 `darwin-arm64`，直接命中
-2. **OS 前缀降级** — 未找到精确匹配，尝试同 OS 的任意架构
-3. **通配符** — 匹配 `*`、`any` 或 `universal` key
-4. **单条目直通** — 若只配置了一个 URL，直接使用
+1. **Exact match** — Agent platform is `darwin-arm64`, direct hit
+2. **OS prefix fallback** — No exact match found, try any architecture with the same OS
+3. **Wildcard** — Match `*`, `any`, or `universal` key
+4. **Single entry passthrough** — If only one URL is configured, use it directly
 
-## 打包格式
+## Package Formats
 
-| 格式 | 处理方式 |
+| Format | Handling |
 |---|---|
-| `.tar.gz` / `.tgz` | 自动解压，取第一个可执行文件 |
-| `.zip` | 自动解压，取第一个可执行文件 |
-| 裸二进制（无扩展名） | 直接下载并 `chmod +x` |
+| `.tar.gz` / `.tgz` | Automatically extracted, first executable file is used |
+| `.zip` | Automatically extracted, first executable file is used |
+| Raw binary (no extension) | Downloaded directly and `chmod +x` applied |
 
-推荐：macOS/Linux 用 `.tar.gz`，Windows 用 `.zip`。
+Recommended: Use `.tar.gz` for macOS/Linux, `.zip` for Windows.
 
-打包示例：
+Packaging examples:
 
 ```bash
 # macOS / Linux
@@ -145,28 +147,28 @@ cd dist/ && tar czf my-tool-darwin-arm64.tar.gz my-tool
 cd dist/ && zip my-tool-windows-x86_64.zip my-tool.exe
 ```
 
-## macOS 代码签名
+## macOS Code Signing
 
-### 本地开发 / 内部分发
+### Local Development / Internal Distribution
 
-Anna Agent 会在下载后自动清除 macOS quarantine 属性，即使未签名也可正常执行。
+The Anna Agent automatically clears the macOS quarantine attribute after download, so unsigned binaries can execute normally.
 
 ```bash
-# ad-hoc 签名（满足本地开发需求）
+# ad-hoc signing (sufficient for local development)
 codesign --force --sign - dist/my-tool
 ```
 
-### 公开分发
+### Public Distribution
 
-面向外部用户分发，建议使用 Apple Developer ID 签名 + 公证：
+For distribution to external users, it is recommended to use Apple Developer ID signing + notarization:
 
 ```bash
-# 1. Developer ID 签名
+# 1. Developer ID signing
 codesign --force --options runtime \
     --sign "Developer ID Application: Your Name (TEAM_ID)" \
     dist/my-tool
 
-# 2. 公证
+# 2. Notarization
 xcrun notarytool submit dist/my-tool.zip \
     --apple-id "your@email.com" \
     --team-id "TEAM_ID" \
@@ -174,7 +176,7 @@ xcrun notarytool submit dist/my-tool.zip \
     --wait
 ```
 
-## 验证二进制
+## Verifying Binaries
 
 ```bash
 # describe
@@ -187,50 +189,50 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"your_tool","arguments
 echo '{"jsonrpc":"2.0","method":"health","id":3}' | ./dist/my-tool 2>/dev/null
 ```
 
-## Agent 安装流程
+## Agent Installation Flow
 
 ```
-1. 接收 RPC: install_plugin(package_name, distribution_type="binary", binary_urls={...})
-2. 检测当前平台: get_platform_key() → "darwin-arm64"
-3. 从 binary_urls 选择 URL: resolve_binary_url(binary_urls, "darwin-arm64")
-4. curl 下载到临时目录
-5. 根据文件类型解压（tar.gz / zip / 裸文件）
-6. 移动到 ~/.anna/executa/bin/{name}
+1. Receive RPC: install_plugin(package_name, distribution_type="binary", binary_urls={...})
+2. Detect current platform: get_platform_key() → "darwin-arm64"
+3. Select URL from binary_urls: resolve_binary_url(binary_urls, "darwin-arm64")
+4. curl download to temporary directory
+5. Extract based on file type (tar.gz / zip / raw file)
+6. Move to ~/.anna/executa/bin/{name}
 7. chmod 755
-8. macOS: xattr -d com.apple.quarantine（清除 Gatekeeper 标记）
-9. 自动执行 describe 获取 manifest
-10. 注册为 Executa 插件，LLM 可调用
+8. macOS: xattr -d com.apple.quarantine (clear Gatekeeper flag)
+9. Automatically execute describe to get manifest
+10. Register as Executa plugin, callable by LLM
 ```
 
-## CI/CD 自动化
+## CI/CD Automation
 
-完整的 GitHub Actions 多平台构建示例见 `.github/workflows/build-release.yml`。
+See `.github/workflows/build-release.yml` for a complete GitHub Actions multi-platform build example.
 
-## 常见问题
+## FAQ
 
-### Q: 二进制在 macOS 上无法执行？
+### Q: Binary cannot execute on macOS?
 
-Anna Agent 已自动清除 quarantine 属性。如果仍有问题：
+The Anna Agent already automatically clears the quarantine attribute. If issues persist:
 
 ```bash
 xattr -d com.apple.quarantine ~/.anna/executa/bin/my-tool
 codesign -vvv ~/.anna/executa/bin/my-tool
 ```
 
-### Q: 如何支持只有一个通用二进制的情况？
+### Q: How to support a single universal binary?
 
-在 Admin 的「包名」字段填入 URL，或在 `binary_urls` 中使用通配符 key：
+Enter the URL in the "Package name" field in Admin, or use a wildcard key in `binary_urls`:
 
 ```json
 { "*": "https://example.com/my-tool-universal.tar.gz" }
 ```
 
-### Q: Python 插件二进制太大怎么办？
+### Q: Python plugin binary is too large?
 
-- 使用 **Nuitka** 替代 PyInstaller（体积更小）
-- 使用 `--exclude-module` 排除不需要的模块
-- 考虑改用 Go/Rust 重写核心逻辑
+- Use **Nuitka** instead of PyInstaller (smaller size)
+- Use `--exclude-module` to exclude unnecessary modules
+- Consider rewriting core logic in Go/Rust
 
-### Q: 是否支持自动更新？
+### Q: Is automatic updating supported?
 
-当前不支持。重新执行安装操作会覆盖旧版本。
+Not currently. Re-executing the install operation will overwrite the old version.
