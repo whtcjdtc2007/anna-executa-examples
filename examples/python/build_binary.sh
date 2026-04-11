@@ -1,23 +1,24 @@
 #!/bin/bash
 # ============================================================
-# Executa Plugin Binary 构建脚本（Python）
+# Executa Plugin Binary Build Script (Python)
 # ============================================================
-# 自动发现并编译当前目录下所有 Python Executa 插件为独立二进制
+# Automatically discovers and compiles all Python Executa plugins
+# in the current directory into standalone binaries.
 #
-# 用法:
-#   ./build_binary.sh                  # PyInstaller --onefile (默认，编译所有)
-#   ./build_binary.sh --nuitka         # Nuitka 编译
-#   ./build_binary.sh --test           # 构建后运行协议测试
-#   ./build_binary.sh --nuitka --test  # Nuitka 编译 + 测试
-#   ./build_binary.sh example_plugin.py                # 只编译指定文件
-#   ./build_binary.sh credential_plugin.py --test      # 编译指定文件 + 测试
+# Usage:
+#   ./build_binary.sh                  # PyInstaller --onefile (default, compile all)
+#   ./build_binary.sh --nuitka         # Nuitka compilation
+#   ./build_binary.sh --test           # Run protocol tests after build
+#   ./build_binary.sh --nuitka --test  # Nuitka compilation + tests
+#   ./build_binary.sh example_plugin.py                # Compile only specified file(s)
+#   ./build_binary.sh credential_plugin.py --test      # Compile specified file(s) + tests
 #
-# 自动发现规则:
-#   扫描当前目录下所有 *.py，跳过 __*.py / setup.py / conftest.py / test_*.py
-#   从每个 .py 中提取 MANIFEST["name"] 作为二进制名称（找不到则用文件名）
+# Auto-discovery rules:
+#   Scans all *.py in the current directory, skipping __*.py / setup.py / conftest.py / test_*.py
+#   Extracts MANIFEST["name"] from each .py as the binary name (falls back to filename if not found)
 #
-# 产物:
-#   dist/<plugin-name>                 # 每个插件一个单文件可执行程序
+# Output:
+#   dist/<plugin-name>                 # One single-file executable per plugin
 # ============================================================
 
 set -euo pipefail
@@ -25,7 +26,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-# 颜色
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -37,7 +38,7 @@ USE_NUITKA=false
 RUN_TEST=false
 EXPLICIT_FILES=()
 
-# ── 参数解析 ──────────────────────────────────────────────────
+# ── Argument parsing ──────────────────────────────────────────
 for arg in "$@"; do
     case "$arg" in
         --nuitka)  USE_NUITKA=true ;;
@@ -65,11 +66,11 @@ for arg in "$@"; do
     esac
 done
 
-# ── 发现插件文件 ──────────────────────────────────────────────
+# ── Discover plugin files ─────────────────────────────────────
 discover_plugins() {
     for f in *.py; do
         [[ ! -f "$f" ]] && continue
-        # 跳过非插件文件
+        # Skip non-plugin files
         case "$f" in
             __*|setup.py|conftest.py|test_*) continue ;;
         esac
@@ -87,14 +88,14 @@ else
 fi
 
 if [[ ${#PLUGIN_FILES[@]} -eq 0 ]]; then
-    echo -e "${RED}❌ 未发现任何 .py 插件文件${NC}"
+    echo -e "${RED}❌ No .py plugin files found${NC}"
     exit 1
 fi
 
-# ── 从 .py 文件提取 MANIFEST name（用作二进制名称）────────────
+# ── Extract MANIFEST name from .py file (used as binary name) ─
 extract_plugin_name() {
     local py_file="$1"
-    # 尝试从 Python 中提取 MANIFEST["name"]
+    # Try to extract MANIFEST["name"] from Python source
     local name
     name=$(python3 -c "
 import ast, sys
@@ -117,27 +118,27 @@ except Exception:
     if [[ -n "$name" ]]; then
         echo "$name"
     else
-        # 回退：文件名去掉 .py，下划线换连字符
+        # Fallback: strip .py extension, replace underscores with hyphens
         echo "${py_file%.py}" | tr '_' '-'
     fi
 }
 
-# ── 确保编译器可用 ────────────────────────────────────────────
+# ── Ensure compiler is available ───────────────────────────────
 ensure_compiler() {
     if [[ "$USE_NUITKA" == "true" ]]; then
         if ! command -v nuitka &>/dev/null && ! python3 -m nuitka --version &>/dev/null 2>&1; then
-            echo -e "${YELLOW}  Nuitka 未安装，正在安装...${NC}"
+            echo -e "${YELLOW}  Nuitka not installed, installing...${NC}"
             pip install nuitka ordered-set
         fi
     else
         if ! command -v pyinstaller &>/dev/null; then
-            echo -e "${YELLOW}  PyInstaller 未安装，正在安装...${NC}"
+            echo -e "${YELLOW}  PyInstaller not installed, installing...${NC}"
             pip install pyinstaller
         fi
     fi
 }
 
-# ── 编译单个插件 ──────────────────────────────────────────────
+# ── Build a single plugin ─────────────────────────────────────
 build_one() {
     local entry_point="$1"
     local plugin_name="$2"
@@ -169,11 +170,11 @@ build_one() {
 
     local binary="dist/${plugin_name}"
     if [[ ! -f "$binary" ]]; then
-        echo -e "  ${RED}❌ 构建失败：未找到 ${binary}${NC}"
+        echo -e "  ${RED}❌ Build failed: ${binary} not found${NC}"
         return 1
     fi
 
-    # macOS: ad-hoc 签名
+    # macOS: ad-hoc signing
     if [[ "$(uname -s)" == "Darwin" ]]; then
         codesign --force --sign - "$binary" 2>/dev/null || true
     fi
@@ -184,16 +185,16 @@ build_one() {
     return 0
 }
 
-# ── 协议测试（通用：describe / health / error）────────────────
+# ── Protocol tests (generic: describe / health / error) ───────
 test_one() {
     local binary="$1"
     local plugin_name="$2"
     local pass=0
     local fail=0
 
-    echo -e "  ${CYAN}── 测试 ${plugin_name} ──${NC}"
+    echo -e "  ${CYAN}── Testing ${plugin_name} ──${NC}"
 
-    # Test 1: describe — 返回包含 name 的 manifest
+    # Test 1: describe — returns a manifest containing name
     local result
     result=$(echo '{"jsonrpc":"2.0","method":"describe","id":1}' | "$binary" 2>/dev/null)
     if echo "$result" | python3 -c "
@@ -206,7 +207,7 @@ assert 'result' in d and 'name' in d['result'], 'missing result.name'
         echo -e "    ${RED}❌ describe: ${result:0:120}${NC}"; ((fail++))
     fi
 
-    # Test 2: health — 返回 status=healthy
+    # Test 2: health — returns status=healthy
     result=$(echo '{"jsonrpc":"2.0","method":"health","id":2}' | "$binary" 2>/dev/null)
     if echo "$result" | python3 -c "
 import sys, json
@@ -218,7 +219,7 @@ assert d.get('result', {}).get('status') == 'healthy'
         echo -e "    ${RED}❌ health: ${result:0:120}${NC}"; ((fail++))
     fi
 
-    # Test 3: invoke — 调用第一个工具（从 describe 获取工具名和必需参数）
+    # Test 3: invoke — calls the first tool (gets tool name and required params from describe)
     result=$(echo '{"jsonrpc":"2.0","method":"describe","id":99}' | "$binary" 2>/dev/null)
     local invoke_test_ok=false
     local tool_name tool_param invoke_result
@@ -231,7 +232,7 @@ if tools:
 " 2>/dev/null)
 
     if [[ -n "$tool_name" ]]; then
-        # 构建最小参数：为每个 required string 参数填 "test"，integer 填 1
+        # Build minimal params: fill "test" for each required string param, 1 for integer
         local invoke_params
         invoke_params=$(echo "$result" | python3 -c "
 import sys, json
@@ -258,16 +259,16 @@ assert 'result' in d and d['result'].get('success') is True, f'invoke failed: {d
                 invoke_test_ok=true
             else
                 echo -e "    ${RED}❌ invoke ${tool_name}: ${invoke_result:0:120}${NC}"; ((fail++))
-                invoke_test_ok=true  # 已尝试，不重复报告
+                invoke_test_ok=true  # Already attempted, don't report again
             fi
         fi
     fi
 
     if [[ "$invoke_test_ok" == "false" ]]; then
-        echo -e "    ${YELLOW}⏭  invoke 跳过（无法自动推断参数）${NC}"
+        echo -e "    ${YELLOW}⏭  invoke skipped (unable to auto-infer parameters)${NC}"
     fi
 
-    # Test 4: unknown method — 应返回 error
+    # Test 4: unknown method — should return error
     result=$(echo '{"jsonrpc":"2.0","method":"nonexistent","id":4}' | "$binary" 2>/dev/null)
     if echo "$result" | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'error' in d" 2>/dev/null; then
         echo -e "    ${GREEN}✅ error handling${NC}"; ((pass++))
@@ -275,12 +276,12 @@ assert 'result' in d and d['result'].get('success') is True, f'invoke failed: {d
         echo -e "    ${RED}❌ error handling: ${result:0:120}${NC}"; ((fail++))
     fi
 
-    echo -e "    结果: ${GREEN}${pass} passed${NC}, ${RED}${fail} failed${NC}"
+    echo -e "    Results: ${GREEN}${pass} passed${NC}, ${RED}${fail} failed${NC}"
     return "$fail"
 }
 
 # ══════════════════════════════════════════════════════════════
-# 主流程
+# Main flow
 # ══════════════════════════════════════════════════════════════
 
 COMPILER_LABEL="PyInstaller"
@@ -295,23 +296,23 @@ echo -e "  Compiler: ${COMPILER_LABEL}"
 echo -e "  Plugins:  ${#PLUGIN_FILES[@]} file(s)"
 echo ""
 
-# 列出待编译文件
+# List files to compile
 for pf in "${PLUGIN_FILES[@]}"; do
     pn=$(extract_plugin_name "$pf")
     echo -e "    • ${pf} → ${BOLD}${pn}${NC}"
 done
 echo ""
 
-# Step 1: 清理
-echo -e "${GREEN}[1/3] 清理旧构建产物...${NC}"
+# Step 1: Clean
+echo -e "${GREEN}[1/3] Cleaning old build artifacts...${NC}"
 rm -rf build/ __pycache__/ *.spec.bak
 mkdir -p dist
 
-# Step 2: 确保编译器
+# Step 2: Ensure compiler
 ensure_compiler
 
-# Step 3: 逐个编译
-echo -e "${GREEN}[2/3] 编译二进制...${NC}"
+# Step 3: Compile one by one
+echo -e "${GREEN}[2/3] Compiling binaries...${NC}"
 BUILT=()
 BUILD_FAIL=0
 
@@ -325,41 +326,41 @@ for pf in "${PLUGIN_FILES[@]}"; do
 done
 
 echo ""
-echo -e "${GREEN}[3/3] 编译完成：${#BUILT[@]} 成功，${BUILD_FAIL} 失败${NC}"
+echo -e "${GREEN}[3/3] Compilation complete: ${#BUILT[@]} succeeded, ${BUILD_FAIL} failed${NC}"
 
-# Step 4: 协议测试
+# Step 4: Protocol tests
 if [[ "$RUN_TEST" == "true" && ${#BUILT[@]} -gt 0 ]]; then
     echo ""
-    echo -e "${CYAN}══ 协议测试 ════════════════════════════════════${NC}"
+    echo -e "${CYAN}══ Protocol Tests ══════════════════════════════${NC}"
     TOTAL_FAIL=0
     for pn in "${BUILT[@]}"; do
         test_one "dist/${pn}" "$pn" || ((TOTAL_FAIL++))
     done
     echo ""
     if [[ $TOTAL_FAIL -gt 0 ]]; then
-        echo -e "${RED}⚠ ${TOTAL_FAIL} 个插件测试存在失败${NC}"
+        echo -e "${RED}⚠ ${TOTAL_FAIL} plugin test(s) had failures${NC}"
         exit 1
     else
-        echo -e "${GREEN}✅ 所有插件测试通过${NC}"
+        echo -e "${GREEN}✅ All plugin tests passed${NC}"
     fi
 elif [[ "$RUN_TEST" == "false" && ${#BUILT[@]} -gt 0 ]]; then
-    echo -e "  测试跳过（使用 --test 参数启用）"
+    echo -e "  Tests skipped (enable with --test flag)"
 fi
 
-# 汇总
+# Summary
 if [[ ${#BUILT[@]} -gt 0 ]]; then
     echo ""
-    echo -e "${CYAN}── 产物清单 ────────────────────────────────────${NC}"
+    echo -e "${CYAN}── Build Artifacts ─────────────────────────────${NC}"
     for pn in "${BUILT[@]}"; do
         local_size=$(du -h "dist/${pn}" | cut -f1)
         echo -e "  dist/${pn}  (${local_size})"
     done
     echo ""
-    echo -e "${CYAN}── 下一步 ──────────────────────────────────────${NC}"
-    echo -e "  本地安装:"
+    echo -e "${CYAN}── Next Steps ──────────────────────────────────${NC}"
+    echo -e "  Local install:"
     echo -e "    cp dist/* ~/.anna/executa/bin/"
     echo ""
-    echo -e "  打包上传:"
+    echo -e "  Package and upload:"
     PLATFORM="$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
     for pn in "${BUILT[@]}"; do
         echo -e "    cd dist && tar czf ${pn}-${PLATFORM}.tar.gz ${pn}"

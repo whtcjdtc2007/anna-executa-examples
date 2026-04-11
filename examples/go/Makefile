@@ -1,18 +1,18 @@
 # ============================================================
-# Executa Go Plugin — 多平台构建
+# Executa Go Plugin — Multi-platform Build
 # ============================================================
-# 用法:
-#   make            # 构建当前平台
-#   make all        # 构建所有平台
-#   make test       # 构建 + 协议测试
-#   make clean      # 清理
-#   make package    # 打包所有平台为 tar.gz / zip
+# Usage:
+#   make            # Build for current platform
+#   make all        # Build for all platforms
+#   make test       # Build + protocol tests
+#   make clean      # Clean
+#   make package    # Package all platforms as tar.gz / zip
 # ============================================================
 
 PLUGIN_NAME := example-go-tool
 VERSION     := 1.0.0
 
-# 标准平台（与 Anna 的 KNOWN_PLATFORMS 对应）
+# Standard platforms (corresponding to Anna's KNOWN_PLATFORMS)
 PLATFORMS := \
 	darwin-arm64 \
 	darwin-x86_64 \
@@ -21,24 +21,24 @@ PLATFORMS := \
 	windows-x86_64 \
 	windows-arm64
 
-# Go OS/ARCH 映射
+# Go OS/ARCH mapping
 platform_os   = $(word 1,$(subst -, ,$(1)))
 platform_arch = $(word 2,$(subst -, ,$(1)))
 go_os   = $(call platform_os,$(1))
 go_arch = $(subst x86_64,amd64,$(subst aarch64,arm64,$(subst armv7l,arm,$(call platform_arch,$(1)))))
 
-# Windows 后缀
+# Windows suffix
 exe_suffix = $(if $(findstring windows,$(1)),.exe,)
 
 .PHONY: build all test clean package
 
-# 默认: 构建当前平台
+# Default: build for current platform
 build:
 	@mkdir -p dist
 	go build -ldflags="-s -w" -o dist/$(PLUGIN_NAME) .
 	@echo "✅ Built dist/$(PLUGIN_NAME)"
 
-# 构建所有平台
+# Build for all platforms
 all:
 	@mkdir -p dist
 	@for plat in $(PLATFORMS); do \
@@ -55,20 +55,20 @@ all:
 	@echo "✅ All platforms built:"
 	@ls -lh dist/
 
-# 协议测试
+# Protocol tests
 test: build
 	@echo ""
-	@echo "── 协议测试 ──────────────────────────────────"
+	@echo "── Protocol Tests ──────────────────────────────────"
 	@echo '{"jsonrpc":"2.0","method":"describe","id":1}' | ./dist/$(PLUGIN_NAME) 2>/dev/null | \
-		python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['name']=='$(PLUGIN_NAME)'; print('  ✅ describe 通过')"
+		python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['name']=='$(PLUGIN_NAME)'; print('  ✅ describe passed')"
 	@echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"system_info","arguments":{}},"id":2}' | ./dist/$(PLUGIN_NAME) 2>/dev/null | \
-		python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['success']==True; print('  ✅ invoke 通过')"
+		python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['success']==True; print('  ✅ invoke passed')"
 	@echo '{"jsonrpc":"2.0","method":"health","id":3}' | ./dist/$(PLUGIN_NAME) 2>/dev/null | \
-		python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['status']=='healthy'; print('  ✅ health 通过')"
+		python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['status']=='healthy'; print('  ✅ health passed')"
 	@echo '{"jsonrpc":"2.0","method":"bad","id":4}' | ./dist/$(PLUGIN_NAME) 2>/dev/null | \
-		python3 -c "import sys,json; d=json.load(sys.stdin); assert 'error' in d; print('  ✅ error handling 通过')"
+		python3 -c "import sys,json; d=json.load(sys.stdin); assert 'error' in d; print('  ✅ error handling passed')"
 
-# 打包（tar.gz for unix, zip for windows）
+# Package (tar.gz for unix, zip for windows)
 package: all
 	@mkdir -p dist/packages
 	@for plat in $(PLATFORMS); do \
