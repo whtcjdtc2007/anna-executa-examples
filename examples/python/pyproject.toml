@@ -1,7 +1,7 @@
 [project]
 name = "example-text-tool"
 version = "1.0.0"
-description = "示例 Executa 插件 — 演示如何创建可被 Anna Agent 调用的文本处理工具"
+description = "Example Executa plugin — demonstrates how to create text processing tools callable by Anna Agent"
 requires-python = ">=3.10"
 authors = [{ name = "Anna Developer" }]
 license = { text = "MIT" }
