@@ -59,23 +59,23 @@ The Agent calls this method first after starting the plugin, to retrieve informa
     "name": "my-awesome-tool",
     "display_name": "My Awesome Tool",
     "version": "1.0.0",
-    "description": "工具的简要描述",
+    "description": "Brief description of the tool",
     "author": "Your Name",
     "tools": [
       {
         "name": "do_something",
-        "description": "执行某个操作（此描述会展示给 LLM）",
+        "description": "Perform an action (this description is shown to the LLM)",
         "parameters": [
           {
             "name": "input_text",
             "type": "string",
-            "description": "输入文本",
+            "description": "Input text",
             "required": true
           },
           {
             "name": "count",
             "type": "integer",
-            "description": "重复次数",
+            "description": "Repeat count",
             "required": false,
             "default": 1
           }
@@ -130,13 +130,13 @@ The Agent platform will use this to render a configuration form in the UI and au
     {
       "name": "TWITTER_API_KEY",
       "display_name": "API Key",
-      "description": "Twitter Developer Portal 中获取的 API Key",
+      "description": "API Key obtained from Twitter Developer Portal",
       "required": true
     },
     {
       "name": "TWITTER_API_SECRET",
       "display_name": "API Secret",
-      "description": "Twitter Developer Portal 中获取的 API Secret",
+      "description": "API Secret obtained from Twitter Developer Portal",
       "required": true,
       "sensitive": true
     }
@@ -176,7 +176,7 @@ Two equivalent declaration methods are supported:
   "name": "tags",
   "type": "array",
   "items": { "type": "string" },
-  "description": "标签列表",
+  "description": "List of tags",
   "required": false
 }
 ```
@@ -188,7 +188,7 @@ Two equivalent declaration methods are supported:
   "name": "tags",
   "type": "array",
   "items_type": "string",
-  "description": "标签列表",
+  "description": "List of tags",
   "required": false
 }
 ```
@@ -385,18 +385,18 @@ After the Agent reads the `__file_transport` field:
 import json, tempfile, sys
 
 def send_response(response: dict) -> None:
-    """发送响应，大型结果自动走文件传输"""
+    """Send response; large results use file transport automatically"""
     payload = json.dumps(response, ensure_ascii=False)
 
     if len(payload.encode("utf-8")) > 512 * 1024:
-        # 写入临时文件
+        # Write to temporary file
         with tempfile.NamedTemporaryFile(
             mode="w", suffix=".json", prefix="executa-resp-",
             delete=False, encoding="utf-8"
         ) as f:
             f.write(payload)
             tmp_path = f.name
-        # 发送文件指针
+        # Send file pointer
         pointer = json.dumps({
             "jsonrpc": "2.0",
             "id": response["id"],

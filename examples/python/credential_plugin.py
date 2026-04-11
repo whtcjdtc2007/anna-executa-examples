@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Executa 凭据插件示例 — 演示如何使用凭据（API Key / Token）
+"""Executa Credential Plugin Example — Demonstrates how to use credentials (API Key / Token)
 
-本示例展示如何：
-1. 在 Manifest 中声明所需凭据（credentials 字段）
-2. 在 invoke 中从 context.credentials 读取凭据
-3. 安全地使用凭据调用外部 API
+This example shows how to:
+1. Declare required credentials in the Manifest (credentials field)
+2. Read credentials from context.credentials in invoke
+3. Securely use credentials to call external APIs
 
-用户通过 Nexus API 配置凭据后，Anna Agent 会在调用插件工具时
-自动注入解密后的凭据到 params.context.credentials。
+After the user configures credentials via the Nexus API, the Anna Agent
+automatically injects decrypted credentials into params.context.credentials
+when calling plugin tools.
 
-运行方式：
+Usage:
     python credential_plugin.py
 
-协议要求：
-    - stdin:  接收 JSON-RPC 请求（每行一个 JSON 对象）
-    - stdout: 返回 JSON-RPC 响应（每行一个 JSON 对象）
-    - stderr: 日志输出（不会干扰协议通信）
+Protocol requirements:
+    - stdin:  Receives JSON-RPC requests (one JSON object per line)
+    - stdout: Returns JSON-RPC responses (one JSON object per line)
+    - stderr: Log output (does not interfere with protocol communication)
 """
 
 import json
@@ -23,33 +24,33 @@ import sys
 from datetime import datetime, timezone
 
 
-# ─── Manifest（自描述清单） ──────────────────────────────────────────
+# ─── Manifest (Self-Description) ─────────────────────────────────────
 #
-# credentials: 声明本插件所需的凭据列表
-#   - name:         凭据标识符（传入时的 key，如 WEATHER_API_KEY）
-#   - display_name: 人类可读名称（UI 展示用）
-#   - description:  用途说明（帮助用户理解该凭据的作用）
-#   - required:     是否必须配置（缺失时工具可能无法正常工作）
-#   - sensitive:    是否敏感数据（true 时 Nexus 会加密存储，UI 不回显）
+# credentials: Declares the list of credentials required by this plugin
+#   - name:         Credential identifier (the key used when passed in, e.g. WEATHER_API_KEY)
+#   - display_name: Human-readable name (displayed in the UI)
+#   - description:  Usage description (helps users understand the credential's purpose)
+#   - required:     Whether configuration is required (tool may not work properly if missing)
+#   - sensitive:    Whether it is sensitive data (when true, Nexus encrypts storage; UI does not echo)
 
 MANIFEST = {
     "name": "weather-tool",
     "display_name": "Weather Tool",
     "version": "1.0.0",
-    "description": "天气查询工具，演示凭据（API Key）的声明与使用",
+    "description": "Weather query tool demonstrating credential (API Key) declaration and usage",
     "author": "Anna Developer",
     "credentials": [
         {
             "name": "WEATHER_API_KEY",
             "display_name": "OpenWeatherMap API Key",
-            "description": "从 https://openweathermap.org/api 获取的 API Key",
+            "description": "API Key obtained from https://openweathermap.org/api",
             "required": True,
             "sensitive": True,
         },
         {
             "name": "WEATHER_UNITS",
-            "display_name": "温度单位",
-            "description": "温度单位偏好: metric（摄氏）/ imperial（华氏）/ standard（开尔文）",
+            "display_name": "Temperature Units",
+            "description": "Temperature unit preference: metric (Celsius) / imperial (Fahrenheit) / standard (Kelvin)",
             "required": False,
             "sensitive": False,
             "default": "metric",
@@ -58,30 +59,30 @@ MANIFEST = {
     "tools": [
         {
             "name": "get_weather",
-            "description": "查询指定城市的当前天气",
+            "description": "Query current weather for a specified city",
             "parameters": [
                 {
                     "name": "city",
                     "type": "string",
-                    "description": "城市名称（英文），如 Beijing, Tokyo, London",
+                    "description": "City name (in English), e.g. Beijing, Tokyo, London",
                     "required": True,
                 },
             ],
         },
         {
             "name": "get_forecast",
-            "description": "查询指定城市的未来天气预报",
+            "description": "Query weather forecast for a specified city",
             "parameters": [
                 {
                     "name": "city",
                     "type": "string",
-                    "description": "城市名称（英文）",
+                    "description": "City name (in English)",
                     "required": True,
                 },
                 {
                     "name": "days",
                     "type": "integer",
-                    "description": "预报天数（1-5）",
+                    "description": "Number of forecast days (1-5)",
                     "required": False,
                     "default": 3,
                 },
@@ -95,14 +96,14 @@ MANIFEST = {
 }
 
 
-# ─── 工具实现 ─────────────────────────────────────────────────────
+# ─── Tool Implementation ─────────────────────────────────────────────
 
 
 def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
-    """查询指定城市的当前天气
+    """Query current weather for a specified city
 
-    在实际实现中，这里会使用 credentials 中的 API Key 调用外部天气 API。
-    本示例返回模拟数据以演示凭据注入流程。
+    In a real implementation, this would use the API Key from credentials to call an external weather API.
+    This example returns simulated data to demonstrate the credential injection flow.
     """
     creds = credentials or {}
     api_key = creds.get("WEATHER_API_KEY")
@@ -111,10 +112,10 @@ def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
     if not api_key:
         return {
             "error": "WEATHER_API_KEY not configured",
-            "hint": "请通过 Nexus API 配置凭据: PUT /api/v1/executa/my/{id}/credentials",
+            "hint": "Please configure credentials via the Nexus API: PUT /api/v1/executa/my/{id}/credentials",
         }
 
-    # ─── 实际调用示例（注释） ───
+    # ─── Actual API call example (commented out) ───
     # import urllib.request
     # url = (
     #     f"https://api.openweathermap.org/data/2.5/weather"
@@ -124,7 +125,7 @@ def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
     # data = json.loads(resp.read())
     # ────────────────────────────
 
-    # 模拟数据（演示用）
+    # Simulated data (for demonstration)
     unit_symbol = {"metric": "°C", "imperial": "°F", "standard": "K"}.get(units, "°C")
     return {
         "city": city,
@@ -142,7 +143,7 @@ def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
 def tool_get_forecast(
     city: str, days: int = 3, *, credentials: dict | None = None
 ) -> dict:
-    """查询指定城市的天气预报"""
+    """Query weather forecast for a specified city"""
     creds = credentials or {}
     api_key = creds.get("WEATHER_API_KEY")
     units = creds.get("WEATHER_UNITS", "metric")
@@ -150,13 +151,13 @@ def tool_get_forecast(
     if not api_key:
         return {
             "error": "WEATHER_API_KEY not configured",
-            "hint": "请通过 Nexus API 配置凭据: PUT /api/v1/executa/my/{id}/credentials",
+            "hint": "Please configure credentials via the Nexus API: PUT /api/v1/executa/my/{id}/credentials",
         }
 
     days = max(1, min(5, days))
     unit_symbol = {"metric": "°C", "imperial": "°F", "standard": "K"}.get(units, "°C")
 
-    # 模拟预报数据
+    # Simulated forecast data
     forecast = []
     for i in range(days):
         temp = 20 + i * 2
@@ -176,7 +177,7 @@ def tool_get_forecast(
     }
 
 
-# ─── 工具分发表 ───────────────────────────────────────────────────
+# ─── Tool Dispatch Table ─────────────────────────────────────────────
 
 TOOL_DISPATCH = {
     "get_weather": tool_get_weather,
@@ -184,11 +185,11 @@ TOOL_DISPATCH = {
 }
 
 
-# ─── JSON-RPC 处理 ───────────────────────────────────────────────
+# ─── JSON-RPC Handling ───────────────────────────────────────────────
 
 
 def make_response(id, result=None, error=None):
-    """构造 JSON-RPC 2.0 响应"""
+    """Construct a JSON-RPC 2.0 response"""
     resp = {"jsonrpc": "2.0", "id": id}
     if error is not None:
         resp["error"] = error
@@ -198,14 +199,14 @@ def make_response(id, result=None, error=None):
 
 
 def handle_describe(request_id):
-    """处理 describe 请求 — 返回工具自描述清单（含 credentials 声明）"""
+    """Handle describe request — return the tool manifest (including credentials declaration)"""
     return make_response(request_id, result=MANIFEST)
 
 
 def handle_invoke(request_id, params):
-    """处理 invoke 请求 — 执行工具调用
+    """Handle invoke request — execute a tool call
 
-    凭据通过 params.context.credentials 注入，格式：
+    Credentials are injected via params.context.credentials, format:
     {
         "tool": "get_weather",
         "arguments": {"city": "Beijing"},
@@ -217,13 +218,13 @@ def handle_invoke(request_id, params):
         }
     }
 
-    注意：凭据由 Agent 从 Nexus 获取并解密后注入，
-    LLM 不会看到凭据内容，插件也不需要自行管理凭据存储。
+    Note: Credentials are fetched and decrypted by the Agent from Nexus before injection.
+    The LLM cannot see credential values, and the plugin does not need to manage credential storage.
     """
     tool_name = params.get("tool")
     arguments = params.get("arguments", {})
 
-    # 从 context 中提取凭据（Agent 注入）
+    # Extract credentials from context (injected by Agent)
     context = params.get("context", {})
     credentials = context.get("credentials")
 
@@ -245,7 +246,7 @@ def handle_invoke(request_id, params):
         )
 
     try:
-        # 将凭据作为 keyword argument 传入工具函数
+        # Pass credentials as a keyword argument to the tool function
         result = fn(**arguments, credentials=credentials)
         return make_response(
             request_id,
@@ -264,7 +265,7 @@ def handle_invoke(request_id, params):
 
 
 def handle_health(request_id):
-    """处理 health 请求 — 健康检查"""
+    """Handle health request — health check"""
     return make_response(
         request_id,
         result={
@@ -278,7 +279,7 @@ def handle_health(request_id):
 
 
 def handle_request(line: str) -> str:
-    """解析并处理单条 JSON-RPC 请求"""
+    """Parse and handle a single JSON-RPC request"""
     try:
         request = json.loads(line)
     except json.JSONDecodeError:
@@ -305,13 +306,13 @@ def handle_request(line: str) -> str:
     return json.dumps(response)
 
 
-# ─── 主循环（stdio JSON-RPC 服务） ──────────────────────────────
+# ─── Main Loop (stdio JSON-RPC Service) ──────────────────────────────
 
 
 def main():
-    """主入口：从 stdin 逐行读取 JSON-RPC 请求，通过 stdout 返回响应。
+    """Main entry point: reads JSON-RPC requests line by line from stdin, returns responses via stdout.
 
-    重要：所有日志输出到 stderr，避免干扰协议通信。
+    Important: All log output goes to stderr to avoid interfering with protocol communication.
     """
     print("🔌 Weather credential plugin started", file=sys.stderr)
     print(f"   Tools: {list(TOOL_DISPATCH.keys())}", file=sys.stderr)
@@ -330,7 +331,7 @@ def main():
 
         response = handle_request(line)
 
-        # 响应通过 stdout — 必须 flush，避免缓冲阻塞
+        # Response via stdout — must flush to avoid buffer blocking
         print(response, flush=True)
 
         print(f"→ {response}", file=sys.stderr)
