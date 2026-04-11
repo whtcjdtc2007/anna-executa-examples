@@ -1,12 +1,12 @@
 #!/bin/bash
 # ============================================================
-# Executa Plugin Binary 构建脚本（Go）
+# Executa Plugin Binary Build Script (Go)
 # ============================================================
-# 用法:
-#   ./build.sh                  # 构建当前平台
-#   ./build.sh --all            # 构建所有标准平台
-#   ./build.sh --test           # 构建 + 协议测试
-#   ./build.sh --package        # 构建 + 打包
+# Usage:
+#   ./build.sh                  # Build for current platform
+#   ./build.sh --all            # Build for all standard platforms
+#   ./build.sh --test           # Build + protocol tests
+#   ./build.sh --package        # Build + package
 # ============================================================
 
 set -euo pipefail
@@ -68,18 +68,18 @@ if [[ "$BUILD_ALL" == "true" ]]; then
         GOOS=$goos GOARCH=$goarch go build -ldflags="-s -w" -o "dist/${PLUGIN_NAME}-${plat}${suffix}" .
     done
     echo ""
-    echo -e "${GREEN}全平台构建完成！${NC}"
+    echo -e "${GREEN}All platforms built!${NC}"
     ls -lh dist/
 else
     go build -ldflags="-s -w" -o "dist/${PLUGIN_NAME}" .
     SIZE=$(du -h "dist/${PLUGIN_NAME}" | cut -f1)
-    echo -e "${GREEN}构建成功！${NC} dist/${PLUGIN_NAME} (${SIZE})"
+    echo -e "${GREEN}Build succeeded!${NC} dist/${PLUGIN_NAME} (${SIZE})"
 fi
 
-# ── 打包 ──────────────────────────────────────────────────────
+# ── Package ────────────────────────────────────────────────────
 if [[ "$PACKAGE" == "true" ]]; then
     echo ""
-    echo -e "${GREEN}打包...${NC}"
+    echo -e "${GREEN}Packaging...${NC}"
     mkdir -p dist/packages
     for f in dist/${PLUGIN_NAME}-*; do
         base=$(basename "$f")
@@ -95,44 +95,44 @@ if [[ "$PACKAGE" == "true" ]]; then
     ls -lh dist/packages/
 fi
 
-# ── 测试 ──────────────────────────────────────────────────────
+# ── Tests ─────────────────────────────────────────────────────
 if [[ "$RUN_TEST" == "true" ]]; then
     BINARY="dist/${PLUGIN_NAME}"
     [[ ! -f "$BINARY" ]] && BINARY=$(ls dist/${PLUGIN_NAME}-* 2>/dev/null | head -1)
 
     if [[ -f "$BINARY" && -x "$BINARY" ]]; then
         echo ""
-        echo -e "${CYAN}── 协议测试 ──────────────────────────────────${NC}"
+        echo -e "${CYAN}── Protocol Tests ────────────────────────────${NC}"
 
         echo -e "  [describe]..."
         RESULT=$(echo '{"jsonrpc":"2.0","method":"describe","id":1}' | "$BINARY" 2>/dev/null)
         if echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['name']=='example-go-tool'" 2>/dev/null; then
-            echo -e "  ${GREEN}✅ describe 通过${NC}"
+            echo -e "  ${GREEN}✅ describe passed${NC}"
         else
-            echo -e "  ${RED}❌ describe 失败${NC}"
+            echo -e "  ${RED}❌ describe failed${NC}"
         fi
 
         echo -e "  [invoke]..."
         RESULT=$(echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"system_info","arguments":{}},"id":2}' | "$BINARY" 2>/dev/null)
         if echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['success']==True" 2>/dev/null; then
-            echo -e "  ${GREEN}✅ invoke 通过${NC}"
+            echo -e "  ${GREEN}✅ invoke passed${NC}"
         else
-            echo -e "  ${RED}❌ invoke 失败${NC}"
+            echo -e "  ${RED}❌ invoke failed${NC}"
         fi
 
         echo -e "  [health]..."
         RESULT=$(echo '{"jsonrpc":"2.0","method":"health","id":3}' | "$BINARY" 2>/dev/null)
         if echo "$RESULT" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['status']=='healthy'" 2>/dev/null; then
-            echo -e "  ${GREEN}✅ health 通过${NC}"
+            echo -e "  ${GREEN}✅ health passed${NC}"
         else
-            echo -e "  ${RED}❌ health 失败${NC}"
+            echo -e "  ${RED}❌ health failed${NC}"
         fi
     else
-        echo -e "${YELLOW}未找到可执行二进制${NC}"
+        echo -e "${YELLOW}No executable binary found${NC}"
     fi
 fi
 
 echo ""
-echo -e "${CYAN}── 下一步 ────────────────────────────────────${NC}"
+echo -e "${CYAN}── Next Steps ──────────────────────────────────${NC}"
 echo -e "  cp dist/${PLUGIN_NAME} ~/.anna/executa/bin/"
 echo ""

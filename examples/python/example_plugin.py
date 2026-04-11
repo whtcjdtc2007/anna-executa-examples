@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
-"""Executa 插件示例 — Python 实现
+"""Executa Plugin Example — Python Implementation
 
-这是一个完整的 Executa 插件示例，展示如何实现标准的 JSON-RPC 2.0 over stdio 协议。
-Anna Agent 可以自动发现、加载并调用此插件暴露的工具。
+A complete Executa plugin example demonstrating how to implement the standard
+JSON-RPC 2.0 over stdio protocol. Anna Agent can automatically discover, load,
+and invoke the tools exposed by this plugin.
 
-运行方式：
+Usage:
     python example_plugin.py
 
-安装为 uv 工具：
+Install as a uv tool:
     uv tool install .
 
-构建为独立二进制：
+Build as a standalone binary:
     ./build_binary.sh --test
 
-协议要求：
-    - stdin:  接收 JSON-RPC 请求（每行一个 JSON 对象）
-    - stdout: 返回 JSON-RPC 响应（每行一个 JSON 对象）
-    - stderr: 日志输出（不会干扰协议通信）
+Protocol requirements:
+    - stdin:  Receives JSON-RPC requests (one JSON object per line)
+    - stdout: Returns JSON-RPC responses (one JSON object per line)
+    - stderr: Log output (does not interfere with protocol communication)
 """
 
 import json
@@ -25,74 +26,74 @@ import sys
 import tempfile
 from datetime import datetime, timezone
 
-# 单条 stdio 消息大小阈值（字节），超过后自动使用文件传输
+# Size threshold (bytes) for a single stdio message; file transport is used when exceeded
 MAX_STDIO_MESSAGE_BYTES = 512 * 1024
 
 
-# ─── Manifest（自描述清单） ──────────────────────────────────────────
+# ─── Manifest (Self-Description) ─────────────────────────────────────
 #
-# name:         工具唯一标识符，对应 Anna Admin 的 tool_id
-# display_name: 人类可读名称，对应 Anna Admin 的 name
-# tools:        工具列表，每个工具包含 name、description、parameters
+# name:         Unique tool identifier, corresponds to tool_id in Anna Admin
+# display_name: Human-readable name, corresponds to name in Anna Admin
+# tools:        List of tools, each containing name, description, and parameters
 
 MANIFEST = {
     "name": "example-text-tool",
     "display_name": "Example Text Tool",
     "version": "1.0.0",
-    "description": "一个示例文本处理工具，演示 Executa 插件协议的完整实现",
+    "description": "An example text processing tool demonstrating the full Executa plugin protocol implementation",
     "author": "Anna Developer",
     "tools": [
         {
             "name": "word_count",
-            "description": "统计文本中的字数、字符数和行数",
+            "description": "Count the number of words, characters, and lines in text",
             "parameters": [
                 {
                     "name": "text",
                     "type": "string",
-                    "description": "要分析的文本内容",
+                    "description": "The text content to analyze",
                     "required": True,
                 },
             ],
         },
         {
             "name": "text_transform",
-            "description": "对文本进行格式转换（大写、小写、标题、反转）",
+            "description": "Transform text format (uppercase, lowercase, title case, reverse)",
             "parameters": [
                 {
                     "name": "text",
                     "type": "string",
-                    "description": "要转换的文本",
+                    "description": "The text to transform",
                     "required": True,
                 },
                 {
                     "name": "transform",
                     "type": "string",
-                    "description": "转换类型: upper / lower / title / reverse",
+                    "description": "Transform type: upper / lower / title / reverse",
                     "required": True,
                 },
             ],
         },
         {
             "name": "text_repeat",
-            "description": "重复文本指定次数，可选分隔符",
+            "description": "Repeat text a specified number of times with an optional separator",
             "parameters": [
                 {
                     "name": "text",
                     "type": "string",
-                    "description": "要重复的文本",
+                    "description": "The text to repeat",
                     "required": True,
                 },
                 {
                     "name": "count",
                     "type": "integer",
-                    "description": "重复次数（1-100）",
+                    "description": "Number of repetitions (1-100)",
                     "required": False,
                     "default": 2,
                 },
                 {
                     "name": "separator",
                     "type": "string",
-                    "description": "分隔符",
+                    "description": "Separator",
                     "required": False,
                     "default": " ",
                 },
@@ -100,25 +101,25 @@ MANIFEST = {
         },
         {
             "name": "batch_word_count",
-            "description": "批量统计多段文本的字数（演示 array 参数用法）",
+            "description": "Batch word count for multiple texts (demonstrates array parameter usage)",
             "parameters": [
                 {
                     "name": "texts",
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "要分析的文本列表",
+                    "description": "List of texts to analyze",
                     "required": True,
                 },
             ],
         },
         {
             "name": "generate_dataset",
-            "description": "生成模拟数据集（可产生大型响应，演示文件传输机制）",
+            "description": "Generate a mock dataset (can produce large responses, demonstrates file transport mechanism)",
             "parameters": [
                 {
                     "name": "rows",
                     "type": "integer",
-                    "description": "生成的数据行数（1-100000，超过约 5000 行时会触发文件传输）",
+                    "description": "Number of data rows to generate (1-100000; file transport is triggered above ~5000 rows)",
                     "required": False,
                     "default": 100,
                 },
@@ -126,7 +127,7 @@ MANIFEST = {
                     "name": "columns",
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "要包含的列名列表，可选: id / name / email / score / timestamp / description",
+                    "description": "List of column names to include; options: id / name / email / score / timestamp / description",
                     "required": False,
                 },
             ],
@@ -139,7 +140,7 @@ MANIFEST = {
 }
 
 
-# ─── 工具实现 ─────────────────────────────────────────────────────
+# ─── Tool Implementations ────────────────────────────────────────────
 
 
 import hashlib
@@ -148,7 +149,7 @@ import random as _random
 
 
 def tool_word_count(text: str) -> dict:
-    """统计文本的字数、字符数和行数"""
+    """Count the number of words, characters, and lines in text."""
     lines = text.split("\n")
     words = text.split()
     return {
@@ -160,7 +161,7 @@ def tool_word_count(text: str) -> dict:
 
 
 def tool_text_transform(text: str, transform: str) -> dict:
-    """对文本进行格式转换"""
+    """Transform text format."""
     transforms = {
         "upper": str.upper,
         "lower": str.lower,
@@ -177,14 +178,14 @@ def tool_text_transform(text: str, transform: str) -> dict:
 
 
 def tool_text_repeat(text: str, count: int = 2, separator: str = " ") -> dict:
-    """重复文本指定次数"""
+    """Repeat text a specified number of times."""
     count = max(1, min(100, count))  # clamp to 1..100
     result = separator.join([text] * count)
     return {"result": result, "count": count}
 
 
 def tool_batch_word_count(texts: list) -> dict:
-    """批量统计多段文本的字数（演示 array 参数用法）"""
+    """Batch word count for multiple texts (demonstrates array parameter usage)."""
     results = []
     for text in texts:
         words = text.split()
@@ -193,7 +194,7 @@ def tool_batch_word_count(texts: list) -> dict:
 
 
 def _make_fake_name(rng: _random.Random) -> str:
-    """生成模拟姓名"""
+    """Generate a fake name."""
     first = rng.choice(["Alice", "Bob", "Charlie", "Diana", "Eve", "Frank",
                         "Grace", "Hank", "Ivy", "Jack", "Karen", "Leo"])
     last = rng.choice(["Smith", "Johnson", "Williams", "Brown", "Jones",
@@ -202,15 +203,15 @@ def _make_fake_name(rng: _random.Random) -> str:
 
 
 def tool_generate_dataset(rows: int = 100, columns: list | None = None) -> dict:
-    """生成模拟数据集。行数较大时会产生大型 JSON 响应，自动触发文件传输。"""
+    """Generate a mock dataset. Large row counts produce large JSON responses, triggering file transport."""
     rows = max(1, min(100000, rows))
     available_cols = ["id", "name", "email", "score", "timestamp", "description"]
     if not columns:
         columns = ["id", "name", "email", "score"]
-    # 过滤无效列名
+    # Filter out invalid column names
     columns = [c for c in columns if c in available_cols] or ["id"]
 
-    rng = _random.Random(42)  # 固定种子保证可复现
+    rng = _random.Random(42)  # Fixed seed for reproducibility
     dataset = []
     for i in range(rows):
         row = {}
@@ -236,7 +237,7 @@ def tool_generate_dataset(rows: int = 100, columns: list | None = None) -> dict:
                 row["description"] = " ".join(words)
         dataset.append(row)
 
-    # 估算响应大小
+    # Estimate response size
     sample_json = json.dumps(dataset[:1], ensure_ascii=False)
     estimated_bytes = len(sample_json.encode("utf-8")) * rows
 
@@ -249,7 +250,7 @@ def tool_generate_dataset(rows: int = 100, columns: list | None = None) -> dict:
     }
 
 
-# ─── 工具分发表 ───────────────────────────────────────────────────
+# ─── Tool Dispatch Table ─────────────────────────────────────────────
 
 TOOL_DISPATCH = {
     "word_count": tool_word_count,
@@ -260,11 +261,11 @@ TOOL_DISPATCH = {
 }
 
 
-# ─── JSON-RPC 处理 ───────────────────────────────────────────────
+# ─── JSON-RPC Handling ───────────────────────────────────────────────
 
 
 def make_response(id, result=None, error=None):
-    """构造 JSON-RPC 2.0 响应"""
+    """Build a JSON-RPC 2.0 response."""
     resp = {"jsonrpc": "2.0", "id": id}
     if error is not None:
         resp["error"] = error
@@ -274,12 +275,12 @@ def make_response(id, result=None, error=None):
 
 
 def handle_describe(request_id):
-    """处理 describe 请求 — 返回工具自描述清单"""
+    """Handle a describe request — return the tool self-description manifest."""
     return make_response(request_id, result=MANIFEST)
 
 
 def handle_invoke(request_id, params):
-    """处理 invoke 请求 — 执行工具调用"""
+    """Handle an invoke request — execute a tool call."""
     tool_name = params.get("tool")
     arguments = params.get("arguments", {})
 
@@ -319,7 +320,7 @@ def handle_invoke(request_id, params):
 
 
 def handle_health(request_id):
-    """处理 health 请求 — 健康检查"""
+    """Handle a health request — health check."""
     return make_response(
         request_id,
         result={
@@ -332,7 +333,7 @@ def handle_health(request_id):
 
 
 def handle_request(line: str) -> str:
-    """解析并处理单条 JSON-RPC 请求"""
+    """Parse and handle a single JSON-RPC request."""
     try:
         request = json.loads(line)
     except json.JSONDecodeError:
@@ -359,21 +360,22 @@ def handle_request(line: str) -> str:
     return json.dumps(response)
 
 
-# ─── 响应发送（支持文件传输） ───────────────────────────────────
+# ─── Response Sending (with File Transport Support) ──────────────────
 
 
 def send_response(response_dict: dict) -> None:
-    """发送 JSON-RPC 响应，大型结果自动使用文件传输。
+    """Send a JSON-RPC response, using file transport automatically for large results.
 
-    当序列化后的 JSON 超过 MAX_STDIO_MESSAGE_BYTES 时，将完整响应
-    写入临时文件，通过 stdout 只发送一条包含文件路径的轻量指针。
-    Agent 读取后会自动删除临时文件。
+    When the serialized JSON exceeds MAX_STDIO_MESSAGE_BYTES, the full response
+    is written to a temporary file and only a lightweight pointer containing the
+    file path is sent via stdout. The Agent will automatically delete the temp file
+    after reading it.
     """
     payload = json.dumps(response_dict, ensure_ascii=False)
     payload_bytes = payload.encode("utf-8")
 
     if len(payload_bytes) > MAX_STDIO_MESSAGE_BYTES:
-        # 写入临时文件（Agent 读取后自动删除）
+        # Write to a temporary file (Agent deletes it after reading)
         fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="executa-resp-")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -382,7 +384,7 @@ def send_response(response_dict: dict) -> None:
             os.close(fd)
             raise
 
-        # 通过 stdout 发送文件指针
+        # Send the file pointer via stdout
         pointer = json.dumps({
             "jsonrpc": "2.0",
             "id": response_dict.get("id"),
@@ -400,13 +402,13 @@ def send_response(response_dict: dict) -> None:
     sys.stdout.flush()
 
 
-# ─── 主循环（stdio JSON-RPC 服务） ──────────────────────────────
+# ─── Main Loop (stdio JSON-RPC Service) ──────────────────────────────
 
 
 def main():
-    """主入口：从 stdin 逐行读取 JSON-RPC 请求，通过 stdout 返回响应。
+    """Main entry point: reads JSON-RPC requests line by line from stdin and returns responses via stdout.
 
-    重要：所有日志输出到 stderr，避免干扰协议通信。
+    Important: All log output goes to stderr to avoid interfering with protocol communication.
     """
     print("🔌 Example Executa plugin started", file=sys.stderr)
     print(f"   Tools: {list(TOOL_DISPATCH.keys())}", file=sys.stderr)

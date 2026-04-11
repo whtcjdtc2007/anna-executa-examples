@@ -1,31 +1,33 @@
+> 中文版本请参阅 [README.zh-CN.md](README.zh-CN.md)
+
 # Anna Executa Plugin Examples
 
-本仓库提供 Anna Executa 插件的**完整示例与开发文档**，覆盖 Python、Node.js、Go 三种语言，以及 Local / Binary 两种分发方式。
+This repository provides **complete examples and development documentation** for Anna Executa plugins, covering Python, Node.js, and Go, with both Local and Binary distribution methods.
 
-## 什么是 Executa？
+## What is Executa?
 
-Executa 是 Anna Agent 的插件扩展系统。开发者可以用**任意编程语言**编写工具，只要实现标准的 **JSON-RPC 2.0 over stdio** 协议，即可被 Anna 自动发现、加载并提供给 LLM 调用。
+Executa is the plugin extension system for Anna Agent. Developers can write tools in **any programming language** — as long as they implement the standard **JSON-RPC 2.0 over stdio** protocol, Anna will automatically discover, load, and expose them to the LLM.
 
-## 目录结构
+## Directory Structure
 
 ```
 anna-executa-examples/
-├── docs/                       # 开发文档
-│   ├── protocol-spec.md        # 协议规范
-│   └── binary-distribution.md  # Binary 分发指南
+├── docs/                       # Development documentation
+│   ├── protocol-spec.md        # Protocol specification
+│   └── binary-distribution.md  # Binary distribution guide
 ├── examples/
-│   ├── python/                 # Python 插件示例
+│   ├── python/                 # Python plugin example
 │   │   ├── example_plugin.py
 │   │   ├── pyproject.toml
 │   │   ├── build_binary.sh
 │   │   ├── example-text-tool.spec
 │   │   └── README.md
-│   ├── nodejs/                 # Node.js 插件示例
+│   ├── nodejs/                 # Node.js plugin example
 │   │   ├── example_plugin.js
 │   │   ├── package.json
 │   │   ├── build_binary.sh
 │   │   └── README.md
-│   └── go/                     # Go 插件示例
+│   └── go/                     # Go plugin example
 │       ├── main.go
 │       ├── go.mod
 │       ├── build.sh
@@ -33,75 +35,75 @@ anna-executa-examples/
 │       └── README.md
 └── .github/
     └── workflows/
-        └── build-release.yml   # 多平台 CI/CD 示例
+        └── build-release.yml   # Multi-platform CI/CD example
 ```
 
-## 快速开始
+## Quick Start
 
-### Python 插件
+### Python Plugin
 
 ```bash
 cd examples/python
 
-# 直接运行
+# Run directly
 python example_plugin.py
 
-# 测试协议
+# Test the protocol
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python example_plugin.py 2>/dev/null
 
-# 构建为独立二进制
+# Build as a standalone binary
 ./build_binary.sh --test
 ```
 
-### Node.js 插件
+### Node.js Plugin
 
 ```bash
 cd examples/nodejs
 
-# 直接运行
+# Run directly
 node example_plugin.js
 
-# 测试协议
+# Test the protocol
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node example_plugin.js 2>/dev/null
 
-# 构建为独立二进制（需要 Node.js 18+）
+# Build as a standalone binary (requires Node.js 18+)
 ./build_binary.sh --test
 ```
 
-### Go 插件
+### Go Plugin
 
 ```bash
 cd examples/go
 
-# 直接运行
+# Run directly
 go run .
 
-# 测试协议
+# Test the protocol
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run . 2>/dev/null
 
-# 构建本机二进制
+# Build a native binary
 go build -o dist/example-go-tool .
 
-# 构建全平台二进制
+# Build binaries for all platforms
 make all
 ```
 
-## 分发方式
+## Distribution Methods
 
-| 方式 | 安装途径 | 适用场景 |
-|------|---------|---------|
-| **uv** | `uv tool install <package>` | Python 工具（推荐） |
-| **pipx** | `pipx install <package>` | Python 工具 |
-| **npm** | `npm install -g <package>` | Node.js 工具 |
-| **Homebrew** | `brew install <formula>` | macOS/Linux |
-| **Binary** | HTTP 下载 | 预编译二进制（任意语言） |
-| **Local** | 本地路径 | 开发调试 |
+| Method | Installation | Use Case |
+|--------|-------------|----------|
+| **uv** | `uv tool install <package>` | Python tools (recommended) |
+| **pipx** | `pipx install <package>` | Python tools |
+| **npm** | `npm install -g <package>` | Node.js tools |
+| **Homebrew** | `brew install <formula>` | macOS / Linux |
+| **Binary** | HTTP download | Pre-built binaries (any language) |
+| **Local** | Local path | Development & debugging |
 
-## 文档
+## Documentation
 
-- [协议规范](docs/protocol-spec.md) — JSON-RPC 2.0 over stdio 完整协议定义
-- [Binary 分发指南](docs/binary-distribution.md) — 构建、签名、多平台部署
+- [Protocol Specification](docs/protocol-spec.md) — Full JSON-RPC 2.0 over stdio protocol definition
+- [Binary Distribution Guide](docs/binary-distribution.md) — Building, signing, and multi-platform deployment
 
-## 许可证
+## License
 
 MIT

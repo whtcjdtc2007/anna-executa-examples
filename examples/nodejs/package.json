@@ -1,7 +1,7 @@
 {
   "name": "example-node-tool",
   "version": "1.0.0",
-  "description": "示例 Executa 插件 — Node.js 实现，演示 JSON 格式化和 Base64 编解码工具",
+  "description": "Example Executa plugin — Node.js implementation demonstrating JSON formatting and Base64 encoding/decoding tools",
   "author": "Anna Developer",
   "license": "MIT",
   "main": "example_plugin.js",
