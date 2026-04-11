@@ -1,69 +1,71 @@
-# Go Executa 插件示例
+中文版本请参阅 [README.zh-CN.md](README.zh-CN.md)
 
-## 概述
+# Go Executa Plugin Example
 
-这是一个完整的 Go Executa 插件示例，实现了系统信息查询、哈希计算和字符串工具。
+## Overview
 
-Go 天然编译为独立二进制，**零依赖**、跨平台，是 Binary 分发的理想选择。
+This is a complete Go Executa plugin example that implements system information queries, hash computation, and string utility tools.
 
-## 运行方式
+Go natively compiles to standalone binaries with **zero dependencies** and cross-platform support, making it an ideal choice for Binary distribution.
 
-### 直接运行
+## How to Run
+
+### Run Directly
 
 ```bash
 go run .
 ```
 
-测试协议：
+Test the protocol:
 
 ```bash
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run . 2>/dev/null
 ```
 
-### 构建二进制
+### Build Binary
 
 ```bash
-# 当前平台
+# Current platform
 go build -o dist/example-go-tool .
 
-# 或使用脚本
+# Or use the script
 ./build.sh
 
-# 或使用 Makefile
+# Or use Makefile
 make build
 ```
 
-## 多平台构建
+## Multi-Platform Build
 
-Go 的交叉编译是一等公民特性，无需安装额外工具：
+Cross-compilation is a first-class feature in Go, requiring no additional tools:
 
-### 使用 Makefile（推荐）
+### Using Makefile (Recommended)
 
 ```bash
-# 构建所有 7 个标准平台
+# Build for all 7 standard platforms
 make all
 
-# 构建 + 打包
+# Build + package
 make package
 
-# 构建 + 协议测试
+# Build + protocol test
 make test
 ```
 
-### 使用构建脚本
+### Using Build Script
 
 ```bash
-# 所有平台
+# All platforms
 ./build.sh --all
 
-# 构建 + 测试
+# Build + test
 ./build.sh --all --test
 
-# 构建 + 打包
+# Build + package
 ./build.sh --package
 ```
 
-### 手动交叉编译
+### Manual Cross-Compilation
 
 ```bash
 # macOS Apple Silicon
@@ -82,15 +84,15 @@ GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/example-go-tool-linux-
 GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/example-go-tool-windows-x86_64.exe .
 ```
 
-> `-ldflags="-s -w"` 去除调试信息，减小二进制体积约 30%。
+> `-ldflags="-s -w"` strips debug information, reducing binary size by approximately 30%.
 
-## 分发到 Anna
+## Distribute to Anna
 
-Go 插件最适合 **Binary** 分发方式：
+Go plugins are best suited for **Binary** distribution:
 
-1. 构建所有平台：`make package`
-2. 上传到 GitHub Releases（`dist/packages/*.tar.gz` / `*.zip`）
-3. 在 Anna Admin 中配置每个平台的 Binary URL：
+1. Build for all platforms: `make package`
+2. Upload to GitHub Releases (`dist/packages/*.tar.gz` / `*.zip`)
+3. Configure each platform's Binary URL in Anna Admin:
 
 ```
 darwin-arm64    →  https://github.com/you/repo/releases/download/v1.0/example-go-tool-darwin-arm64.tar.gz
@@ -98,64 +100,64 @@ linux-x86_64    →  https://github.com/you/repo/releases/download/v1.0/example-
 windows-x86_64  →  https://github.com/you/repo/releases/download/v1.0/example-go-tool-windows-x86_64.zip
 ```
 
-## 文件说明
+## File Descriptions
 
-| 文件 | 说明 |
-|------|------|
-| `main.go` | 插件主程序（完整实现） |
-| `go.mod` | Go 模块定义 |
-| `Makefile` | 多平台构建、测试、打包 |
-| `build.sh` | 一键构建脚本 |
+| File | Description |
+|------|-------------|
+| `main.go` | Plugin main program (complete implementation) |
+| `go.mod` | Go module definition |
+| `Makefile` | Multi-platform build, test, and packaging |
+| `build.sh` | One-click build script |
 
-## 协议交互示例
+## Protocol Interaction Examples
 
 ```bash
 BINARY=./dist/example-go-tool
 
-# 获取工具清单
+# Get tool manifest
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | $BINARY 2>/dev/null
 
-# 查询系统信息
+# Query system information
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"system_info","arguments":{}},"id":2}' | $BINARY 2>/dev/null
 
-# 计算哈希
+# Compute hash
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"hash_text","arguments":{"text":"hello","algorithm":"sha256"}},"id":3}' | $BINARY 2>/dev/null
 
-# 字符串操作
+# String operations
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"string_utils","arguments":{"text":"hello","operation":"reverse"}},"id":4}' | $BINARY 2>/dev/null
 ```
 
-## 添加自己的工具
+## Adding Your Own Tools
 
-1. 在 `manifest` 的 `tools` 数组中添加工具定义
-2. 实现工具函数（接收 `map[string]any` 参数，返回 `map[string]any` 结果）
-3. 在 `handleInvoke` 的 switch 中注册
+1. Add a tool definition in the `manifest`'s `tools` array
+2. Implement the tool function (receives `map[string]any` parameters, returns `map[string]any` result)
+3. Register it in the `handleInvoke` switch statement
 
 ```go
-// 1. manifest 中添加定义
+// 1. Add definition in manifest
 {
     "name":        "my_tool",
     "description": "...",
     "parameters": []map[string]any{...},
 }
 
-// 2. 实现
+// 2. Implement
 func toolMyTool(args map[string]any) map[string]any {
     input, _ := args["input"].(string)
     return map[string]any{"result": input}
 }
 
-// 3. 注册（在 handleInvoke 的 switch 中）
+// 3. Register (in handleInvoke switch)
 case "my_tool":
     result = toolMyTool(args)
 ```
 
-## Go 的优势
+## Advantages of Go
 
-| 特性 | 说明 |
-|------|------|
-| 零依赖 | 编译后无需安装任何运行时 |
-| 极小体积 | 典型二进制 5-15 MB（对比 Python 50-200 MB） |
-| 交叉编译 | 内置支持，一条命令即可 |
-| 启动快 | 毫秒级冷启动 |
-| 并发 | goroutine 天然支持并行计算 |
+| Feature | Description |
+|---------|-------------|
+| Zero Dependencies | No runtime installation required after compilation |
+| Small Size | Typical binary 5-15 MB (compared to Python 50-200 MB) |
+| Cross-Compilation | Built-in support, just one command |
+| Fast Startup | Millisecond-level cold start |
+| Concurrency | Goroutines natively support parallel computation |

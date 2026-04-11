@@ -1,134 +1,136 @@
-# Node.js Executa 插件示例
+中文版本请参阅 [README.zh-CN.md](README.zh-CN.md)
 
-## 概述
+# Node.js Executa Plugin Example
 
-这是一个完整的 Node.js Executa 插件示例，实现了 JSON 格式化、Base64 编解码和哈希计算工具。
+## Overview
 
-## 运行方式
+This is a complete Node.js Executa plugin example that implements JSON formatting, Base64 encoding/decoding, and hash computation tools.
 
-### 直接运行（开发/调试）
+## How to Run
+
+### Run Directly (Development/Debugging)
 
 ```bash
 node example_plugin.js
 ```
 
-在另一个终端测试：
+Test in another terminal:
 
 ```bash
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node example_plugin.js 2>/dev/null
 ```
 
-### 通过 npm 全局安装
+### Install Globally via npm
 
 ```bash
 npm install -g .
 example-node-tool
 ```
 
-### 通过 npm 脚本
+### Via npm Scripts
 
 ```bash
-npm start         # 运行插件
-npm test          # 测试 describe
-npm run build     # 构建二进制
-npm run build:test  # 构建并测试
+npm start         # Run the plugin
+npm test          # Test describe
+npm run build     # Build binary
+npm run build:test  # Build and test
 ```
 
-## 构建为独立二进制
+## Build as Standalone Binary
 
-### pkg（推荐，简单通用）
+### pkg (Recommended, Simple and Universal)
 
 ```bash
-# 构建当前平台
+# Build for current platform
 ./build_binary.sh
 
-# 构建所有平台
+# Build for all platforms
 ./build_binary.sh --all
 
-# 构建并测试
+# Build and test
 ./build_binary.sh --test
 ```
 
-### Node.js SEA（Node.js 20+，官方方案）
+### Node.js SEA (Node.js 20+, Official Solution)
 
 ```bash
 ./build_binary.sh --sea --test
 ```
 
-> **注意：** SEA 仅支持构建当前平台的二进制。交叉编译请使用 pkg。
+> **Note:** SEA only supports building binaries for the current platform. For cross-compilation, use pkg.
 
-### 手动使用 pkg
+### Manual Build with pkg
 
 ```bash
 npx pkg example_plugin.js --targets node18-macos-arm64,node18-linux-x64 --output dist/example-node-tool
 ```
 
-## 分发到 Anna
+## Distribute to Anna
 
-### npm 分发
+### npm Distribution
 
-在 Anna Admin 中：
-- 分发方式：**npm**
-- 包名：`example-node-tool`
+In Anna Admin:
+- Distribution method: **npm**
+- Package name: `example-node-tool`
 
-### Binary 分发
+### Binary Distribution
 
-1. 构建多平台二进制：`./build_binary.sh --all`
-2. 打包：
+1. Build multi-platform binaries: `./build_binary.sh --all`
+2. Package:
    ```bash
    cd dist
    tar czf example-node-tool-darwin-arm64.tar.gz example-node-tool-darwin-arm64
    tar czf example-node-tool-linux-x86_64.tar.gz example-node-tool-linux-x86_64
    ```
-3. 上传到 GitHub Releases / S3
-4. 在 Anna Admin 中配置每个平台的 Binary URL
+3. Upload to GitHub Releases / S3
+4. Configure each platform's Binary URL in Anna Admin
 
-### Local 分发
+### Local Distribution
 
-在 Anna Admin 中：
-- 分发方式：**Local**
-- 路径填写 `node /path/to/example_plugin.js`（需要目标机器有 Node.js）
+In Anna Admin:
+- Distribution method: **Local**
+- Path: enter `node /path/to/example_plugin.js` (requires Node.js on the target machine)
 
-## 文件说明
+## File Descriptions
 
-| 文件 | 说明 |
-|------|------|
-| `example_plugin.js` | 插件主程序 |
-| `package.json` | npm 包配置 |
-| `build_binary.sh` | 一键构建脚本（pkg / SEA） |
+| File | Description |
+|------|-------------|
+| `example_plugin.js` | Plugin main program |
+| `package.json` | npm package configuration |
+| `build_binary.sh` | One-click build script (pkg / SEA) |
 
-## 协议交互示例
+## Protocol Interaction Examples
 
 ```bash
-# 获取工具清单
+# Get tool manifest
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node example_plugin.js 2>/dev/null
 
-# 调用 json_format
+# Call json_format
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"json_format","arguments":{"json_string":"{\"a\":1}","indent":4}},"id":2}' | node example_plugin.js 2>/dev/null
 
-# 调用 base64_encode
+# Call base64_encode
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"base64_encode","arguments":{"text":"hello world"}},"id":3}' | node example_plugin.js 2>/dev/null
 
-# 调用 hash_text
+# Call hash_text
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"hash_text","arguments":{"text":"hello","algorithm":"sha256"}},"id":4}' | node example_plugin.js 2>/dev/null
 ```
 
-## 添加自己的工具
+## Adding Your Own Tools
 
-1. 在 `MANIFEST.tools` 中添加工具定义
-2. 实现工具函数（接收 `args` 对象，返回 result 对象）
-3. 在 `TOOL_DISPATCH` 中注册
+1. Add a tool definition in `MANIFEST.tools`
+2. Implement the tool function (receives an `args` object, returns a result object)
+3. Register it in `TOOL_DISPATCH`
 
 ```javascript
-// 1. 定义
+// 1. Define
 { name: "my_tool", description: "...", parameters: [...] }
 
-// 2. 实现
+// 2. Implement
 function toolMyTool(args) {
   const { input } = args;
   return { result: "..." };
 }
 
-// 3. 注册
+// 3. Register
 TOOL_DISPATCH["my_tool"] = toolMyTool;
 ```

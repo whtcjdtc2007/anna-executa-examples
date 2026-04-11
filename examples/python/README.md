@@ -1,131 +1,133 @@
-# Python Executa 插件示例
+中文版本请参阅 [README.zh-CN.md](README.zh-CN.md)
 
-## 概述
+# Python Executa Plugin Example
 
-这是一个完整的 Python Executa 插件示例，实现了一个文本处理工具集，包含 `word_count`、`text_transform`、`text_repeat` 三个工具。
+## Overview
 
-## 运行方式
+This is a complete Python Executa plugin example that implements a text processing toolkit, including three tools: `word_count`, `text_transform`, and `text_repeat`.
 
-### 直接运行（开发/调试）
+## How to Run
+
+### Run Directly (Development/Debugging)
 
 ```bash
 python example_plugin.py
 ```
 
-在另一个终端测试：
+Test in another terminal:
 
 ```bash
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python example_plugin.py 2>/dev/null
 ```
 
-### 通过 uv 安装（推荐的 Local 分发方式）
+### Install via uv (Recommended Local Distribution Method)
 
 ```bash
-# 安装为全局工具
+# Install as a global tool
 uv tool install .
 
-# 运行
+# Run
 example-text-tool
 ```
 
-### 通过 pipx 安装
+### Install via pipx
 
 ```bash
 pipx install .
 example-text-tool
 ```
 
-## 构建为独立二进制
+## Build as Standalone Binary
 
-### PyInstaller（推荐）
+### PyInstaller (Recommended)
 
 ```bash
-# 一键构建
+# One-click build
 ./build_binary.sh
 
-# 构建并测试
+# Build and test
 ./build_binary.sh --test
 ```
 
-### Nuitka（更小体积）
+### Nuitka (Smaller Size)
 
 ```bash
 ./build_binary.sh --nuitka --test
 ```
 
-### 手动构建
+### Manual Build
 
 ```bash
 pip install pyinstaller
 
-# 使用 spec 文件
+# Using spec file
 pyinstaller example-text-tool.spec
 
-# 或命令行
+# Or command line
 pyinstaller --onefile --name example-text-tool --strip --noupx example_plugin.py
 ```
 
-## 分发到 Anna
+## Distribute to Anna
 
-### Local 分发
+### Local Distribution
 
-在 Anna Admin 中：
-- 分发方式：**Local**
-- 路径填写 Python 脚本路径，如 `/path/to/example_plugin.py`
-- 协议选择：`stdio`
+In Anna Admin:
+- Distribution method: **Local**
+- Path: enter the Python script path, e.g. `/path/to/example_plugin.py`
+- Protocol: `stdio`
 
-### Binary 分发
+### Binary Distribution
 
-1. 构建二进制：`./build_binary.sh`
-2. 打包：`cd dist && tar czf example-text-tool-darwin-arm64.tar.gz example-text-tool`
-3. 上传到 GitHub Releases / S3 / 任意 HTTP 服务
-4. 在 Anna Admin 中配置 Binary URL
+1. Build binary: `./build_binary.sh`
+2. Package: `cd dist && tar czf example-text-tool-darwin-arm64.tar.gz example-text-tool`
+3. Upload to GitHub Releases / S3 / any HTTP service
+4. Configure the Binary URL in Anna Admin
 
-### uv 分发
+### uv Distribution
 
-在 Anna Admin 中：
-- 分发方式：**uv**
-- 包名：`example-text-tool`（或 PyPI 包名）
+In Anna Admin:
+- Distribution method: **uv**
+- Package name: `example-text-tool` (or PyPI package name)
 
-## 文件说明
+## File Descriptions
 
-| 文件 | 说明 |
-|------|------|
-| `example_plugin.py` | 插件主程序（可直接运行） |
-| `pyproject.toml` | Python 包配置（uv/pipx 安装需要） |
-| `build_binary.sh` | 一键构建脚本（PyInstaller / Nuitka） |
-| `example-text-tool.spec` | PyInstaller 配置文件 |
+| File | Description |
+|------|-------------|
+| `example_plugin.py` | Plugin main program (can be run directly) |
+| `pyproject.toml` | Python package configuration (required for uv/pipx installation) |
+| `build_binary.sh` | One-click build script (PyInstaller / Nuitka) |
+| `example-text-tool.spec` | PyInstaller configuration file |
 
-## 协议交互示例
+## Protocol Interaction Examples
 
 ```bash
-# 获取工具清单
+# Get tool manifest
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python example_plugin.py 2>/dev/null
 
-# 调用 word_count
+# Call word_count
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"word_count","arguments":{"text":"hello world"}},"id":2}' | python example_plugin.py 2>/dev/null
 
-# 调用 text_transform
+# Call text_transform
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"text_transform","arguments":{"text":"hello","transform":"upper"}},"id":3}' | python example_plugin.py 2>/dev/null
 
-# 健康检查
+# Health check
 echo '{"jsonrpc":"2.0","method":"health","id":4}' | python example_plugin.py 2>/dev/null
 ```
 
-## 添加自己的工具
+## Adding Your Own Tools
 
-1. 在 `MANIFEST["tools"]` 中添加工具定义（name、description、parameters）
-2. 实现工具函数
-3. 在 `TOOL_DISPATCH` 字典中注册
+1. Add a tool definition in `MANIFEST["tools"]` (name, description, parameters)
+2. Implement the tool function
+3. Register it in the `TOOL_DISPATCH` dictionary
 
 ```python
-# 1. 定义
+# 1. Define
 {"name": "my_tool", "description": "...", "parameters": [...]}
 
-# 2. 实现
+# 2. Implement
 def tool_my_tool(arg1: str, arg2: int = 10) -> dict:
     return {"result": "..."}
 
-# 3. 注册
+# 3. Register
 TOOL_DISPATCH["my_tool"] = tool_my_tool
 ```
