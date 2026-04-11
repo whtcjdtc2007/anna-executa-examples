@@ -1,20 +1,20 @@
-// Executa 插件示例 — Go 实现
+// Executa Plugin Example — Go Implementation
 //
-// 这是一个完整的 Go Executa 插件示例，实现了系统信息查询和文件哈希工具。
-// Go 天然编译为独立二进制，非常适合 Binary 分发方式。
+// This is a complete Go Executa plugin example that implements system info queries and file hashing tools.
+// Go compiles natively to standalone binaries, making it ideal for binary distribution.
 //
-// 运行方式：
+// Run:
 //
 //	go run .
 //
-// 构建：
+// Build:
 //
 //	go build -o dist/example-go-tool .
 //
-// 协议要求：
-//   - stdin:  接收 JSON-RPC 请求（每行一个 JSON 对象）
-//   - stdout: 返回 JSON-RPC 响应（每行一个 JSON 对象）
-//   - stderr: 日志输出（不会干扰协议通信）
+// Protocol requirements:
+//   - stdin:  Receives JSON-RPC requests (one JSON object per line)
+//   - stdout: Returns JSON-RPC responses (one JSON object per line)
+//   - stderr: Log output (does not interfere with protocol communication)
 package main
 
 import (
@@ -32,38 +32,37 @@ import (
 	"time"
 )
 
-// 单条 stdio 消息大小阈值（字节），超过后自动使用文件传输
+// Maximum single stdio message size in bytes; messages exceeding this threshold use file transport
 const maxStdioMessageBytes = 512 * 1024
 
 // ─── Manifest ──────────────────────────────────────────────────────
 
-// Manifest 定义了插件的自描述清单
+// Manifest defines the plugin's self-describing manifest
 var manifest = map[string]any{
 	"name":         "example-go-tool",
 	"display_name": "Example Go Tool",
 	"version":      "1.0.0",
-	"description":  "一个 Go 示例工具，演示系统信息查询和哈希计算",
+	"description":  "A Go example tool demonstrating system info queries and hash computation",
 	"author":       "Anna Developer",
 	"tools": []map[string]any{
 		{
 			"name":        "system_info",
-			"description": "获取当前系统的 OS、架构、Go 版本等信息",
+			"description": "Get current system OS, architecture, Go version, and other info",
 			"parameters":  []map[string]any{},
 		},
 		{
 			"name":        "hash_text",
-			"description": "计算文本的 SHA-256 或 MD5 哈希值",
+			"description": "Compute the SHA-256 or MD5 hash of text",
 			"parameters": []map[string]any{
 				{
 					"name":        "text",
 					"type":        "string",
-					"description": "要计算哈希的文本",
-					"required":    true,
+					"description": "The text to hash",					"required":    true,
 				},
 				{
 					"name":        "algorithm",
 					"type":        "string",
-					"description": "哈希算法: sha256 / md5（默认 sha256）",
+					"description": "Hash algorithm: sha256 / md5 (default sha256)",
 					"required":    false,
 					"default":     "sha256",
 				},
@@ -71,24 +70,24 @@ var manifest = map[string]any{
 		},
 		{
 			"name":        "string_utils",
-			"description": "字符串工具：统计长度、反转、重复",
+			"description": "String utilities: count length, reverse, repeat",
 			"parameters": []map[string]any{
 				{
 					"name":        "text",
 					"type":        "string",
-					"description": "输入文本",
+					"description": "Input text",
 					"required":    true,
 				},
 				{
 					"name":        "operation",
 					"type":        "string",
-					"description": "操作: length / reverse / repeat / upper / lower",
+					"description": "Operation: length / reverse / repeat / upper / lower",
 					"required":    true,
 				},
 				{
 					"name":        "count",
 					"type":        "integer",
-					"description": "repeat 操作的重复次数（默认 2）",
+					"description": "Repeat count for the repeat operation (default 2)",
 					"required":    false,
 					"default":     2,
 				},
@@ -96,19 +95,19 @@ var manifest = map[string]any{
 		},
 		{
 			"name":        "batch_hash",
-			"description": "批量计算多段文本的哈希值（演示 array 参数用法）",
+			"description": "Batch compute hashes for multiple texts (demonstrates array parameter usage)",
 			"parameters": []map[string]any{
 				{
 					"name":        "texts",
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "要计算哈希的文本列表",
+					"description": "List of texts to hash",
 					"required":    true,
 				},
 				{
 					"name":        "algorithm",
 					"type":        "string",
-					"description": "哈希算法: sha256 / md5（默认 sha256）",
+					"description": "Hash algorithm: sha256 / md5 (default sha256)",
 					"required":    false,
 					"default":     "sha256",
 				},
@@ -116,12 +115,12 @@ var manifest = map[string]any{
 		},
 		{
 			"name":        "generate_dataset",
-			"description": "生成模拟数据集（可产生大型响应，演示文件传输机制）",
+			"description": "Generate a mock dataset (can produce large responses, demonstrating file transport)",
 			"parameters": []map[string]any{
 				{
 					"name":        "rows",
 					"type":        "integer",
-					"description": "生成的数据行数（1-100000，超过约 5000 行时会触发文件传输）",
+					"description": "Number of data rows to generate (1-100000; file transport is triggered above ~5000 rows)",
 					"required":    false,
 					"default":     100,
 				},
@@ -129,7 +128,7 @@ var manifest = map[string]any{
 					"name":        "columns",
 					"type":        "array",
 					"items":       map[string]any{"type": "string"},
-					"description": "要包含的列名列表，可选: id / name / email / score / timestamp / description",
+					"description": "List of column names to include; options: id / name / email / score / timestamp / description",
 					"required":    false,
 				},
 			},
@@ -141,7 +140,7 @@ var manifest = map[string]any{
 	},
 }
 
-// ─── JSON-RPC 类型 ─────────────────────────────────────────────────
+// ─── JSON-RPC Types ─────────────────────────────────────────────────
 
 type rpcRequest struct {
 	JSONRPC string         `json:"jsonrpc"`
@@ -163,14 +162,14 @@ type rpcErr struct {
 	Data    any    `json:"data,omitempty"`
 }
 
-// fileTransportPointer 是文件传输时通过 stdout 发送的轻量指针
+// fileTransportPointer is a lightweight pointer sent via stdout during file transport
 type fileTransportPointer struct {
 	JSONRPC       string `json:"jsonrpc"`
 	ID            any    `json:"id"`
 	FileTransport string `json:"__file_transport"`
 }
 
-// ─── 工具实现 ─────────────────────────────────────────────────────
+// ─── Tool Implementations ─────────────────────────────────────────
 
 func toolSystemInfo() map[string]any {
 	hostname, _ := os.Hostname()
@@ -266,7 +265,7 @@ func toolStringUtils(args map[string]any) map[string]any {
 	}
 }
 
-// ─── 请求处理 ─────────────────────────────────────────────────────
+// ─── Request Handling ─────────────────────────────────────────────────────
 
 func toolBatchHash(args map[string]any) map[string]any {
 	textsRaw, _ := args["texts"].([]any)
@@ -332,7 +331,7 @@ func toolGenerateDataset(args map[string]any) map[string]any {
 		rows = 100000
 	}
 
-	// 解析列名
+	// Parse column names
 	colsRaw, _ := args["columns"].([]any)
 	var columns []string
 	for _, c := range colsRaw {
@@ -344,7 +343,7 @@ func toolGenerateDataset(args map[string]any) map[string]any {
 		columns = []string{"id", "name", "email", "score"}
 	}
 
-	rng := rand.New(rand.NewSource(42)) //nolint:gosec // 固定种子保证可复现
+	rng := rand.New(rand.NewSource(42)) //nolint:gosec // fixed seed for reproducibility
 
 	dataset := make([]map[string]any, 0, rows)
 	for i := 0; i < rows; i++ {
@@ -377,7 +376,7 @@ func toolGenerateDataset(args map[string]any) map[string]any {
 		dataset = append(dataset, row)
 	}
 
-	// 估算响应大小
+	// Estimate response size
 	sampleJSON, _ := json.Marshal(dataset[:1])
 	estimatedBytes := len(sampleJSON) * rows
 
@@ -455,12 +454,12 @@ func handleInvoke(req rpcRequest) rpcResponse {
 	}}
 }
 
-// ─── 响应发送（支持文件传输） ──────────────────────────────────────
+// ─── Response Sending (with file transport support) ──────────────────
 
-// sendResponse 发送 JSON-RPC 响应，大型结果自动使用文件传输。
-// 当序列化后的 JSON 超过 maxStdioMessageBytes 时，将完整响应
-// 写入临时文件，通过 stdout 只发送一条包含文件路径的轻量指针。
-// Agent 读取后会自动删除临时文件。
+// sendResponse sends a JSON-RPC response, automatically using file transport for large results.
+// When the serialized JSON exceeds maxStdioMessageBytes, the full response is written
+// to a temporary file and only a lightweight pointer containing the file path is sent via stdout.
+// The agent will automatically delete the temporary file after reading it.
 func sendResponse(resp rpcResponse) {
 	out, err := json.Marshal(resp)
 	if err != nil {
@@ -469,17 +468,17 @@ func sendResponse(resp rpcResponse) {
 	}
 
 	if len(out) > maxStdioMessageBytes {
-		// 写入临时文件
+		// Write to temporary file
 		tmpPath := filepath.Join(os.TempDir(),
 			fmt.Sprintf("executa-resp-%d.json", time.Now().UnixNano()))
 		if writeErr := os.WriteFile(tmpPath, out, 0600); writeErr != nil {
 			fmt.Fprintf(os.Stderr, "❌ Failed to write file transport: %v\n", writeErr)
-			// 回退到直接输出
+			// Fall back to direct output
 			fmt.Fprintln(os.Stdout, string(out))
 			return
 		}
 
-		// 发送文件指针
+		// Send file pointer
 		pointer := fileTransportPointer{
 			JSONRPC:       "2.0",
 			ID:            resp.ID,
@@ -494,7 +493,7 @@ func sendResponse(resp rpcResponse) {
 	}
 }
 
-// ─── 主循环 ────────────────────────────────────────────────────────
+// ─── Main Loop ────────────────────────────────────────────────────────
 
 func main() {
 	fmt.Fprintln(os.Stderr, "🔌 Example Go Executa plugin started")
@@ -502,7 +501,7 @@ func main() {
 	fmt.Fprintf(os.Stderr, "   Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 
 	scanner := bufio.NewScanner(os.Stdin)
-	// 增大缓冲区以支持大型请求
+	// Increase buffer size to support large requests
 	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
 
 	for scanner.Scan() {
