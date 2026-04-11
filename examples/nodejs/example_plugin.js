@@ -1,19 +1,19 @@
 #!/usr/bin/env node
 /**
- * Executa 插件示例 — Node.js 实现
+ * Executa Plugin Example — Node.js Implementation
  *
- * 这是一个完整的 Node.js Executa 插件示例，实现了 JSON 格式化和 Base64 编解码工具。
+ * A complete Node.js Executa plugin example implementing JSON formatting and Base64 encoding/decoding tools.
  *
- * 运行方式：
+ * Usage:
  *   node example_plugin.js
  *
- * 安装为 npm 全局工具：
+ * Install as a global npm tool:
  *   npm install -g .
  *
- * 协议要求：
- *   - stdin:  接收 JSON-RPC 请求（每行一个 JSON 对象）
- *   - stdout: 返回 JSON-RPC 响应（每行一个 JSON 对象）
- *   - stderr: 日志输出（不会干扰协议通信）
+ * Protocol requirements:
+ *   - stdin:  Receives JSON-RPC requests (one JSON object per line)
+ *   - stdout: Returns JSON-RPC responses (one JSON object per line)
+ *   - stderr: Log output (does not interfere with protocol communication)
  */
 
 const readline = require("readline");
@@ -21,35 +21,35 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-// 单条 stdio 消息大小阈值（字节），超过后自动使用文件传输
+// Single stdio message size threshold (bytes); file transport is used automatically when exceeded
 const MAX_STDIO_MESSAGE_BYTES = 512 * 1024;
 
-// ─── Manifest（自描述清单） ──────────────────────────────────────────
+// ─── Manifest (Self-describing manifest) ────────────────────────────
 //
-// name:         工具唯一标识符，对应 Anna Admin 的 tool_id
-// display_name: 人类可读名称，对应 Anna Admin 的 name
+// name:         Unique tool identifier, corresponds to tool_id in Anna Admin
+// display_name: Human-readable name, corresponds to name in Anna Admin
 
 const MANIFEST = {
   name: "example-node-tool",
   display_name: "Example Node.js Tool",
   version: "1.0.0",
-  description: "一个 Node.js 示例工具，演示 Executa 插件协议",
+  description: "A Node.js example tool demonstrating the Executa plugin protocol",
   author: "Anna Developer",
   tools: [
     {
       name: "json_format",
-      description: "格式化 JSON 字符串，支持自定义缩进",
+      description: "Format a JSON string with customizable indentation",
       parameters: [
         {
           name: "json_string",
           type: "string",
-          description: "要格式化的 JSON 字符串",
+          description: "The JSON string to format",
           required: true,
         },
         {
           name: "indent",
           type: "integer",
-          description: "缩进空格数（默认 2）",
+          description: "Number of indentation spaces (default 2)",
           required: false,
           default: 2,
         },
@@ -57,42 +57,42 @@ const MANIFEST = {
     },
     {
       name: "base64_encode",
-      description: "Base64 编码文本",
+      description: "Base64 encode text",
       parameters: [
         {
           name: "text",
           type: "string",
-          description: "要编码的文本",
+          description: "The text to encode",
           required: true,
         },
       ],
     },
     {
       name: "base64_decode",
-      description: "Base64 解码文本",
+      description: "Base64 decode text",
       parameters: [
         {
           name: "encoded",
           type: "string",
-          description: "要解码的 Base64 字符串",
+          description: "The Base64 string to decode",
           required: true,
         },
       ],
     },
     {
       name: "hash_text",
-      description: "计算文本的 SHA-256 / MD5 哈希值",
+      description: "Compute SHA-256 / MD5 hash of text",
       parameters: [
         {
           name: "text",
           type: "string",
-          description: "要哈希的文本",
+          description: "The text to hash",
           required: true,
         },
         {
           name: "algorithm",
           type: "string",
-          description: "哈希算法: sha256 / md5（默认 sha256）",
+          description: "Hash algorithm: sha256 / md5 (default sha256)",
           required: false,
           default: "sha256",
         },
@@ -100,19 +100,19 @@ const MANIFEST = {
     },
     {
       name: "batch_hash",
-      description: "批量计算多段文本的哈希值（演示 array 参数用法）",
+      description: "Batch compute hashes for multiple texts (demonstrates array parameter usage)",
       parameters: [
         {
           name: "texts",
           type: "array",
           items: { type: "string" },
-          description: "要计算哈希的文本列表",
+          description: "List of texts to hash",
           required: true,
         },
         {
           name: "algorithm",
           type: "string",
-          description: "哈希算法: sha256 / md5（默认 sha256）",
+          description: "Hash algorithm: sha256 / md5 (default sha256)",
           required: false,
           default: "sha256",
         },
@@ -120,12 +120,12 @@ const MANIFEST = {
     },
     {
       name: "generate_dataset",
-      description: "生成模拟数据集（可产生大型响应，演示文件传输机制）",
+      description: "Generate a simulated dataset (can produce large responses, demonstrating the file transport mechanism)",
       parameters: [
         {
           name: "rows",
           type: "integer",
-          description: "生成的数据行数（1-100000，超过约 5000 行时会触发文件传输）",
+          description: "Number of data rows to generate (1-100000; file transport is triggered above ~5000 rows)",
           required: false,
           default: 100,
         },
@@ -133,7 +133,7 @@ const MANIFEST = {
           name: "columns",
           type: "array",
           items: { type: "string" },
-          description: "要包含的列名列表，可选: id / name / email / score / timestamp / description",
+          description: "List of column names to include; options: id / name / email / score / timestamp / description",
           required: false,
         },
       ],
@@ -145,7 +145,7 @@ const MANIFEST = {
   },
 };
 
-// ─── 工具实现 ─────────────────────────────────────────────────────
+// ─── Tool implementations ────────────────────────────────────────────
 
 const crypto = require("crypto");
 
@@ -213,7 +213,7 @@ const LOREM_WORDS = ["lorem", "ipsum", "dolor", "sit", "amet", "consectetur",
   "adipiscing", "elit", "sed", "do", "eiusmod", "tempor",
   "incididunt", "ut", "labore", "et", "dolore", "magna"];
 
-/** 简单的可植种伪随机生成器（保证可复现） */
+/** Simple seeded pseudo-random generator (ensures reproducibility) */
 function seededRandom(seed) {
   let s = seed;
   return function () {
@@ -294,7 +294,7 @@ const TOOL_DISPATCH = {
   generate_dataset: toolGenerateDataset,
 };
 
-// ─── JSON-RPC 处理 ───────────────────────────────────────────────
+// ─── JSON-RPC handling ───────────────────────────────────────────
 
 function makeResponse(id, result, error) {
   const resp = { jsonrpc: "2.0", id };
@@ -363,28 +363,28 @@ function handleRequest(line) {
   }
 }
 
-// ─── 响应发送（支持文件传输） ─────────────────────────────────────
+// ─── Response sending (with file transport support) ──────────────
 
 /**
- * 发送 JSON-RPC 响应，大型结果自动使用文件传输。
+ * Send a JSON-RPC response; large results automatically use file transport.
  *
- * 当序列化后的 JSON 超过 MAX_STDIO_MESSAGE_BYTES 时，将完整响应
- * 写入临时文件，通过 stdout 只发送一条包含文件路径的轻量指针。
- * Agent 读取后会自动删除临时文件。
+ * When the serialized JSON exceeds MAX_STDIO_MESSAGE_BYTES, the full response
+ * is written to a temporary file, and only a lightweight pointer containing
+ * the file path is sent via stdout. The agent deletes the temp file after reading.
  */
 function sendResponse(responseObj) {
   const payload = JSON.stringify(responseObj);
   const payloadBytes = Buffer.byteLength(payload, "utf-8");
 
   if (payloadBytes > MAX_STDIO_MESSAGE_BYTES) {
-    // 生成唯一临时文件路径
+    // Generate a unique temporary file path
     const tmpPath = path.join(
       os.tmpdir(),
       `executa-resp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`
     );
     fs.writeFileSync(tmpPath, payload, "utf-8");
 
-    // 发送文件指针
+    // Send file pointer
     const pointer = JSON.stringify({
       jsonrpc: "2.0",
       id: responseObj.id,
@@ -400,7 +400,7 @@ function sendResponse(responseObj) {
   }
 }
 
-// ─── 主循环（stdio JSON-RPC 服务） ──────────────────────────────
+// ─── Main loop (stdio JSON-RPC service) ─────────────────────────
 
 const rl = readline.createInterface({ input: process.stdin });
 
