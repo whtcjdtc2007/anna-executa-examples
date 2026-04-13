@@ -1,15 +1,17 @@
-# 平台统一授权（Platform Authorization）
+中文版本请参阅 [authorization.zh-CN.md](authorization.zh-CN.md)
 
-## 概述
+# Platform Authorization
 
-平台统一授权允许用户在 Anna Nexus 中**一次性连接**第三方服务（Google、Twitter/X、GitHub、Notion、Slack 等），所有需要这些服务凭据的 Executa 插件自动获得访问权限，无需逐个插件重复配置。
+## Overview
+
+Platform Authorization allows users to **connect third-party services once** in Anna Nexus (Google, Twitter/X, GitHub, Notion, Slack, etc.), and all Executa plugins that require credentials from these services automatically gain access — no per-plugin configuration needed.
 
 ```
 ┌───────────────────────────────────────────────────────────────┐
 │                      Anna Nexus Platform                      │
 │                                                               │
 │  ┌─────────────────────────────────────────────────────────┐  │
-│  │            /settings/authorizations (用户 UI)            │  │
+│  │          /settings/authorizations (User UI)              │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐    │  │
 │  │  │  Google  │ │ Twitter  │ │  GitHub  │ │  Notion  │    │  │
 │  │  │  (OAuth) │ │(API Key) │ │(API Key) │ │(API Key) │    │  │
@@ -17,13 +19,14 @@
 │  └───────┼─────────────┼───────────┼─────────────┼─────────┘  │
 │          ▼             ▼           ▼             ▼            │
 │  ┌─────────────────────────────────────────────────────────┐  │
-│  │          AES-256-GCM 加密存储 (user_platform_credentials) │  │
+│  │       AES-256-GCM Encrypted Storage                      │  │
+│  │                (user_platform_credentials)                │  │
 │  └───────────────────────────┬─────────────────────────────┘  │
 │                              │ credential_mapping             │
 │                              ▼                                │
 │  ┌─────────────────────────────────────────────────────────┐  │
-│  │      resolve_credentials_for_plugin() — 凭据解析引擎     │  │
-│  │  优先级: 平台统一凭据 > 插件级手动凭据 > 环境变量         │  │
+│  │   resolve_credentials_for_plugin() — Credential Engine   │  │
+│  │   Priority: Platform > Plugin-level > Environment Vars   │  │
 │  └───────────────────────────┬─────────────────────────────┘  │
 │                              │ context.credentials            │
 │                              ▼                                │
@@ -34,11 +37,11 @@
 └───────────────────────────────────────────────────────────────┘
 ```
 
-## 核心概念
+## Core Concepts
 
-### 凭据声明（Credentials Declaration）
+### Credentials Declaration
 
-插件在 Manifest 的 `credentials` 字段声明自己需要哪些凭据：
+Plugins declare the credentials they need in the Manifest's `credentials` field:
 
 ```json
 {
@@ -47,7 +50,7 @@
     {
       "name": "GMAIL_ACCESS_TOKEN",
       "display_name": "Gmail Access Token",
-      "description": "Google OAuth Access Token（由平台自动注入）",
+      "description": "Google OAuth Access Token (auto-injected by platform)",
       "required": true,
       "sensitive": true
     }
@@ -56,104 +59,104 @@
 }
 ```
 
-### 凭据映射（Credential Mapping）
+### Credential Mapping
 
-平台通过**提供商注册表**定义凭据名称到实际值的映射关系：
+The platform defines mappings from credential names to actual values through a **provider registry**:
 
 ```python
-# Google OAuth provider 的凭据映射
+# Google OAuth provider credential mapping
 credential_mapping = {
-    "GOOGLE_ACCESS_TOKEN": "$access_token",  # 映射到 OAuth access_token
-    "GMAIL_ACCESS_TOKEN":  "$access_token",  # 同一个 token，不同别名
+    "GOOGLE_ACCESS_TOKEN": "$access_token",  # Maps to OAuth access_token
+    "GMAIL_ACCESS_TOKEN":  "$access_token",  # Same token, different alias
 }
 
-# Twitter API Key provider 的凭据映射
+# Twitter API Key provider credential mapping
 credential_mapping = {
-    "TWITTER_API_KEY":          "TWITTER_API_KEY",          # 直接映射字段名
+    "TWITTER_API_KEY":          "TWITTER_API_KEY",          # Direct field mapping
     "TWITTER_API_SECRET":       "TWITTER_API_SECRET",
     "TWITTER_BEARER_TOKEN":     "TWITTER_BEARER_TOKEN",
 }
 ```
 
-特殊值说明：
-- `$access_token` — 自动映射到 OAuth2 的 access_token（会自动刷新过期 token）
-- 普通字符串 — 映射到 API Key 模式下用户填写的字段
+Special values:
+- `$access_token` — Auto-maps to OAuth2 access_token (automatically refreshes expired tokens)
+- Plain strings — Map to user-provided fields in API Key mode
 
-### 凭据解析优先级
+### Credential Resolution Priority
 
-当 Agent 调用插件时，凭据解析引擎按以下优先级查找：
+When the Agent calls a plugin, the credential resolution engine searches in this order:
 
-1. **平台统一凭据** — 用户在 `/settings/authorizations` 配置的（最高优先级）
-2. **插件级凭据** — 用户在单个插件的配置中手动填写的
-3. **环境变量**（仅本地开发）— 插件自行回退读取 `os.environ`
+1. **Platform unified credentials** — Configured at `/settings/authorizations` (highest priority)
+2. **Plugin-level credentials** — Manually entered in per-plugin settings
+3. **Environment variables** (local development only) — Plugin falls back to reading `os.environ`
 
-## 使用流程
+## Workflow
 
-### 用户侧
+### User Side
 
-1. **访问授权页面** — 登录 Nexus 后访问 `/settings/authorizations`
-2. **连接服务** — 点击对应服务的「连接」按钮：
-   - **OAuth2 服务**（如 Google）：跳转到第三方授权页面，选择权限范围（scopes），授权后自动跳回
-   - **API Key 服务**（如 Twitter/GitHub）：在弹窗中填写 API Key / Token
-3. **查看状态** — 授权完成后可看到连接状态、关联邮箱、权限范围等
-4. **管理授权** — 可随时断开连接、刷新 Token、查看详情
+1. **Visit authorization page** — After logging into Nexus, go to `/settings/authorizations`
+2. **Connect services** — Click the "Connect" button for the desired service:
+   - **OAuth2 services** (e.g. Google): Redirects to third-party authorization page, select permission scopes, auto-redirects back after authorization
+   - **API Key services** (e.g. Twitter/GitHub): Enter API Key / Token in a dialog
+3. **View status** — After authorization, view connection status, associated email, permission scopes, etc.
+4. **Manage authorizations** — Disconnect, refresh tokens, or view details at any time
 
-### 插件开发者侧
+### Plugin Developer Side
 
-1. **声明凭据** — 在 Manifest 的 `credentials` 中列出所需凭据名称
-2. **接收凭据** — 从 `invoke` 请求的 `params.context.credentials` 读取
-3. **本地回退** — 开发调试时回退读取环境变量
+1. **Declare credentials** — List required credential names in the Manifest's `credentials`
+2. **Receive credentials** — Read from `invoke` request's `params.context.credentials`
+3. **Local fallback** — Fall back to reading environment variables during development
 
-## 已支持的提供商
+## Supported Providers
 
-| Provider | Auth Type | 凭据字段 | 兼容插件 |
-|----------|-----------|---------|---------|
-| **Google** | OAuth2 | access_token（10+ scopes 可选） | gws, gmail-tool, google-calendar, google-drive |
+| Provider | Auth Type | Credential Fields | Compatible Plugins |
+|----------|-----------|------------------|-------------------|
+| **Google** | OAuth2 | access_token (10+ selectable scopes) | gws, gmail-tool, google-calendar, google-drive |
 | **X (Twitter)** | API Key | API Key, API Secret, Access Token, Access Token Secret, Bearer Token | twitter-tool, x-tool, social-media |
 | **GitHub** | API Key | Personal Access Token | github-tool, git-tool |
 | **Notion** | API Key | Integration Token | notion-tool |
 | **Slack** | API Key | Bot User OAuth Token | slack-tool |
 
-## API 端点
+## API Endpoints
 
-| Method | Endpoint | 说明 |
-|--------|----------|------|
-| `GET` | `/api/v1/platform-credentials/providers` | 列出所有支持的提供商 |
-| `GET` | `/api/v1/platform-credentials/my` | 当前用户所有授权状态 |
-| `GET` | `/api/v1/platform-credentials/my/{provider_id}` | 指定提供商的授权详情 |
-| `GET` | `/api/v1/platform-credentials/oauth/{provider_id}/authorize` | 发起 OAuth 授权 |
-| `GET` | `/api/v1/platform-credentials/oauth/{provider_id}/callback` | OAuth 回调 |
-| `PUT` | `/api/v1/platform-credentials/api-key/{provider_id}` | 设置 API Key |
-| `GET` | `/api/v1/platform-credentials/api-key/{provider_id}/status` | API Key 配置状态 |
-| `DELETE` | `/api/v1/platform-credentials/my/{provider_id}` | 断开授权 |
-| `POST` | `/api/v1/platform-credentials/my/{provider_id}/refresh` | 刷新 OAuth Token |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/platform-credentials/providers` | List all supported providers |
+| `GET` | `/api/v1/platform-credentials/my` | Current user's authorization status |
+| `GET` | `/api/v1/platform-credentials/my/{provider_id}` | Authorization details for a specific provider |
+| `GET` | `/api/v1/platform-credentials/oauth/{provider_id}/authorize` | Initiate OAuth authorization |
+| `GET` | `/api/v1/platform-credentials/oauth/{provider_id}/callback` | OAuth callback |
+| `PUT` | `/api/v1/platform-credentials/api-key/{provider_id}` | Set API Key |
+| `GET` | `/api/v1/platform-credentials/api-key/{provider_id}/status` | API Key configuration status |
+| `DELETE` | `/api/v1/platform-credentials/my/{provider_id}` | Disconnect authorization |
+| `POST` | `/api/v1/platform-credentials/my/{provider_id}/refresh` | Refresh OAuth Token |
 
-## 安全设计
+## Security Design
 
-- **加密存储** — 所有凭据使用 AES-256-GCM 对称加密，密钥来源：`NEXUS_CREDENTIAL_KEY` 环境变量 > `SECRET_KEY` 派生 > 明文回退（仅开发环境）
-- **LLM 隔离** — 凭据通过 `context.credentials` 注入，LLM **看不到**凭据值，无法在对话中泄露
-- **最小权限** — OAuth2 支持用户选择性授予 scopes（如只给 Gmail 读取权限，不给发送权限）
-- **自动刷新** — OAuth access_token 过期时自动使用 refresh_token 刷新
-- **撤销支持** — 断开连接时同时向第三方撤销 token
+- **Encrypted storage** — All credentials use AES-256-GCM symmetric encryption; key source: `NEXUS_CREDENTIAL_KEY` env var > `SECRET_KEY` derivation > plaintext fallback (development only)
+- **LLM isolation** — Credentials are injected via `context.credentials`; the LLM **cannot see** credential values and cannot leak them in conversations
+- **Least privilege** — OAuth2 supports user-selective scope granting (e.g. grant Gmail read-only, not send permission)
+- **Auto-refresh** — OAuth access_token is automatically refreshed using refresh_token when expired
+- **Revocation support** — Token is revoked at the third-party when disconnecting
 
-## 插件最佳实践
+## Plugin Best Practices
 
-### 1. 使用 credential_mapping 对齐命名
+### 1. Align Naming with credential_mapping
 
-插件的 `credentials[].name` 应与平台提供商注册表中的 `credential_mapping` 键对齐，这样平台能自动匹配：
+Plugin `credentials[].name` should align with keys in the platform provider registry's `credential_mapping` for automatic matching:
 
 ```json
-// ✅ 好 — 与平台 credential_mapping 一致
+// ✅ Good — Matches platform credential_mapping
 { "name": "TWITTER_API_KEY" }
 { "name": "GOOGLE_ACCESS_TOKEN" }
 { "name": "GITHUB_TOKEN" }
 
-// ❌ 差 — 自定义命名，平台无法自动映射
+// ❌ Bad — Custom naming, platform cannot auto-map
 { "name": "MY_TWITTER_KEY" }
 { "name": "TOKEN_FOR_GOOGLE" }
 ```
 
-### 2. 凭据优先从 context 读取，回退到环境变量
+### 2. Read Credentials from context First, Fall Back to Environment Variables
 
 ```python
 def my_tool(city: str, *, credentials: dict | None = None) -> dict:
@@ -161,34 +164,34 @@ def my_tool(city: str, *, credentials: dict | None = None) -> dict:
     api_key = creds.get("WEATHER_API_KEY") or os.environ.get("WEATHER_API_KEY")
     if not api_key:
         return {"error": "WEATHER_API_KEY not configured"}
-    # 使用 api_key ...
+    # Use api_key ...
 ```
 
-### 3. 不要在工具参数中暴露凭据
+### 3. Never Expose Credentials in Tool Parameters
 
 ```json
-// ✅ 好 — 凭据在 credentials 声明中，LLM 看不到
+// ✅ Good — Credentials in credentials declaration, invisible to LLM
 {
   "credentials": [{ "name": "API_KEY", ... }],
   "tools": [{ "name": "search", "parameters": [{ "name": "query", ... }] }]
 }
 
-// ❌ 差 — 凭据作为工具参数，LLM 可见且可能泄露
+// ❌ Bad — Credentials as tool parameters, visible to LLM and may leak
 {
   "tools": [{ "name": "search", "parameters": [{ "name": "api_key", ... }, { "name": "query", ... }] }]
 }
 ```
 
-### 4. 标记敏感凭据
+### 4. Mark Sensitive Credentials
 
 ```json
 {
   "name": "API_SECRET",
-  "sensitive": true   // UI 不回显，加密存储
+  "sensitive": true   // Not echoed in UI, encrypted storage
 }
 ```
 
-### 5. 提供清晰的获取说明
+### 5. Provide Clear Acquisition Instructions
 
 ```json
 {
@@ -198,9 +201,9 @@ def my_tool(city: str, *, credentials: dict | None = None) -> dict:
 }
 ```
 
-## 扩展新的 Provider
+## Adding a New Provider
 
-在 `platform_credential_providers.py` 中追加注册即可，无需修改数据库 schema：
+Simply append a registration in `platform_credential_providers.py` — no database schema changes required:
 
 ```python
 _register(
@@ -215,7 +218,7 @@ _register(
             CredentialFieldDef(
                 name="MY_SERVICE_TOKEN",
                 display_name="API Token",
-                description="从 https://my-service.com/settings/api 获取",
+                description="Obtain from https://my-service.com/settings/api",
             ),
         ],
         credential_mapping={

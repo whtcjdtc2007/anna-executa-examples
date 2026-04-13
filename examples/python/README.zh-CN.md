@@ -149,7 +149,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python credential_plugin.p
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","arguments":{"city":"Beijing"},"context":{"credentials":{"WEATHER_API_KEY":"test_key"}}},"id":2}' | python credential_plugin.py 2>/dev/null
 ```
 
-> 详见 [平台统一授权文档](../../docs/authorization.md)
+> 详见 [平台统一授权文档](../../docs/authorization.zh-CN.md)
 
 ## 协议交互示例
 

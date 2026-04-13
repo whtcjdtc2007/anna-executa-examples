@@ -138,7 +138,7 @@ GITHUB_TOKEN=ghp_xxx node credential_plugin.js
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_repo","arguments":{"owner":"octocat","repo":"hello-world"},"context":{"credentials":{"GITHUB_TOKEN":"ghp_test"}}},"id":2}' | node credential_plugin.js 2>/dev/null
 ```
 
-> 详见 [平台统一授权文档](../../docs/authorization.md)
+> 详见 [平台统一授权文档](../../docs/authorization.zh-CN.md)
 
 ## 协议交互示例
 

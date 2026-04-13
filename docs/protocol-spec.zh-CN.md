@@ -387,7 +387,7 @@ def my_tool(query: str, *, credentials: dict | None = None) -> dict:
     # 使用 token ...
 ```
 
-> 详细的平台授权架构、API 端点和扩展方式，请参阅 [平台统一授权文档](authorization.md)。
+> 详细的平台授权架构、API 端点和扩展方式，请参阅 [平台统一授权文档](authorization.zh-CN.md)。
 
 ## 实现检查清单
 

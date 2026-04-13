@@ -146,7 +146,7 @@ NOTION_TOKEN=ntn_xxx go run credential_plugin.go
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"search_pages","arguments":{"query":"test"},"context":{"credentials":{"NOTION_TOKEN":"ntn_test"}}},"id":2}' | go run credential_plugin.go 2>/dev/null
 ```
 
-> 详见 [平台统一授权文档](../../docs/authorization.md)
+> 详见 [平台统一授权文档](../../docs/authorization.zh-CN.md)
 
 ## 协议交互示例
 

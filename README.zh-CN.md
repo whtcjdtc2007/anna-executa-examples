@@ -123,7 +123,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/credent
 ## 文档
 
 - [协议规范](docs/protocol-spec.md) — JSON-RPC 2.0 over stdio 完整协议定义
-- [平台统一授权](docs/authorization.md) — 凭据声明、自动注入与平台授权集成
+- [平台统一授权](docs/authorization.zh-CN.md) — 凭据声明、自动注入与平台授权集成
 - [Binary 分发指南](docs/binary-distribution.md) — 构建、签名、多平台部署
 
 ## 许可证
