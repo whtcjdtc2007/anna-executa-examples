@@ -108,13 +108,15 @@ credential_mapping = {
 
 ## 已支持的提供商
 
-| Provider | Auth Type | 凭据字段 | 兼容插件 |
-|----------|-----------|---------|---------|
-| **Google** | OAuth2 | access_token（10+ scopes 可选） | gws, gmail-tool, google-calendar, google-drive |
-| **X (Twitter)** | API Key | API Key, API Secret, Access Token, Access Token Secret, Bearer Token | twitter-tool, x-tool, social-media |
-| **GitHub** | API Key | Personal Access Token | github-tool, git-tool |
-| **Notion** | API Key | Integration Token | notion-tool |
-| **Slack** | API Key | Bot User OAuth Token | slack-tool |
+| Provider | Auth Type | 凭据字段 | 推荐凭据名称 |
+|----------|-----------|---------|---------------|
+| **Google** | OAuth2 | access_token（10+ scopes 可选） | `GOOGLE_ACCESS_TOKEN`, `GMAIL_ACCESS_TOKEN` |
+| **X (Twitter)** | API Key | API Key, API Secret, Access Token, Access Token Secret, Bearer Token | `TWITTER_API_KEY`, `TWITTER_BEARER_TOKEN` |
+| **GitHub** | API Key | Personal Access Token | `GITHUB_TOKEN`, `GITHUB_ACCESS_TOKEN` |
+| **Notion** | API Key | Integration Token | `NOTION_TOKEN`, `NOTION_API_KEY` |
+| **Slack** | API Key | Bot User OAuth Token | `SLACK_BOT_TOKEN`, `SLACK_TOKEN` |
+
+> **注意：** 任何声明了与 provider 的 `credential_mapping` 匹配的凭据名称的插件，都会自动获得凭据注入——没有 tool_id 白名单限制。
 
 ## API 端点
 
@@ -223,7 +225,6 @@ _register(
         credential_mapping={
             "MY_SERVICE_TOKEN": "MY_SERVICE_TOKEN",
         },
-        compatible_tool_ids=["my-service-tool"],
     )
 )
 ```

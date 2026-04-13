@@ -109,13 +109,15 @@ When the Agent calls a plugin, the credential resolution engine searches in this
 
 ## Supported Providers
 
-| Provider | Auth Type | Credential Fields | Compatible Plugins |
-|----------|-----------|------------------|-------------------|
-| **Google** | OAuth2 | access_token (10+ selectable scopes) | gws, gmail-tool, google-calendar, google-drive |
-| **X (Twitter)** | API Key | API Key, API Secret, Access Token, Access Token Secret, Bearer Token | twitter-tool, x-tool, social-media |
-| **GitHub** | API Key | Personal Access Token | github-tool, git-tool |
-| **Notion** | API Key | Integration Token | notion-tool |
-| **Slack** | API Key | Bot User OAuth Token | slack-tool |
+| Provider | Auth Type | Credential Fields | Recommended Credential Names |
+|----------|-----------|------------------|----------------------------|
+| **Google** | OAuth2 | access_token (10+ selectable scopes) | `GOOGLE_ACCESS_TOKEN`, `GMAIL_ACCESS_TOKEN` |
+| **X (Twitter)** | API Key | API Key, API Secret, Access Token, Access Token Secret, Bearer Token | `TWITTER_API_KEY`, `TWITTER_BEARER_TOKEN` |
+| **GitHub** | API Key | Personal Access Token | `GITHUB_TOKEN`, `GITHUB_ACCESS_TOKEN` |
+| **Notion** | API Key | Integration Token | `NOTION_TOKEN`, `NOTION_API_KEY` |
+| **Slack** | API Key | Bot User OAuth Token | `SLACK_BOT_TOKEN`, `SLACK_TOKEN` |
+
+> **Note:** Any plugin that declares a credential name matching a provider's `credential_mapping` will automatically receive the credential — there is no tool_id whitelist restriction.
 
 ## API Endpoints
 
@@ -224,7 +226,6 @@ _register(
         credential_mapping={
             "MY_SERVICE_TOKEN": "MY_SERVICE_TOKEN",
         },
-        compatible_tool_ids=["my-service-tool"],
     )
 )
 ```
