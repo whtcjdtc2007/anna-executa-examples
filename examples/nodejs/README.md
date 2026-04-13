@@ -1,10 +1,15 @@
 中文版本请参阅 [README.zh-CN.md](README.zh-CN.md)
 
-# Node.js Executa Plugin Example
+# Node.js Executa Plugin Examples
 
 ## Overview
 
-This is a complete Node.js Executa plugin example that implements JSON formatting, Base64 encoding/decoding, and hash computation tools.
+This directory contains two complete Node.js Executa plugin examples:
+
+| Example | File | Description |
+|---------|------|-------------|
+| **Basic Plugin** | `example_plugin.js` | JSON formatting, Base64 encoding/decoding, hash computation |
+| **Credential Plugin** | `credential_plugin.js` | GitHub query tool, demonstrating credential declaration and platform authorization integration |
 
 ## How to Run
 
@@ -95,9 +100,45 @@ In Anna Admin:
 
 | File | Description |
 |------|-------------|
-| `example_plugin.js` | Plugin main program |
+| `example_plugin.js` | Basic plugin main program |
+| `credential_plugin.js` | Credential plugin example (platform authorization integration) |
 | `package.json` | npm package configuration |
 | `build_binary.sh` | One-click build script (pkg / SEA) |
+
+## Credential Plugin Example
+
+`credential_plugin.js` demonstrates integration with Anna Nexus's platform authorization:
+
+```javascript
+// Declare credentials in Manifest (naming aligned with platform providers)
+credentials: [
+  {
+    name: "GITHUB_TOKEN",           // Aligns with platform credential_mapping
+    display_name: "Personal Access Token",
+    required: true,
+    sensitive: true,
+  },
+]
+
+// Read credentials in tool function (three-tier priority)
+function toolGetRepo(args, credentials) {
+  // 1. Platform unified / plugin-level credentials (Agent-injected)
+  // 2. Environment variable fallback (local development)
+  const token = getCredential(credentials, "GITHUB_TOKEN");
+}
+```
+
+Local development testing:
+
+```bash
+# Provide credentials via environment variables
+GITHUB_TOKEN=ghp_xxx node credential_plugin.js
+
+# Test invoke with credentials
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_repo","arguments":{"owner":"octocat","repo":"hello-world"},"context":{"credentials":{"GITHUB_TOKEN":"ghp_test"}}},"id":2}' | node credential_plugin.js 2>/dev/null
+```
+
+> See [Platform Authorization Documentation](../../docs/authorization.md) for details
 
 ## Protocol Interaction Examples
 

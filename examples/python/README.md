@@ -1,10 +1,15 @@
 中文版本请参阅 [README.zh-CN.md](README.zh-CN.md)
 
-# Python Executa Plugin Example
+# Python Executa Plugin Examples
 
 ## Overview
 
-This is a complete Python Executa plugin example that implements a text processing toolkit, including three tools: `word_count`, `text_transform`, and `text_repeat`.
+This directory contains two complete Python Executa plugin examples:
+
+| Example | File | Description |
+|---------|------|-------------|
+| **Basic Plugin** | `example_plugin.py` | Text processing toolkit (word_count, text_transform, batch_word_count) |
+| **Credential Plugin** | `credential_plugin.py` | Weather query tool, demonstrating credential declaration and platform authorization integration |
 
 ## How to Run
 
@@ -93,10 +98,58 @@ In Anna Admin:
 
 | File | Description |
 |------|-------------|
-| `example_plugin.py` | Plugin main program (can be run directly) |
+| `example_plugin.py` | Basic plugin main program (can be run directly) |
+| `credential_plugin.py` | Credential plugin example (platform authorization integration) |
 | `pyproject.toml` | Python package configuration (required for uv/pipx installation) |
 | `build_binary.sh` | One-click build script (PyInstaller / Nuitka) |
 | `example-text-tool.spec` | PyInstaller configuration file |
+| `weather-tool.spec` | Credential plugin PyInstaller configuration file |
+
+## Credential Plugin Example
+
+`credential_plugin.py` demonstrates integration with Anna Nexus's platform authorization:
+
+### Credential Declaration
+
+Declare required credentials in the Manifest's `credentials` field — naming aligned with platform providers enables automatic mapping:
+
+```python
+"credentials": [
+    {
+        "name": "WEATHER_API_KEY",       # Aligns with platform credential_mapping
+        "display_name": "API Key",        # UI display name
+        "required": True,
+        "sensitive": True,                # Encrypted storage, not echoed in UI
+    },
+]
+```
+
+### Credential Reading (Three-Tier Priority)
+
+```python
+def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
+    creds = credentials or {}
+    # 1. Platform unified / plugin-level credentials (Agent-injected)
+    api_key = creds.get("WEATHER_API_KEY")
+    # 2. Environment variable fallback (local development)
+    if not api_key:
+        api_key = os.environ.get("WEATHER_API_KEY")
+```
+
+### Local Development Testing
+
+```bash
+# Provide credentials via environment variables
+WEATHER_API_KEY=your_key python credential_plugin.py
+
+# Test describe (view credential declarations)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python credential_plugin.py 2>/dev/null
+
+# Test invoke with credentials
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","arguments":{"city":"Beijing"},"context":{"credentials":{"WEATHER_API_KEY":"test_key"}}},"id":2}' | python credential_plugin.py 2>/dev/null
+```
+
+> See [Platform Authorization Documentation](../../docs/authorization.md) for details
 
 ## Protocol Interaction Examples
 

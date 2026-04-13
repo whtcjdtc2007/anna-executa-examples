@@ -344,6 +344,51 @@ Follows JSON-RPC 2.0 standard error codes, with custom extensions:
 7. Agent terminates: closes stdin → plugin exits
 ```
 
+## Credentials and Platform Authorization
+
+The Executa credential system integrates deeply with Anna Nexus's **Platform Authorization**.
+After users connect services like Google, Twitter/X, GitHub on the Nexus `/settings/authorizations` page,
+all plugins that declare corresponding credential names automatically receive credential injection — no per-plugin configuration needed.
+
+### Credential Resolution Priority
+
+```
+1. Platform unified credentials (/settings/authorizations, highest priority)
+   ↓ not found
+2. Plugin-level manual credentials (user fills in per-plugin settings)
+   ↓ not found
+3. Environment variable fallback (local development only, plugin implements)
+```
+
+### Naming Alignment
+
+Plugin `credentials[].name` should align with the platform provider registry for automatic mapping:
+
+| Platform Provider | Recommended Credential Name | Description |
+|-------------------|----------------------------|-------------|
+| Google (OAuth) | `GOOGLE_ACCESS_TOKEN` / `GMAIL_ACCESS_TOKEN` | Auto-maps to OAuth access_token |
+| Twitter/X | `TWITTER_API_KEY` / `TWITTER_API_SECRET` / `TWITTER_BEARER_TOKEN` | Maps to user-provided API Key |
+| GitHub | `GITHUB_TOKEN` | Maps to Personal Access Token |
+| Notion | `NOTION_TOKEN` | Maps to Integration Token |
+| Slack | `SLACK_BOT_TOKEN` | Maps to Bot User OAuth Token |
+
+### Plugin-Side Credential Reading Best Practice
+
+```python
+def my_tool(query: str, *, credentials: dict | None = None) -> dict:
+    creds = credentials or {}
+    # 1. Read from context.credentials first (platform-injected)
+    token = creds.get("GITHUB_TOKEN")
+    # 2. Fall back to environment variable (local development)
+    if not token:
+        token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return {"error": "GITHUB_TOKEN not configured"}
+    # Use token ...
+```
+
+> For detailed platform authorization architecture, API endpoints, and extension guide, see [Platform Authorization](authorization.md).
+
 ## Implementation Checklist
 
 - [ ] Read JSON from stdin line by line (handle empty lines)
@@ -351,8 +396,11 @@ Follows JSON-RPC 2.0 standard error codes, with custom extensions:
 - [ ] All logs go to stderr
 - [ ] `describe` returns a complete manifest
 - [ ] `describe`'s `credentials` declares all required credentials (if any)
+- [ ] `credentials[].name` aligns with platform provider naming (see table above)
 - [ ] `invoke` correctly handles parameters and returns results
 - [ ] `invoke` reads credentials from `params.context.credentials` (falls back to environment variables)
+- [ ] Credentials do not appear in tool parameter schema (invisible to LLM)
+- [ ] Sensitive credentials marked with `sensitive: true`
 - [ ] Unknown methods return `-32601` error
 - [ ] Return JSON-RPC error on exceptions instead of crashing
 - [ ] Main loop does not exit due to a single request exception

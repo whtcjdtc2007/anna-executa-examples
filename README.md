@@ -14,21 +14,24 @@ Executa is the plugin extension system for Anna Agent. Developers can write tool
 anna-executa-examples/
 ├── docs/                       # Development documentation
 │   ├── protocol-spec.md        # Protocol specification
+│   ├── authorization.md        # Platform authorization guide
 │   └── binary-distribution.md  # Binary distribution guide
 ├── examples/
-│   ├── python/                 # Python plugin example
-│   │   ├── example_plugin.py
+│   ├── python/                 # Python plugin examples
+│   │   ├── example_plugin.py       # Basic plugin (text processing)
+│   │   ├── credential_plugin.py    # Credential plugin (Weather API)
 │   │   ├── pyproject.toml
 │   │   ├── build_binary.sh
-│   │   ├── example-text-tool.spec
 │   │   └── README.md
-│   ├── nodejs/                 # Node.js plugin example
-│   │   ├── example_plugin.js
+│   ├── nodejs/                 # Node.js plugin examples
+│   │   ├── example_plugin.js       # Basic plugin (JSON/Base64/Hash)
+│   │   ├── credential_plugin.js    # Credential plugin (GitHub API)
 │   │   ├── package.json
 │   │   ├── build_binary.sh
 │   │   └── README.md
-│   └── go/                     # Go plugin example
-│       ├── main.go
+│   └── go/                     # Go plugin examples
+│       ├── main.go                 # Basic plugin (System info/Hash)
+│       ├── credential_plugin.go    # Credential plugin (Notion API)
 │       ├── go.mod
 │       ├── build.sh
 │       ├── Makefile
@@ -88,6 +91,24 @@ go build -o dist/example-go-tool .
 make all
 ```
 
+### Credential Plugins (Platform Authorization)
+
+Each language includes a credential plugin example demonstrating how to declare and use platform-managed credentials:
+
+```bash
+# Python — Weather query (requires WEATHER_API_KEY)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/credential_plugin.py 2>/dev/null
+
+# Provide credentials via environment variables for local development
+WEATHER_API_KEY=your_key python examples/python/credential_plugin.py
+
+# Node.js — GitHub query (requires GITHUB_TOKEN)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/credential_plugin.js 2>/dev/null
+
+# Go — Notion query (requires NOTION_TOKEN)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/credential_plugin.go 2>/dev/null
+```
+
 ## Distribution Methods
 
 | Method | Installation | Use Case |
@@ -102,6 +123,7 @@ make all
 ## Documentation
 
 - [Protocol Specification](docs/protocol-spec.md) — Full JSON-RPC 2.0 over stdio protocol definition
+- [Platform Authorization](docs/authorization.md) — Credential declaration, auto-injection, and platform authorization integration
 - [Binary Distribution Guide](docs/binary-distribution.md) — Building, signing, and multi-platform deployment
 
 ## License

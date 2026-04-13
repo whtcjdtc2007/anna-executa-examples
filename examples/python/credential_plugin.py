@@ -5,13 +5,21 @@ This example shows how to:
 1. Declare required credentials in the Manifest (credentials field)
 2. Read credentials from context.credentials in invoke
 3. Securely use credentials to call external APIs
+4. Fall back to environment variables for local development
 
-After the user configures credentials via the Nexus API, the Anna Agent
-automatically injects decrypted credentials into params.context.credentials
-when calling plugin tools.
+Credential resolution priority (three tiers):
+  1. Platform unified credentials — configured once at /settings/authorizations
+  2. Plugin-level credentials — manually entered in per-plugin settings
+  3. Environment variables — read from os.environ for local development (plugin implements)
+
+The Agent injects resolved credentials via invoke request's params.context.credentials.
+LLM cannot see credential values and cannot leak them in conversations.
 
 Usage:
     python credential_plugin.py
+
+Local development (provide credentials via environment variables):
+    WEATHER_API_KEY=your_key python credential_plugin.py
 
 Protocol requirements:
     - stdin:  Receives JSON-RPC requests (one JSON object per line)
@@ -20,6 +28,7 @@ Protocol requirements:
 """
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -39,6 +48,16 @@ MANIFEST = {
     "version": "1.0.0",
     "description": "Weather query tool demonstrating credential (API Key) declaration and usage",
     "author": "Anna Developer",
+    # ─── Credential Declaration ───────────────────────────────────────
+    # credentials[].name is the unique identifier; Agent uses it as the key for injection.
+    #
+    # Naming best practices:
+    #   - Use UPPER_SNAKE_CASE (e.g. WEATHER_API_KEY)
+    #   - Align with platform provider's credential_mapping for automatic mapping
+    #     e.g.: TWITTER_API_KEY, GITHUB_TOKEN, GOOGLE_ACCESS_TOKEN
+    #   - Custom services: SERVICE_NAME + field type
+    #
+    # sensitive=True credentials are displayed as password fields in UI, not echoed.
     "credentials": [
         {
             "name": "WEATHER_API_KEY",
@@ -102,17 +121,28 @@ MANIFEST = {
 def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
     """Query current weather for a specified city
 
+    Credential resolution priority:
+    1. context.credentials (platform authorization / plugin-level, Agent-injected)
+    2. Environment variables (local development fallback)
+
     In a real implementation, this would use the API Key from credentials to call an external weather API.
     This example returns simulated data to demonstrate the credential injection flow.
     """
     creds = credentials or {}
-    api_key = creds.get("WEATHER_API_KEY")
-    units = creds.get("WEATHER_UNITS", "metric")
+
+    # Best practice: read from context.credentials first, fall back to env vars
+    api_key = creds.get("WEATHER_API_KEY") or os.environ.get("WEATHER_API_KEY")
+    units = creds.get("WEATHER_UNITS") or os.environ.get("WEATHER_UNITS", "metric")
 
     if not api_key:
         return {
             "error": "WEATHER_API_KEY not configured",
-            "hint": "Please configure credentials via the Nexus API: PUT /api/v1/executa/my/{id}/credentials",
+            "hint": (
+                "Configuration options (choose one):\n"
+                "  1. Platform authorization: /settings/authorizations page\n"
+                "  2. Plugin-level credentials: Anna Admin → Plugin Settings → Credentials\n"
+                "  3. Local development: WEATHER_API_KEY=xxx python credential_plugin.py"
+            ),
         }
 
     # ─── Actual API call example (commented out) ───
@@ -145,13 +175,18 @@ def tool_get_forecast(
 ) -> dict:
     """Query weather forecast for a specified city"""
     creds = credentials or {}
-    api_key = creds.get("WEATHER_API_KEY")
-    units = creds.get("WEATHER_UNITS", "metric")
+    api_key = creds.get("WEATHER_API_KEY") or os.environ.get("WEATHER_API_KEY")
+    units = creds.get("WEATHER_UNITS") or os.environ.get("WEATHER_UNITS", "metric")
 
     if not api_key:
         return {
             "error": "WEATHER_API_KEY not configured",
-            "hint": "Please configure credentials via the Nexus API: PUT /api/v1/executa/my/{id}/credentials",
+            "hint": (
+                "Configuration options (choose one):\n"
+                "  1. Platform authorization: /settings/authorizations page\n"
+                "  2. Plugin-level credentials: Anna Admin → Plugin Settings → Credentials\n"
+                "  3. Local development: WEATHER_API_KEY=xxx python credential_plugin.py"
+            ),
         }
 
     days = max(1, min(5, days))

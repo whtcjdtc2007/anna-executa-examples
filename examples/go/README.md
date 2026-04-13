@@ -1,10 +1,15 @@
 中文版本请参阅 [README.zh-CN.md](README.zh-CN.md)
 
-# Go Executa Plugin Example
+# Go Executa Plugin Examples
 
 ## Overview
 
-This is a complete Go Executa plugin example that implements system information queries, hash computation, and string utility tools.
+This directory contains two complete Go Executa plugin examples:
+
+| Example | File | Description |
+|---------|------|-------------|
+| **Basic Plugin** | `main.go` | System information queries, hash computation, string utilities |
+| **Credential Plugin** | `credential_plugin.go` | Notion query tool, demonstrating credential declaration and platform authorization integration |
 
 Go natively compiles to standalone binaries with **zero dependencies** and cross-platform support, making it an ideal choice for Binary distribution.
 
@@ -104,10 +109,44 @@ windows-x86_64  →  https://github.com/you/repo/releases/download/v1.0/example-
 
 | File | Description |
 |------|-------------|
-| `main.go` | Plugin main program (complete implementation) |
+| `main.go` | Basic plugin main program (complete implementation) |
+| `credential_plugin.go` | Credential plugin example (platform authorization integration) |
 | `go.mod` | Go module definition |
 | `Makefile` | Multi-platform build, test, and packaging |
 | `build.sh` | One-click build script |
+
+## Credential Plugin Example
+
+`credential_plugin.go` demonstrates integration with Anna Nexus's platform authorization:
+
+```go
+// Declare credentials in Manifest (naming aligned with platform providers)
+"credentials": []map[string]any{
+    {
+        "name":      "NOTION_TOKEN",  // Aligns with platform credential_mapping
+        "sensitive":  true,
+    },
+},
+
+// Three-tier priority credential reading
+func getCredential(credentials map[string]any, name string, defaultValue string) string {
+    // 1. context.credentials (platform-injected)
+    // 2. os.Getenv (local development)
+    // 3. defaultValue
+}
+```
+
+Local development testing:
+
+```bash
+# Provide credentials via environment variables
+NOTION_TOKEN=ntn_xxx go run credential_plugin.go
+
+# Test invoke with credentials
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"search_pages","arguments":{"query":"test"},"context":{"credentials":{"NOTION_TOKEN":"ntn_test"}}},"id":2}' | go run credential_plugin.go 2>/dev/null
+```
+
+> See [Platform Authorization Documentation](../../docs/authorization.md) for details
 
 ## Protocol Interaction Examples
 
