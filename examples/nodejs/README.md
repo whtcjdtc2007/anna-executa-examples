@@ -2,7 +2,12 @@
 
 ## 概述
 
-这是一个完整的 Node.js Executa 插件示例，实现了 JSON 格式化、Base64 编解码和哈希计算工具。
+本目录包含两个完整的 Node.js Executa 插件示例：
+
+| 示例 | 文件 | 说明 |
+|------|------|------|
+| **基础插件** | `example_plugin.js` | JSON 格式化、Base64 编解码、哈希计算 |
+| **凭据插件** | `credential_plugin.js` | GitHub 查询工具，演示凭据声明与平台统一授权集成 |
 
 ## 运行方式
 
@@ -93,9 +98,45 @@ npx pkg example_plugin.js --targets node18-macos-arm64,node18-linux-x64 --output
 
 | 文件 | 说明 |
 |------|------|
-| `example_plugin.js` | 插件主程序 |
+| `example_plugin.js` | 基础插件主程序 |
+| `credential_plugin.js` | 凭据插件示例（演示平台统一授权集成） |
 | `package.json` | npm 包配置 |
 | `build_binary.sh` | 一键构建脚本（pkg / SEA） |
+
+## 凭据插件示例
+
+`credential_plugin.js` 演示如何与 Anna Nexus 的平台统一授权集成：
+
+```javascript
+// Manifest 中声明凭据（命名与平台提供商对齐）
+credentials: [
+  {
+    name: "GITHUB_TOKEN",           // 与平台 credential_mapping 对齐
+    display_name: "Personal Access Token",
+    required: true,
+    sensitive: true,
+  },
+]
+
+// 工具函数中读取凭据（三层优先级）
+function toolGetRepo(args, credentials) {
+  // 1. 平台统一凭据 / 插件级凭据（Agent 注入）
+  // 2. 环境变量回退（本地开发）
+  const token = getCredential(credentials, "GITHUB_TOKEN");
+}
+```
+
+本地开发测试：
+
+```bash
+# 通过环境变量提供凭据
+GITHUB_TOKEN=ghp_xxx node credential_plugin.js
+
+# 测试带凭据的 invoke
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_repo","arguments":{"owner":"octocat","repo":"hello-world"},"context":{"credentials":{"GITHUB_TOKEN":"ghp_test"}}},"id":2}' | node credential_plugin.js 2>/dev/null
+```
+
+> 详见 [平台统一授权文档](../../docs/authorization.md)
 
 ## 协议交互示例
 

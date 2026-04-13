@@ -342,6 +342,51 @@ Agent 定期调用，确认插件进程仍在正常运行。
 7. Agent 终止: 关闭 stdin → 插件退出
 ```
 
+## 凭据与平台统一授权
+
+Executa 凭据系统与 Anna Nexus 的**平台统一授权**（Platform Authorization）深度集成。
+用户在 Nexus 的 `/settings/authorizations` 页面一次性连接 Google、Twitter/X、GitHub 等服务后，
+所有声明了对应凭据名称的插件自动获得凭据注入，无需逐个插件重复配置。
+
+### 凭据解析优先级
+
+```
+1. 平台统一凭据（/settings/authorizations 配置的，最高优先级）
+   ↓ 未找到
+2. 插件级手动凭据（用户在单个插件设置中填写的）
+   ↓ 未找到
+3. 环境变量回退（仅本地开发场景，插件自行实现）
+```
+
+### 命名对齐
+
+插件的 `credentials[].name` 应与平台提供商注册表中的命名对齐，实现自动映射：
+
+| 平台 Provider | 推荐的凭据名称 | 说明 |
+|--------------|--------------|------|
+| Google (OAuth) | `GOOGLE_ACCESS_TOKEN` / `GMAIL_ACCESS_TOKEN` | 自动映射到 OAuth access_token |
+| Twitter/X | `TWITTER_API_KEY` / `TWITTER_API_SECRET` / `TWITTER_BEARER_TOKEN` | 映射到用户填写的 API Key |
+| GitHub | `GITHUB_TOKEN` | 映射到 Personal Access Token |
+| Notion | `NOTION_TOKEN` | 映射到 Integration Token |
+| Slack | `SLACK_BOT_TOKEN` | 映射到 Bot User OAuth Token |
+
+### 插件端凭据读取最佳实践
+
+```python
+def my_tool(query: str, *, credentials: dict | None = None) -> dict:
+    creds = credentials or {}
+    # 1. 优先从 context.credentials 读取（平台注入）
+    token = creds.get("GITHUB_TOKEN")
+    # 2. 回退到环境变量（本地开发）
+    if not token:
+        token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        return {"error": "GITHUB_TOKEN not configured"}
+    # 使用 token ...
+```
+
+> 详细的平台授权架构、API 端点和扩展方式，请参阅 [平台统一授权文档](authorization.md)。
+
 ## 实现检查清单
 
 - [ ] stdin 逐行读取 JSON（处理空行）
@@ -349,8 +394,11 @@ Agent 定期调用，确认插件进程仍在正常运行。
 - [ ] 所有日志输出到 stderr
 - [ ] `describe` 返回完整 manifest
 - [ ] `describe` 的 `credentials` 声明所有需要的凭据（如有）
+- [ ] `credentials[].name` 与平台提供商命名对齐（见上表）
 - [ ] `invoke` 能正确处理参数并返回结果
 - [ ] `invoke` 从 `params.context.credentials` 读取凭据（回退到环境变量）
+- [ ] 凭据不出现在工具参数 schema 中（LLM 不可见）
+- [ ] 敏感凭据标记 `sensitive: true`
 - [ ] 未知 method 返回 `-32601` 错误
 - [ ] 异常时返回 JSON-RPC error 而非崩溃
 - [ ] 主循环不会因单条请求异常而退出

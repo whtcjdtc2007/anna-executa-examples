@@ -2,7 +2,12 @@
 
 ## 概述
 
-这是一个完整的 Python Executa 插件示例，实现了一个文本处理工具集，包含 `word_count`、`text_transform`、`text_repeat` 三个工具。
+本目录包含两个完整的 Python Executa 插件示例：
+
+| 示例 | 文件 | 说明 |
+|------|------|------|
+| **基础插件** | `example_plugin.py` | 文本处理工具集（word_count、text_transform、batch_word_count） |
+| **凭据插件** | `credential_plugin.py` | 天气查询工具，演示凭据声明与平台统一授权集成 |
 
 ## 运行方式
 
@@ -91,10 +96,58 @@ pyinstaller --onefile --name example-text-tool --strip --noupx example_plugin.py
 
 | 文件 | 说明 |
 |------|------|
-| `example_plugin.py` | 插件主程序（可直接运行） |
+| `example_plugin.py` | 基础插件主程序（可直接运行） |
+| `credential_plugin.py` | 凭据插件示例（演示平台统一授权集成） |
 | `pyproject.toml` | Python 包配置（uv/pipx 安装需要） |
 | `build_binary.sh` | 一键构建脚本（PyInstaller / Nuitka） |
 | `example-text-tool.spec` | PyInstaller 配置文件 |
+| `weather-tool.spec` | 凭据插件的 PyInstaller 配置文件 |
+
+## 凭据插件示例
+
+`credential_plugin.py` 演示如何与 Anna Nexus 的平台统一授权集成：
+
+### 凭据声明
+
+在 Manifest 的 `credentials` 字段中声明所需凭据，命名与平台提供商对齐即可自动映射：
+
+```python
+"credentials": [
+    {
+        "name": "WEATHER_API_KEY",       # 与平台 credential_mapping 对齐
+        "display_name": "API Key",        # UI 展示名称
+        "required": True,
+        "sensitive": True,                # 加密存储，UI 不回显
+    },
+]
+```
+
+### 凭据读取（三层优先级）
+
+```python
+def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
+    creds = credentials or {}
+    # 1. 平台统一凭据 / 插件级凭据（Agent 注入）
+    api_key = creds.get("WEATHER_API_KEY")
+    # 2. 环境变量回退（本地开发）
+    if not api_key:
+        api_key = os.environ.get("WEATHER_API_KEY")
+```
+
+### 本地开发测试
+
+```bash
+# 通过环境变量提供凭据
+WEATHER_API_KEY=your_key python credential_plugin.py
+
+# 测试 describe（查看凭据声明）
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python credential_plugin.py 2>/dev/null
+
+# 测试带凭据的 invoke
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","arguments":{"city":"Beijing"},"context":{"credentials":{"WEATHER_API_KEY":"test_key"}}},"id":2}' | python credential_plugin.py 2>/dev/null
+```
+
+> 详见 [平台统一授权文档](../../docs/authorization.md)
 
 ## 协议交互示例
 

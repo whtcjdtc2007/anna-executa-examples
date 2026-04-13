@@ -2,7 +2,12 @@
 
 ## 概述
 
-这是一个完整的 Go Executa 插件示例，实现了系统信息查询、哈希计算和字符串工具。
+本目录包含两个完整的 Go Executa 插件示例：
+
+| 示例 | 文件 | 说明 |
+|------|------|------|
+| **基础插件** | `main.go` | 系统信息查询、哈希计算、字符串工具 |
+| **凭据插件** | `credential_plugin.go` | Notion 查询工具，演示凭据声明与平台统一授权集成 |
 
 Go 天然编译为独立二进制，**零依赖**、跨平台，是 Binary 分发的理想选择。
 
@@ -102,10 +107,44 @@ windows-x86_64  →  https://github.com/you/repo/releases/download/v1.0/example-
 
 | 文件 | 说明 |
 |------|------|
-| `main.go` | 插件主程序（完整实现） |
+| `main.go` | 基础插件主程序（完整实现） |
+| `credential_plugin.go` | 凭据插件示例（演示平台统一授权集成） |
 | `go.mod` | Go 模块定义 |
 | `Makefile` | 多平台构建、测试、打包 |
 | `build.sh` | 一键构建脚本 |
+
+## 凭据插件示例
+
+`credential_plugin.go` 演示如何与 Anna Nexus 的平台统一授权集成：
+
+```go
+// Manifest 中声明凭据（命名与平台提供商对齐）
+"credentials": []map[string]any{
+    {
+        "name":      "NOTION_TOKEN",  // 与平台 credential_mapping 对齐
+        "sensitive":  true,
+    },
+},
+
+// 三层优先级读取凭据
+func getCredential(credentials map[string]any, name string, defaultValue string) string {
+    // 1. context.credentials（平台注入）
+    // 2. os.Getenv（本地开发）
+    // 3. defaultValue
+}
+```
+
+本地开发测试：
+
+```bash
+# 通过环境变量提供凭据
+NOTION_TOKEN=ntn_xxx go run credential_plugin.go
+
+# 测试带凭据的 invoke
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"search_pages","arguments":{"query":"test"},"context":{"credentials":{"NOTION_TOKEN":"ntn_test"}}},"id":2}' | go run credential_plugin.go 2>/dev/null
+```
+
+> 详见 [平台统一授权文档](../../docs/authorization.md)
 
 ## 协议交互示例
 

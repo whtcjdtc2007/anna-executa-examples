@@ -5,12 +5,21 @@
 1. 在 Manifest 中声明所需凭据（credentials 字段）
 2. 在 invoke 中从 context.credentials 读取凭据
 3. 安全地使用凭据调用外部 API
+4. 回退到环境变量以支持本地开发
 
-用户通过 Nexus API 配置凭据后，Anna Agent 会在调用插件工具时
-自动注入解密后的凭据到 params.context.credentials。
+凭据的三层解析优先级：
+  1. 平台统一凭据 — 用户在 /settings/authorizations 一次性配置
+  2. 插件级凭据   — 用户在单个插件设置中手动填写
+  3. 环境变量     — 本地开发时从 os.environ 读取（插件自行实现）
+
+Agent 会将解析后的凭据通过 invoke 请求的 params.context.credentials 注入，
+LLM 不会看到凭据内容，也无法在对话中泄露。
 
 运行方式：
     python credential_plugin.py
+
+本地开发（通过环境变量提供凭据）：
+    WEATHER_API_KEY=your_key python credential_plugin.py
 
 协议要求：
     - stdin:  接收 JSON-RPC 请求（每行一个 JSON 对象）
@@ -19,6 +28,7 @@
 """
 
 import json
+import os
 import sys
 from datetime import datetime, timezone
 
@@ -38,6 +48,16 @@ MANIFEST = {
     "version": "1.0.0",
     "description": "天气查询工具，演示凭据（API Key）的声明与使用",
     "author": "Anna Developer",
+    # ─── 凭据声明 ───────────────────────────────────────────────
+    # credentials[].name 是凭据的唯一标识符，Agent 会以此为 key 注入值。
+    #
+    # 命名最佳实践：
+    #   - 使用全大写蛇形命名（如 WEATHER_API_KEY）
+    #   - 与平台提供商的 credential_mapping 对齐，实现自动映射
+    #     例如：TWITTER_API_KEY、GITHUB_TOKEN、GOOGLE_ACCESS_TOKEN
+    #   - 自定义服务用 SERVICE_NAME + 字段类型 命名
+    #
+    # sensitive=True 的凭据会在 UI 中以密码框显示，不回显明文。
     "credentials": [
         {
             "name": "WEATHER_API_KEY",
@@ -101,17 +121,28 @@ MANIFEST = {
 def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
     """查询指定城市的当前天气
 
+    凭据获取优先级：
+    1. context.credentials（平台统一授权 / 插件级凭据，由 Agent 注入）
+    2. 环境变量（本地开发回退）
+
     在实际实现中，这里会使用 credentials 中的 API Key 调用外部天气 API。
     本示例返回模拟数据以演示凭据注入流程。
     """
     creds = credentials or {}
-    api_key = creds.get("WEATHER_API_KEY")
-    units = creds.get("WEATHER_UNITS", "metric")
+
+    # 最佳实践：优先从 context.credentials 读取，回退到环境变量
+    api_key = creds.get("WEATHER_API_KEY") or os.environ.get("WEATHER_API_KEY")
+    units = creds.get("WEATHER_UNITS") or os.environ.get("WEATHER_UNITS", "metric")
 
     if not api_key:
         return {
             "error": "WEATHER_API_KEY not configured",
-            "hint": "请通过 Nexus API 配置凭据: PUT /api/v1/executa/my/{id}/credentials",
+            "hint": (
+                "配置方式（任选其一）:\n"
+                "  1. 平台统一授权: /settings/authorizations 页面配置\n"
+                "  2. 插件级凭据: Anna Admin → 插件设置 → 凭据配置\n"
+                "  3. 本地开发: WEATHER_API_KEY=xxx python credential_plugin.py"
+            ),
         }
 
     # ─── 实际调用示例（注释） ───
@@ -144,13 +175,18 @@ def tool_get_forecast(
 ) -> dict:
     """查询指定城市的天气预报"""
     creds = credentials or {}
-    api_key = creds.get("WEATHER_API_KEY")
-    units = creds.get("WEATHER_UNITS", "metric")
+    api_key = creds.get("WEATHER_API_KEY") or os.environ.get("WEATHER_API_KEY")
+    units = creds.get("WEATHER_UNITS") or os.environ.get("WEATHER_UNITS", "metric")
 
     if not api_key:
         return {
             "error": "WEATHER_API_KEY not configured",
-            "hint": "请通过 Nexus API 配置凭据: PUT /api/v1/executa/my/{id}/credentials",
+            "hint": (
+                "配置方式（任选其一）:\n"
+                "  1. 平台统一授权: /settings/authorizations 页面配置\n"
+                "  2. 插件级凭据: Anna Admin → 插件设置 → 凭据配置\n"
+                "  3. 本地开发: WEATHER_API_KEY=xxx python credential_plugin.py"
+            ),
         }
 
     days = max(1, min(5, days))
