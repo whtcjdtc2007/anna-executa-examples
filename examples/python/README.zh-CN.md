@@ -4,12 +4,13 @@ For English version, see [README.md](README.md)
 
 ## 概述
 
-本目录包含两个完整的 Python Executa 插件示例：
+本目录包含三个完整的 Python Executa 插件示例：
 
 | 示例 | 文件 | 说明 |
 |------|------|------|
 | **基础插件** | `example_plugin.py` | 文本处理工具集（word_count、text_transform、batch_word_count） |
-| **凭据插件** | `credential_plugin.py` | 天气查询工具，演示凭据声明与平台统一授权集成 |
+| **凭据插件** | `credential_plugin.py` | 天气查询工具，演示凭据声明与平台统一授权集成（API Key 模式） |
+| **Google OAuth 插件** | `google_oauth_plugin.py` | Gmail 邮件查询工具，演示通过平台授权使用 Google OAuth2 访问令牌 |
 
 ## 运行方式
 
@@ -99,7 +100,8 @@ pyinstaller --onefile --name example-text-tool --strip --noupx example_plugin.py
 | 文件 | 说明 |
 |------|------|
 | `example_plugin.py` | 基础插件主程序（可直接运行） |
-| `credential_plugin.py` | 凭据插件示例（演示平台统一授权集成） |
+| `credential_plugin.py` | 凭据插件示例 — API Key 模式（演示平台统一授权集成） |
+| `google_oauth_plugin.py` | Google OAuth 插件示例 — Gmail 邮件查询（通过平台 OAuth 令牌） |
 | `pyproject.toml` | Python 包配置（uv/pipx 安装需要） |
 | `build_binary.sh` | 一键构建脚本（PyInstaller / Nuitka） |
 | `example-text-tool.spec` | PyInstaller 配置文件 |
@@ -150,6 +152,37 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","argumen
 ```
 
 > 详见 [平台统一授权文档](../../docs/authorization.zh-CN.md)
+
+## Google OAuth 插件示例
+
+`google_oauth_plugin.py` 演示如何使用平台提供的 **OAuth2 访问令牌**来查询 Gmail 邮件。插件不管理 OAuth 流程 — Nexus 处理授权、令牌交换和自动刷新。
+
+### 与 API Key 插件的关键区别
+
+从插件开发角度看，代码**完全一致** — 都是从 `context.credentials` 读取：
+
+```python
+# API Key 插件
+"credentials": [{"name": "WEATHER_API_KEY", ...}]
+
+# OAuth 插件 — 平台自动注入
+"credentials": [{"name": "GMAIL_ACCESS_TOKEN", ...}]  # 映射到 $access_token
+```
+
+### 本地开发测试
+
+```bash
+# 通过环境变量提供 OAuth 令牌
+GMAIL_ACCESS_TOKEN=ya29.xxx python google_oauth_plugin.py
+
+# 测试 describe
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python google_oauth_plugin.py 2>/dev/null
+
+# 测试带 OAuth 凭据的 invoke
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_messages","arguments":{"max_results":5},"context":{"credentials":{"GMAIL_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | python google_oauth_plugin.py 2>/dev/null
+```
+
+> 详见 [平台统一授权文档](../../docs/authorization.zh-CN.md) 了解完整 OAuth 流程
 
 ## 协议交互示例
 

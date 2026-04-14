@@ -4,12 +4,15 @@
 
 ## Overview
 
-This directory contains two complete Go Executa plugin examples:
+This directory contains three standalone Go Executa plugin examples. Each file is self-contained and can be built/run independently:
 
 | Example | File | Description |
 |---------|------|-------------|
 | **Basic Plugin** | `main.go` | System information queries, hash computation, string utilities |
-| **Credential Plugin** | `credential_plugin.go` | Notion query tool, demonstrating credential declaration and platform authorization integration |
+| **Credential Plugin** | `credential_plugin.go` | Notion query tool, demonstrating credential (API Key) declaration and platform authorization integration |
+| **Google OAuth Plugin** | `google_oauth_plugin.go` | Google Drive browser, demonstrating Google OAuth credential consumption via platform authorization |
+
+> **Note:** Each file has its own `func main()`. Use `go run <file>.go` to run a specific plugin, not `go run .`.
 
 Go natively compiles to standalone binaries with **zero dependencies** and cross-platform support, making it an ideal choice for Binary distribution.
 
@@ -18,26 +21,36 @@ Go natively compiles to standalone binaries with **zero dependencies** and cross
 ### Run Directly
 
 ```bash
-go run .
+# Basic plugin (system info, hash, string tools)
+go run main.go
+
+# Credential plugin (Notion API Key)
+NOTION_TOKEN=ntn_xxx go run credential_plugin.go
+
+# Google OAuth plugin (Drive file browser)
+GOOGLE_ACCESS_TOKEN=ya29.xxx go run google_oauth_plugin.go
 ```
 
 Test the protocol:
 
 ```bash
-echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run . 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run main.go 2>/dev/null
 ```
 
 ### Build Binary
 
 ```bash
-# Current platform
-go build -o dist/example-go-tool .
+# Current platform (basic plugin)
+go build -o dist/example-go-tool main.go
 
-# Or use the script
+# Credential plugins
+go build -o dist/notion-credential-tool credential_plugin.go
+go build -o dist/google-drive-tool google_oauth_plugin.go
+
+# Or use the script / Makefile
 ./build.sh
-
-# Or use Makefile
-make build
+make build              # basic plugin only
+make build-all-plugins  # all three plugins
 ```
 
 ## Multi-Platform Build
@@ -74,19 +87,19 @@ make test
 
 ```bash
 # macOS Apple Silicon
-GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/example-go-tool-darwin-arm64 .
+GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/example-go-tool-darwin-arm64 main.go
 
 # macOS Intel
-GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/example-go-tool-darwin-x86_64 .
+GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/example-go-tool-darwin-x86_64 main.go
 
 # Linux x86_64
-GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/example-go-tool-linux-x86_64 .
+GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/example-go-tool-linux-x86_64 main.go
 
 # Linux ARM64
-GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/example-go-tool-linux-aarch64 .
+GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/example-go-tool-linux-aarch64 main.go
 
 # Windows x86_64
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/example-go-tool-windows-x86_64.exe .
+GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o dist/example-go-tool-windows-x86_64.exe main.go
 ```
 
 > `-ldflags="-s -w"` strips debug information, reducing binary size by approximately 30%.
@@ -110,7 +123,8 @@ windows-x86_64  →  https://github.com/you/repo/releases/download/v1.0/example-
 | File | Description |
 |------|-------------|
 | `main.go` | Basic plugin main program (complete implementation) |
-| `credential_plugin.go` | Credential plugin example (platform authorization integration) |
+| `credential_plugin.go` | Credential plugin example — API Key pattern (platform authorization integration) |
+| `google_oauth_plugin.go` | Google OAuth plugin example — Drive browser via OAuth access token |
 | `go.mod` | Go module definition |
 | `Makefile` | Multi-platform build, test, and packaging |
 | `build.sh` | One-click build script |
@@ -147,6 +161,37 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"search_pages","argume
 ```
 
 > See [Platform Authorization Documentation](../../docs/authorization.md) for details
+
+## Google OAuth Plugin Example
+
+`google_oauth_plugin.go` demonstrates consuming **OAuth2 access tokens** provided by the platform for Google Drive file browsing. The plugin does NOT manage the OAuth flow — Nexus handles everything.
+
+### Key Difference from API Key Plugins
+
+From the plugin's perspective, the code is **identical** — just read from `context.credentials`:
+
+```go
+// API Key plugin
+"credentials": []map[string]any{{"name": "NOTION_TOKEN", ...}}
+
+// OAuth plugin — auto-injected by platform
+"credentials": []map[string]any{{"name": "GOOGLE_ACCESS_TOKEN", ...}}  // Maps to $access_token
+```
+
+### Local Development Testing
+
+```bash
+# Provide OAuth token via environment variable
+GOOGLE_ACCESS_TOKEN=ya29.xxx go run google_oauth_plugin.go
+
+# Test describe
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run google_oauth_plugin.go 2>/dev/null
+
+# Test invoke with OAuth credentials
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_files","arguments":{"max_results":5},"context":{"credentials":{"GOOGLE_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | go run google_oauth_plugin.go 2>/dev/null
+```
+
+> See [Platform Authorization Documentation](../../docs/authorization.md) for the full OAuth flow
 
 ## Protocol Interaction Examples
 

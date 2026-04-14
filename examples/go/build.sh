@@ -65,13 +65,13 @@ if [[ "$BUILD_ALL" == "true" ]]; then
         suffix=""
         [[ "$goos" == "windows" ]] && suffix=".exe"
         echo -e "  Building ${plat}..."
-        GOOS=$goos GOARCH=$goarch go build -ldflags="-s -w" -o "dist/${PLUGIN_NAME}-${plat}${suffix}" .
+        GOOS=$goos GOARCH=$goarch go build -ldflags="-s -w" -o "dist/${PLUGIN_NAME}-${plat}${suffix}" main.go
     done
     echo ""
     echo -e "${GREEN}All platforms built!${NC}"
     ls -lh dist/
 else
-    go build -ldflags="-s -w" -o "dist/${PLUGIN_NAME}" .
+    go build -ldflags="-s -w" -o "dist/${PLUGIN_NAME}" main.go
     SIZE=$(du -h "dist/${PLUGIN_NAME}" | cut -f1)
     echo -e "${GREEN}Build succeeded!${NC} dist/${PLUGIN_NAME} (${SIZE})"
 fi

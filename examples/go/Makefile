@@ -32,11 +32,25 @@ exe_suffix = $(if $(findstring windows,$(1)),.exe,)
 
 .PHONY: build all test clean package
 
-# Default: build for current platform
+# Default: build for current platform (main.go only; credential plugins built separately)
 build:
 	@mkdir -p dist
-	go build -ldflags="-s -w" -o dist/$(PLUGIN_NAME) .
+	go build -ldflags="-s -w" -o dist/$(PLUGIN_NAME) main.go
 	@echo "✅ Built dist/$(PLUGIN_NAME)"
+
+# Build credential plugin examples
+build-credential:
+	@mkdir -p dist
+	go build -ldflags="-s -w" -o dist/notion-credential-tool credential_plugin.go
+	@echo "✅ Built dist/notion-credential-tool"
+
+build-google-oauth:
+	@mkdir -p dist
+	go build -ldflags="-s -w" -o dist/google-drive-tool google_oauth_plugin.go
+	@echo "✅ Built dist/google-drive-tool"
+
+build-all-plugins: build build-credential build-google-oauth
+	@echo "✅ All plugins built"
 
 # Build for all platforms
 all:
@@ -49,7 +63,7 @@ all:
 		if [ "$$os" = "windows" ]; then suffix=".exe"; fi; \
 		echo "  Building $$plat (GOOS=$$os GOARCH=$$goarch)..."; \
 		GOOS=$$os GOARCH=$$goarch go build -ldflags="-s -w" \
-			-o "dist/$(PLUGIN_NAME)-$$plat$$suffix" . || exit 1; \
+			-o "dist/$(PLUGIN_NAME)-$$plat$$suffix" main.go || exit 1; \
 	done
 	@echo ""
 	@echo "✅ All platforms built:"
