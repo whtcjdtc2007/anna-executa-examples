@@ -19,19 +19,22 @@ anna-executa-examples/
 ├── examples/
 │   ├── python/                 # Python plugin examples
 │   │   ├── example_plugin.py       # Basic plugin (text processing)
-│   │   ├── credential_plugin.py    # Credential plugin (Weather API)
+│   │   ├── credential_plugin.py    # Credential plugin (Weather API Key)
+│   │   ├── google_oauth_plugin.py  # Google OAuth plugin (Gmail)
 │   │   ├── pyproject.toml
 │   │   ├── build_binary.sh
 │   │   └── README.md
 │   ├── nodejs/                 # Node.js plugin examples
 │   │   ├── example_plugin.js       # Basic plugin (JSON/Base64/Hash)
-│   │   ├── credential_plugin.js    # Credential plugin (GitHub API)
+│   │   ├── credential_plugin.js    # Credential plugin (GitHub API Key)
+│   │   ├── google_oauth_plugin.js  # Google OAuth plugin (Calendar)
 │   │   ├── package.json
 │   │   ├── build_binary.sh
 │   │   └── README.md
 │   └── go/                     # Go plugin examples
 │       ├── main.go                 # Basic plugin (System info/Hash)
-│       ├── credential_plugin.go    # Credential plugin (Notion API)
+│       ├── credential_plugin.go    # Credential plugin (Notion API Key)
+│       ├── google_oauth_plugin.go  # Google OAuth plugin (Drive)
 │       ├── go.mod
 │       ├── build.sh
 │       ├── Makefile
@@ -79,19 +82,19 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node example_plugin.js 2>/
 cd examples/go
 
 # Run directly
-go run .
+go run main.go
 
 # Test the protocol
-echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run . 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run main.go 2>/dev/null
 
 # Build a native binary
-go build -o dist/example-go-tool .
+go build -o dist/example-go-tool main.go
 
 # Build binaries for all platforms
 make all
 ```
 
-### Credential Plugins (Platform Authorization)
+### Credential Plugins — API Key Pattern
 
 Each language includes a credential plugin example demonstrating how to declare and use platform-managed credentials:
 
@@ -107,6 +110,24 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/crede
 
 # Go — Notion query (requires NOTION_TOKEN)
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/credential_plugin.go 2>/dev/null
+```
+
+### Google OAuth Plugins — OAuth2 Token Pattern
+
+Each language also includes a Google OAuth plugin example showing how to consume OAuth access tokens injected by the platform. From the plugin's perspective, the API is identical to API Key — the platform handles all OAuth complexity (authorization, token exchange, auto-refresh):
+
+```bash
+# Python — Gmail read (requires GMAIL_ACCESS_TOKEN via Google OAuth)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/google_oauth_plugin.py 2>/dev/null
+
+# Node.js — Google Calendar (requires GOOGLE_ACCESS_TOKEN via Google OAuth)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/google_oauth_plugin.js 2>/dev/null
+
+# Go — Google Drive (requires GOOGLE_ACCESS_TOKEN via Google OAuth)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/google_oauth_plugin.go 2>/dev/null
+
+# Local development — provide token via env var
+GOOGLE_ACCESS_TOKEN=ya29.xxx node examples/nodejs/google_oauth_plugin.js
 ```
 
 ## Distribution Methods

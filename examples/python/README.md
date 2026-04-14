@@ -9,7 +9,8 @@ This directory contains two complete Python Executa plugin examples:
 | Example | File | Description |
 |---------|------|-------------|
 | **Basic Plugin** | `example_plugin.py` | Text processing toolkit (word_count, text_transform, batch_word_count) |
-| **Credential Plugin** | `credential_plugin.py` | Weather query tool, demonstrating credential declaration and platform authorization integration |
+| **Credential Plugin** | `credential_plugin.py` | Weather query tool, demonstrating credential (API Key) declaration and platform authorization integration |
+| **Google OAuth Plugin** | `google_oauth_plugin.py` | Gmail reader, demonstrating Google OAuth credential consumption via platform authorization |
 
 ## How to Run
 
@@ -99,7 +100,8 @@ In Anna Admin:
 | File | Description |
 |------|-------------|
 | `example_plugin.py` | Basic plugin main program (can be run directly) |
-| `credential_plugin.py` | Credential plugin example (platform authorization integration) |
+| `credential_plugin.py` | Credential plugin example — API Key pattern (platform authorization integration) |
+| `google_oauth_plugin.py` | Google OAuth plugin example — Gmail reader via OAuth access token |
 | `pyproject.toml` | Python package configuration (required for uv/pipx installation) |
 | `build_binary.sh` | One-click build script (PyInstaller / Nuitka) |
 | `example-text-tool.spec` | PyInstaller configuration file |
@@ -150,6 +152,37 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","argumen
 ```
 
 > See [Platform Authorization Documentation](../../docs/authorization.md) for details
+
+## Google OAuth Plugin Example
+
+`google_oauth_plugin.py` demonstrates consuming **OAuth2 access tokens** provided by the platform. Unlike API Key credentials, the plugin does NOT manage the OAuth flow — the platform handles authorization, token exchange, and auto-refresh.
+
+### Key Difference from API Key Plugins
+
+From the plugin's perspective, the code is **identical** — just read from `context.credentials`. The only difference is naming alignment:
+
+```python
+# API Key plugin — custom service credential
+"credentials": [{"name": "WEATHER_API_KEY", ...}]
+
+# OAuth plugin — platform provider credential (auto-injected)
+"credentials": [{"name": "GMAIL_ACCESS_TOKEN", ...}]  # Maps to Google OAuth $access_token
+```
+
+### Local Development Testing
+
+```bash
+# Provide OAuth token via environment variable
+GMAIL_ACCESS_TOKEN=ya29.xxx python google_oauth_plugin.py
+
+# Test describe (view OAuth credential declarations)
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python google_oauth_plugin.py 2>/dev/null
+
+# Test invoke with OAuth credentials
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_messages","arguments":{"query":"is:unread","max_results":5},"context":{"credentials":{"GMAIL_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | python google_oauth_plugin.py 2>/dev/null
+```
+
+> See [Platform Authorization Documentation](../../docs/authorization.md) for the full OAuth flow
 
 ## Protocol Interaction Examples
 

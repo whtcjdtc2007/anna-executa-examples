@@ -4,12 +4,13 @@ For English version, see [README.md](README.md)
 
 ## 概述
 
-本目录包含两个完整的 Node.js Executa 插件示例：
+本目录包含三个完整的 Node.js Executa 插件示例：
 
 | 示例 | 文件 | 说明 |
 |------|------|------|
 | **基础插件** | `example_plugin.js` | JSON 格式化、Base64 编解码、哈希计算 |
-| **凭据插件** | `credential_plugin.js` | GitHub 查询工具，演示凭据声明与平台统一授权集成 |
+| **凭据插件** | `credential_plugin.js` | GitHub 查询工具，演示凭据声明与平台统一授权集成（API Key 模式） |
+| **Google OAuth 插件** | `google_oauth_plugin.js` | Google Calendar 日程管理工具，演示通过平台授权使用 Google OAuth2 访问令牌 |
 
 ## 运行方式
 
@@ -101,7 +102,8 @@ npx pkg example_plugin.js --targets node18-macos-arm64,node18-linux-x64 --output
 | 文件 | 说明 |
 |------|------|
 | `example_plugin.js` | 基础插件主程序 |
-| `credential_plugin.js` | 凭据插件示例（演示平台统一授权集成） |
+| `credential_plugin.js` | 凭据插件示例 — API Key 模式（演示平台统一授权集成） |
+| `google_oauth_plugin.js` | Google OAuth 插件示例 — Calendar 日程管理（通过平台 OAuth 令牌） |
 | `package.json` | npm 包配置 |
 | `build_binary.sh` | 一键构建脚本（pkg / SEA） |
 
@@ -139,6 +141,37 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_repo","arguments"
 ```
 
 > 详见 [平台统一授权文档](../../docs/authorization.zh-CN.md)
+
+## Google OAuth 插件示例
+
+`google_oauth_plugin.js` 演示如何使用平台提供的 **OAuth2 访问令牌**来管理 Google Calendar 日程。插件不管理 OAuth 流程 — Nexus 处理授权、令牌交换和自动刷新。
+
+### 与 API Key 插件的关键区别
+
+从插件开发角度看，代码**完全一致** — 都是从 `context.credentials` 读取：
+
+```javascript
+// API Key 插件
+credentials: [{name: "GITHUB_TOKEN", ...}]
+
+// OAuth 插件 — 平台自动注入
+credentials: [{name: "GOOGLE_ACCESS_TOKEN", ...}]  // 映射到 $access_token
+```
+
+### 本地开发测试
+
+```bash
+# 通过环境变量提供 OAuth 令牌
+GOOGLE_ACCESS_TOKEN=ya29.xxx node google_oauth_plugin.js
+
+# 测试 describe
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node google_oauth_plugin.js 2>/dev/null
+
+# 测试带 OAuth 凭据的 invoke
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_events","arguments":{"max_results":5},"context":{"credentials":{"GOOGLE_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | node google_oauth_plugin.js 2>/dev/null
+```
+
+> 详见 [平台统一授权文档](../../docs/authorization.zh-CN.md) 了解完整 OAuth 流程
 
 ## 协议交互示例
 

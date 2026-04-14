@@ -9,7 +9,8 @@ This directory contains two complete Node.js Executa plugin examples:
 | Example | File | Description |
 |---------|------|-------------|
 | **Basic Plugin** | `example_plugin.js` | JSON formatting, Base64 encoding/decoding, hash computation |
-| **Credential Plugin** | `credential_plugin.js` | GitHub query tool, demonstrating credential declaration and platform authorization integration |
+| **Credential Plugin** | `credential_plugin.js` | GitHub query tool, demonstrating credential (API Key) declaration and platform authorization integration |
+| **Google OAuth Plugin** | `google_oauth_plugin.js` | Google Calendar manager, demonstrating Google OAuth credential consumption via platform authorization |
 
 ## How to Run
 
@@ -101,7 +102,8 @@ In Anna Admin:
 | File | Description |
 |------|-------------|
 | `example_plugin.js` | Basic plugin main program |
-| `credential_plugin.js` | Credential plugin example (platform authorization integration) |
+| `credential_plugin.js` | Credential plugin example — API Key pattern (platform authorization integration) |
+| `google_oauth_plugin.js` | Google OAuth plugin example — Calendar manager via OAuth access token |
 | `package.json` | npm package configuration |
 | `build_binary.sh` | One-click build script (pkg / SEA) |
 
@@ -139,6 +141,37 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_repo","arguments"
 ```
 
 > See [Platform Authorization Documentation](../../docs/authorization.md) for details
+
+## Google OAuth Plugin Example
+
+`google_oauth_plugin.js` demonstrates consuming **OAuth2 access tokens** provided by the platform for Google Calendar operations. The plugin does NOT manage the OAuth flow — Nexus handles authorization, token exchange, and auto-refresh.
+
+### Key Difference from API Key Plugins
+
+From the plugin's perspective, the code is **identical** — just read from `context.credentials`. The only difference is the credential name:
+
+```javascript
+// API Key plugin
+credentials: [{ name: "GITHUB_TOKEN", ... }]
+
+// OAuth plugin — auto-injected by platform
+credentials: [{ name: "GOOGLE_ACCESS_TOKEN", ... }]  // Maps to Google OAuth $access_token
+```
+
+### Local Development Testing
+
+```bash
+# Provide OAuth token via environment variable
+GOOGLE_ACCESS_TOKEN=ya29.xxx node google_oauth_plugin.js
+
+# Test describe
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node google_oauth_plugin.js 2>/dev/null
+
+# Test invoke with OAuth credentials
+echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_events","arguments":{"max_results":5},"context":{"credentials":{"GOOGLE_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | node google_oauth_plugin.js 2>/dev/null
+```
+
+> See [Platform Authorization Documentation](../../docs/authorization.md) for the full OAuth flow
 
 ## Protocol Interaction Examples
 

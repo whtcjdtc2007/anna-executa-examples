@@ -19,19 +19,22 @@ anna-executa-examples/
 ├── examples/
 │   ├── python/                 # Python 插件示例
 │   │   ├── example_plugin.py       # 基础插件（文本处理）
-│   │   ├── credential_plugin.py    # 凭据插件（天气 API）
+│   │   ├── credential_plugin.py    # 凭据插件（天气 API Key）
+│   │   ├── google_oauth_plugin.py  # Google OAuth 插件（Gmail）
 │   │   ├── pyproject.toml
 │   │   ├── build_binary.sh
 │   │   └── README.md
 │   ├── nodejs/                 # Node.js 插件示例
 │   │   ├── example_plugin.js       # 基础插件（JSON/Base64/Hash）
-│   │   ├── credential_plugin.js    # 凭据插件（GitHub API）
+│   │   ├── credential_plugin.js    # 凭据插件（GitHub API Key）
+│   │   ├── google_oauth_plugin.js  # Google OAuth 插件（Calendar）
 │   │   ├── package.json
 │   │   ├── build_binary.sh
 │   │   └── README.md
 │   └── go/                     # Go 插件示例
 │       ├── main.go                 # 基础插件（系统信息/Hash）
-│       ├── credential_plugin.go    # 凭据插件（Notion API）
+│       ├── credential_plugin.go    # 凭据插件（Notion API Key）
+│       ├── google_oauth_plugin.go  # Google OAuth 插件（Drive）
 │       ├── go.mod
 │       ├── build.sh
 │       ├── Makefile
@@ -79,21 +82,21 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node example_plugin.js 2>/
 cd examples/go
 
 # 直接运行
-go run .
+go run main.go
 
 # 测试协议
-echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run . 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run main.go 2>/dev/null
 
 # 构建本机二进制
-go build -o dist/example-go-tool .
+go build -o dist/example-go-tool main.go
 
 # 构建全平台二进制
 make all
 ```
 
-### 凭据插件（使用平台统一授权）
+### 凭据插件 — API Key 模式
 
-每种语言均提供了凭据插件示例，演示如何声明和使用平台统一授权的凭据：
+每种语言均提供了 API Key 凭据插件示例，演示如何声明和使用平台统一授权的凭据：
 
 ```bash
 # Python — 天气查询（需要 WEATHER_API_KEY）
@@ -108,6 +111,23 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/crede
 # Go — Notion 查询（需要 NOTION_TOKEN）
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/credential_plugin.go 2>/dev/null
 ```
+
+### 凭据插件 — OAuth2 令牌模式（Google）
+
+Google OAuth 插件演示如何使用平台 OAuth2 授权注入的访问令牌。插件不处理 OAuth 流程 — Nexus 负责授权、令牌交换和自动刷新：
+
+```bash
+# Python — Gmail 邮件查询（GMAIL_ACCESS_TOKEN）
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/google_oauth_plugin.py 2>/dev/null
+
+# Node.js — Google Calendar 日程管理（GOOGLE_ACCESS_TOKEN）
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/google_oauth_plugin.js 2>/dev/null
+
+# Go — Google Drive 文件浏览（GOOGLE_ACCESS_TOKEN）
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/google_oauth_plugin.go 2>/dev/null
+```
+
+> 从插件开发角度看，API Key 和 OAuth2 的代码完全一致 — 都是从 `context.credentials` 读取。区别仅在凭据名称映射和平台端配置。
 
 ## 分发方式
 
