@@ -37,7 +37,7 @@ const readline = require("readline");
 // credentials[].name 命名最佳实践：
 //   - 使用全大写蛇形命名（如 GITHUB_TOKEN）
 //   - 与平台提供商的 credential_mapping 对齐，实现自动映射
-//     例如：GITHUB_TOKEN、TWITTER_API_KEY、GOOGLE_ACCESS_TOKEN
+//     例如：GITHUB_TOKEN、TWITTER_ACCESS_TOKEN、GOOGLE_ACCESS_TOKEN
 //   - 自定义服务用 SERVICE_NAME + 字段类型 命名
 //
 // sensitive=true 的凭据会在 UI 中以密码框显示，不回显明文。

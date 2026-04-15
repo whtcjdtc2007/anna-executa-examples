@@ -54,7 +54,7 @@ MANIFEST = {
     # Naming best practices:
     #   - Use UPPER_SNAKE_CASE (e.g. WEATHER_API_KEY)
     #   - Align with platform provider's credential_mapping for automatic mapping
-    #     e.g.: TWITTER_API_KEY, GITHUB_TOKEN, GOOGLE_ACCESS_TOKEN
+    #     e.g.: TWITTER_ACCESS_TOKEN, GITHUB_TOKEN, GOOGLE_ACCESS_TOKEN
     #   - Custom services: SERVICE_NAME + field type
     #
     # sensitive=True credentials are displayed as password fields in UI, not echoed.

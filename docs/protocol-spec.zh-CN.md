@@ -128,15 +128,9 @@ Agent 平台会据此在 UI 中渲染配置表单，并在调用工具时通过 
   "version": "1.0.0",
   "credentials": [
     {
-      "name": "TWITTER_API_KEY",
-      "display_name": "API Key",
-      "description": "Twitter Developer Portal 中获取的 API Key",
-      "required": true
-    },
-    {
-      "name": "TWITTER_API_SECRET",
-      "display_name": "API Secret",
-      "description": "Twitter Developer Portal 中获取的 API Secret",
+      "name": "TWITTER_ACCESS_TOKEN",
+      "display_name": "X/Twitter Access Token",
+      "description": "用户在 /settings/authorizations 授权 X/Twitter 后自动提供的 OAuth access token",
       "required": true,
       "sensitive": true
     }
@@ -149,7 +143,7 @@ Agent 平台会据此在 UI 中渲染配置表单，并在调用工具时通过 
 
 | 字段 | 类型 | 必须 | 说明 |
 |------|------|------|------|
-| `name` | string | ✅ | 凭据标识符（建议全大写蛇形，如 `TWITTER_API_KEY`） |
+| `name` | string | ✅ | 凭据标识符（建议全大写蛇形，如 `TWITTER_ACCESS_TOKEN`） |
 | `display_name` | string | ✅ | UI 展示名称 |
 | `description` | string | 可选 | 获取方式说明 / 帮助文本 |
 | `required` | bool | 可选 | 是否必填（默认 `true`） |
@@ -231,8 +225,7 @@ LLM 决定使用某个工具时，Agent 通过此方法调用。
     },
     "context": {
       "credentials": {
-        "TWITTER_API_KEY": "ak_xxxx",
-        "TWITTER_API_SECRET": "sk_xxxx"
+        "TWITTER_ACCESS_TOKEN": "ya29.xxxx"
       }
     }
   },
@@ -366,8 +359,8 @@ Executa 凭据系统与 Anna Nexus 的**平台统一授权**（Platform Authoriz
 
 | 平台 Provider | 推荐的凭据名称 | 说明 |
 |--------------|--------------|------|
-| Google (OAuth) | `GOOGLE_ACCESS_TOKEN` / `GMAIL_ACCESS_TOKEN` | 自动映射到 OAuth access_token |
-| Twitter/X | `TWITTER_API_KEY` / `TWITTER_API_SECRET` / `TWITTER_BEARER_TOKEN` | 映射到用户填写的 API Key |
+| Google (OAuth) | `GOOGLE_ACCESS_TOKEN` / `GMAIL_ACCESS_TOKEN` / `YOUTUBE_ACCESS_TOKEN` / `GOOGLE_DOCS_ACCESS_TOKEN` / `GOOGLE_SHEETS_ACCESS_TOKEN` | 自动映射到 OAuth access_token |
+| Twitter/X (OAuth) | `TWITTER_ACCESS_TOKEN` / `X_ACCESS_TOKEN` | 自动映射到 OAuth access_token |
 | GitHub | `GITHUB_TOKEN` | 映射到 Personal Access Token |
 | Notion | `NOTION_TOKEN` | 映射到 Integration Token |
 | Slack | `SLACK_BOT_TOKEN` | 映射到 Bot User OAuth Token |

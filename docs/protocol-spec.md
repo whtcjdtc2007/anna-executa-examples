@@ -128,15 +128,9 @@ The Agent platform will use this to render a configuration form in the UI and au
   "version": "1.0.0",
   "credentials": [
     {
-      "name": "TWITTER_API_KEY",
-      "display_name": "API Key",
-      "description": "API Key obtained from Twitter Developer Portal",
-      "required": true
-    },
-    {
-      "name": "TWITTER_API_SECRET",
-      "display_name": "API Secret",
-      "description": "API Secret obtained from Twitter Developer Portal",
+      "name": "TWITTER_ACCESS_TOKEN",
+      "display_name": "X/Twitter Access Token",
+      "description": "OAuth access token — automatically provided when user authorizes X/Twitter at /settings/authorizations",
       "required": true,
       "sensitive": true
     }
@@ -149,7 +143,7 @@ The Agent platform will use this to render a configuration form in the UI and au
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `name` | string | ✅ | Credential identifier (recommended: uppercase snake_case, e.g. `TWITTER_API_KEY`) |
+| `name` | string | ✅ | Credential identifier (recommended: uppercase snake_case, e.g. `TWITTER_ACCESS_TOKEN`) |
 | `display_name` | string | ✅ | Display name shown in UI |
 | `description` | string | Optional | Instructions on how to obtain / help text |
 | `required` | bool | Optional | Whether required (default: `true`) |
@@ -231,8 +225,7 @@ When the LLM decides to use a tool, the Agent calls this method.
     },
     "context": {
       "credentials": {
-        "TWITTER_API_KEY": "ak_xxxx",
-        "TWITTER_API_SECRET": "sk_xxxx"
+        "TWITTER_ACCESS_TOKEN": "ya29.xxxx"
       }
     }
   },
@@ -366,8 +359,8 @@ Plugin `credentials[].name` should align with the platform provider registry for
 
 | Platform Provider | Recommended Credential Name | Description |
 |-------------------|----------------------------|-------------|
-| Google (OAuth) | `GOOGLE_ACCESS_TOKEN` / `GMAIL_ACCESS_TOKEN` | Auto-maps to OAuth access_token |
-| Twitter/X | `TWITTER_API_KEY` / `TWITTER_API_SECRET` / `TWITTER_BEARER_TOKEN` | Maps to user-provided API Key |
+| Google (OAuth) | `GOOGLE_ACCESS_TOKEN` / `GMAIL_ACCESS_TOKEN` / `YOUTUBE_ACCESS_TOKEN` / `GOOGLE_DOCS_ACCESS_TOKEN` / `GOOGLE_SHEETS_ACCESS_TOKEN` | Auto-maps to OAuth access_token |
+| Twitter/X (OAuth) | `TWITTER_ACCESS_TOKEN` / `X_ACCESS_TOKEN` | Auto-maps to OAuth access_token |
 | GitHub | `GITHUB_TOKEN` | Maps to Personal Access Token |
 | Notion | `NOTION_TOKEN` | Maps to Integration Token |
 | Slack | `SLACK_BOT_TOKEN` | Maps to Bot User OAuth Token |

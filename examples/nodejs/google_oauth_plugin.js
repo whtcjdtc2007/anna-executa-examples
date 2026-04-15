@@ -61,6 +61,9 @@ const MANIFEST = {
   // Alternative names that resolve to the same token:
   //   - GMAIL_ACCESS_TOKEN (alias)
   //   - GOOGLE_WORKSPACE_CLI_TOKEN (alias)
+  //   - YOUTUBE_ACCESS_TOKEN (alias)
+  //   - GOOGLE_DOCS_ACCESS_TOKEN (alias)
+  //   - GOOGLE_SHEETS_ACCESS_TOKEN (alias)
   credentials: [
     {
       name: "GOOGLE_ACCESS_TOKEN",

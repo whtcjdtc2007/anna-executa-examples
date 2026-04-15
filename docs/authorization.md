@@ -66,15 +66,18 @@ The platform defines mappings from credential names to actual values through a *
 ```python
 # Google OAuth provider credential mapping
 credential_mapping = {
-    "GOOGLE_ACCESS_TOKEN": "$access_token",  # Maps to OAuth access_token
-    "GMAIL_ACCESS_TOKEN":  "$access_token",  # Same token, different alias
+    "GOOGLE_ACCESS_TOKEN":        "$access_token",  # Maps to OAuth access_token
+    "GMAIL_ACCESS_TOKEN":         "$access_token",  # Same token, different alias
+    "GOOGLE_WORKSPACE_CLI_TOKEN": "$access_token",  # Google Workspace CLI alias
+    "YOUTUBE_ACCESS_TOKEN":       "$access_token",  # YouTube Data API
+    "GOOGLE_DOCS_ACCESS_TOKEN":   "$access_token",  # Google Docs API
+    "GOOGLE_SHEETS_ACCESS_TOKEN": "$access_token",  # Google Sheets API
 }
 
-# Twitter API Key provider credential mapping
+# Twitter / X OAuth2 provider credential mapping
 credential_mapping = {
-    "TWITTER_API_KEY":          "TWITTER_API_KEY",          # Direct field mapping
-    "TWITTER_API_SECRET":       "TWITTER_API_SECRET",
-    "TWITTER_BEARER_TOKEN":     "TWITTER_BEARER_TOKEN",
+    "TWITTER_ACCESS_TOKEN": "$access_token",  # Maps to OAuth access_token
+    "X_ACCESS_TOKEN":       "$access_token",  # Alias
 }
 ```
 
@@ -96,8 +99,8 @@ When the Agent calls a plugin, the credential resolution engine searches in this
 
 1. **Visit authorization page** — After logging into Nexus, go to `/settings/authorizations`
 2. **Connect services** — Click the "Connect" button for the desired service:
-   - **OAuth2 services** (e.g. Google): Redirects to third-party authorization page, select permission scopes, auto-redirects back after authorization
-   - **API Key services** (e.g. Twitter/GitHub): Enter API Key / Token in a dialog
+   - **OAuth2 services** (e.g. Google, X/Twitter): Redirects to third-party authorization page, select permission scopes, auto-redirects back after authorization
+   - **API Key services** (e.g. GitHub/Notion): Enter API Key / Token in a dialog
 3. **View status** — After authorization, view connection status, associated email, permission scopes, etc.
 4. **Manage authorizations** — Disconnect, refresh tokens, or view details at any time
 
@@ -111,8 +114,8 @@ When the Agent calls a plugin, the credential resolution engine searches in this
 
 | Provider | Auth Type | Credential Fields | Recommended Credential Names |
 |----------|-----------|------------------|----------------------------|
-| **Google** | OAuth2 | access_token (10+ selectable scopes) | `GOOGLE_ACCESS_TOKEN`, `GMAIL_ACCESS_TOKEN` |
-| **X (Twitter)** | API Key | API Key, API Secret, Access Token, Access Token Secret, Bearer Token | `TWITTER_API_KEY`, `TWITTER_BEARER_TOKEN` |
+| **Google** | OAuth2 | access_token (18 selectable scopes) | `GOOGLE_ACCESS_TOKEN`, `GMAIL_ACCESS_TOKEN`, `YOUTUBE_ACCESS_TOKEN`, `GOOGLE_DOCS_ACCESS_TOKEN`, `GOOGLE_SHEETS_ACCESS_TOKEN` |
+| **X (Twitter)** | OAuth2 | access_token (20 selectable scopes, PKCE) | `TWITTER_ACCESS_TOKEN`, `X_ACCESS_TOKEN` |
 | **GitHub** | API Key | Personal Access Token | `GITHUB_TOKEN`, `GITHUB_ACCESS_TOKEN` |
 | **Notion** | API Key | Integration Token | `NOTION_TOKEN`, `NOTION_API_KEY` |
 | **Slack** | API Key | Bot User OAuth Token | `SLACK_BOT_TOKEN`, `SLACK_TOKEN` |
@@ -149,7 +152,7 @@ Plugin `credentials[].name` should align with keys in the platform provider regi
 
 ```json
 // ✅ Good — Matches platform credential_mapping
-{ "name": "TWITTER_API_KEY" }
+{ "name": "TWITTER_ACCESS_TOKEN" }
 { "name": "GOOGLE_ACCESS_TOKEN" }
 { "name": "GITHUB_TOKEN" }
 
