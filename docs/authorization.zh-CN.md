@@ -65,15 +65,18 @@ For English version, see [authorization.md](authorization.md)
 ```python
 # Google OAuth provider 的凭据映射
 credential_mapping = {
-    "GOOGLE_ACCESS_TOKEN": "$access_token",  # 映射到 OAuth access_token
-    "GMAIL_ACCESS_TOKEN":  "$access_token",  # 同一个 token，不同别名
+    "GOOGLE_ACCESS_TOKEN":        "$access_token",  # 映射到 OAuth access_token
+    "GMAIL_ACCESS_TOKEN":         "$access_token",  # 同一个 token，不同别名
+    "GOOGLE_WORKSPACE_CLI_TOKEN": "$access_token",  # Google Workspace CLI 别名
+    "YOUTUBE_ACCESS_TOKEN":       "$access_token",  # YouTube Data API
+    "GOOGLE_DOCS_ACCESS_TOKEN":   "$access_token",  # Google Docs API
+    "GOOGLE_SHEETS_ACCESS_TOKEN": "$access_token",  # Google Sheets API
 }
 
-# Twitter API Key provider 的凭据映射
+# Twitter / X OAuth2 provider 的凭据映射
 credential_mapping = {
-    "TWITTER_API_KEY":          "TWITTER_API_KEY",          # 直接映射字段名
-    "TWITTER_API_SECRET":       "TWITTER_API_SECRET",
-    "TWITTER_BEARER_TOKEN":     "TWITTER_BEARER_TOKEN",
+    "TWITTER_ACCESS_TOKEN": "$access_token",  # 映射到 OAuth access_token
+    "X_ACCESS_TOKEN":       "$access_token",  # 别名
 }
 ```
 
@@ -95,8 +98,8 @@ credential_mapping = {
 
 1. **访问授权页面** — 登录 Nexus 后访问 `/settings/authorizations`
 2. **连接服务** — 点击对应服务的「连接」按钮：
-   - **OAuth2 服务**（如 Google）：跳转到第三方授权页面，选择权限范围（scopes），授权后自动跳回
-   - **API Key 服务**（如 Twitter/GitHub）：在弹窗中填写 API Key / Token
+   - **OAuth2 服务**（如 Google、X/Twitter）：跳转到第三方授权页面，选择权限范围（scopes），授权后自动跳回
+   - **API Key 服务**（如 GitHub/Notion）：在弹窗中填写 API Key / Token
 3. **查看状态** — 授权完成后可看到连接状态、关联邮箱、权限范围等
 4. **管理授权** — 可随时断开连接、刷新 Token、查看详情
 
@@ -110,8 +113,8 @@ credential_mapping = {
 
 | Provider | Auth Type | 凭据字段 | 推荐凭据名称 |
 |----------|-----------|---------|---------------|
-| **Google** | OAuth2 | access_token（10+ scopes 可选） | `GOOGLE_ACCESS_TOKEN`, `GMAIL_ACCESS_TOKEN` |
-| **X (Twitter)** | API Key | API Key, API Secret, Access Token, Access Token Secret, Bearer Token | `TWITTER_API_KEY`, `TWITTER_BEARER_TOKEN` |
+| **Google** | OAuth2 | access_token（18 scopes 可选） | `GOOGLE_ACCESS_TOKEN`, `GMAIL_ACCESS_TOKEN`, `YOUTUBE_ACCESS_TOKEN`, `GOOGLE_DOCS_ACCESS_TOKEN`, `GOOGLE_SHEETS_ACCESS_TOKEN` |
+| **X (Twitter)** | OAuth2 | access_token（20 scopes 可选，PKCE） | `TWITTER_ACCESS_TOKEN`, `X_ACCESS_TOKEN` |
 | **GitHub** | API Key | Personal Access Token | `GITHUB_TOKEN`, `GITHUB_ACCESS_TOKEN` |
 | **Notion** | API Key | Integration Token | `NOTION_TOKEN`, `NOTION_API_KEY` |
 | **Slack** | API Key | Bot User OAuth Token | `SLACK_BOT_TOKEN`, `SLACK_TOKEN` |
@@ -148,7 +151,7 @@ credential_mapping = {
 
 ```json
 // ✅ 好 — 与平台 credential_mapping 一致
-{ "name": "TWITTER_API_KEY" }
+{ "name": "TWITTER_ACCESS_TOKEN" }
 { "name": "GOOGLE_ACCESS_TOKEN" }
 { "name": "GITHUB_TOKEN" }
 

@@ -47,9 +47,12 @@ from datetime import datetime, timezone
 #     Nexus handles all of that — the plugin just receives a ready-to-use access_token.
 #
 # Naming alignment:
-#   GMAIL_ACCESS_TOKEN  → Google provider → $access_token (auto-mapped)
-#   GOOGLE_ACCESS_TOKEN → Google provider → $access_token (alternative name)
-#   Both resolve to the same OAuth access_token.
+#   GMAIL_ACCESS_TOKEN         → Google provider → $access_token (auto-mapped)
+#   GOOGLE_ACCESS_TOKEN        → Google provider → $access_token (alternative name)
+#   YOUTUBE_ACCESS_TOKEN       → Google provider → $access_token (YouTube alias)
+#   GOOGLE_DOCS_ACCESS_TOKEN   → Google provider → $access_token (Docs alias)
+#   GOOGLE_SHEETS_ACCESS_TOKEN → Google provider → $access_token (Sheets alias)
+#   All resolve to the same OAuth access_token.
 
 MANIFEST = {
     "name": "gmail-tool",
