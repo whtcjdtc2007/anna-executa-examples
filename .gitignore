@@ -7,3 +7,7 @@ node_modules/
 sea-prep/
 *.blob
 *.spec.bak
+
+.venv/
+.DS_Store
+dist-anna/

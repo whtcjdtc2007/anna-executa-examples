@@ -77,10 +77,20 @@ pyinstaller --onefile --name example-text-tool --strip --noupx example_plugin.py
 
 ### Local 分发
 
-在 Anna Admin 中：
+Local 与 Binary 同一套 v2 安装流程（解压 → `tools/{tool_id}/v{version}/` → 切 `current` 软链 → `bin/{name}` shim），Archive 从 Agent 主机本地路径读取、不需 HTTP 上传。
+
+推荐先 `./build_binary.sh` 打出二进制（PyInstaller `--onedir` 多文件也可，参见 `examples/multifile-binary/python-pyinstaller-onedir/`），再打包：
+
+```bash
+./build_binary.sh
+cd dist && tar czf example-text-tool.tar.gz example-text-tool
+```
+
+然后在 Anna Admin：
 - 分发方式：**Local**
-- 路径填写 Python 脚本路径，如 `/path/to/example_plugin.py`
-- 协议选择：`stdio`
+- Local Archive Path：`/abs/path/to/dist/example-text-tool.tar.gz`
+- Version：`dev`（或任意字符串）
+- 协议：`stdio`
 
 ### Binary 分发
 

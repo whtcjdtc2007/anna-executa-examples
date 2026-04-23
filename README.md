@@ -139,7 +139,7 @@ GOOGLE_ACCESS_TOKEN=ya29.xxx node examples/nodejs/google_oauth_plugin.js
 | **npm** | `npm install -g <package>` | Node.js tools |
 | **Homebrew** | `brew install <formula>` | macOS / Linux |
 | **Binary** | HTTP download | Pre-built binaries (any language) |
-| **Local** | Local path | Development & debugging |
+| **Local** | Local archive on Agent host (`.tar.gz`/`.tgz`/`.zip` or raw exe) | Dev iteration, internal/air-gapped distribution — same install pipeline as Binary, supports multi-file binaries |
 
 ## Documentation
 
