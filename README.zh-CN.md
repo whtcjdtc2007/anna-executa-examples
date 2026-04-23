@@ -138,7 +138,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/google_
 | **npm** | `npm install -g <package>` | Node.js 工具 |
 | **Homebrew** | `brew install <formula>` | macOS/Linux |
 | **Binary** | HTTP 下载 | 预编译二进制（任意语言） |
-| **Local** | 本地路径 | 开发调试 |
+| **Local** | Agent 主机上的本地压缩包（`.tar.gz`/`.tgz`/`.zip` 或 raw 可执行文件） | 开发迭代、内网/离线分发 — 与 Binary 同一套安装流程，支持多文件二进制 |
 
 ## 文档
 

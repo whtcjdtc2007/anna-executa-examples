@@ -1,0 +1,17 @@
+{
+  "name": "example-multifile-tool",
+  "display_name": "Multi-file Binary Example",
+  "version": "1.0.0",
+  "description": "Example plugin shipping with sibling bundled resources (lib/ + data/)",
+  "author": "Anna Developer",
+  "runtime": {
+    "binary": {
+      "entrypoint": "bin/example-multifile-tool",
+      "lib_dirs": ["lib"],
+      "data_dirs": ["data"],
+      "permissions": {
+        "bin/example-multifile-tool": "0o755"
+      }
+    }
+  }
+}

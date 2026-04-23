@@ -93,9 +93,19 @@ npx pkg example_plugin.js --targets node18-macos-arm64,node18-linux-x64 --output
 
 ### Local 分发
 
-在 Anna Admin 中：
+Local 与 Binary 完全走同一套安装流程（解压 → `tools/{tool_id}/v{version}/` → 切 `current` 软链），只是 archive 从 Agent 主机本地路径读取、不需 HTTP 服务器。
+
+推荐先用 `pkg` / SEA 打出独立二进制再打包：
+
+```bash
+./build_binary.sh
+cd dist && tar czf example-node-tool.tar.gz example-node-tool-*
+```
+
+然后在 Anna Admin：
 - 分发方式：**Local**
-- 路径填写 `node /path/to/example_plugin.js`（需要目标机器有 Node.js）
+- Local Archive Path：`/abs/path/to/dist/example-node-tool.tar.gz`
+- Version：`dev`（或任意字符串）
 
 ## 文件说明
 

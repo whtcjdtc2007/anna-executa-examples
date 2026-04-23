@@ -77,9 +77,19 @@ pyinstaller --onefile --name example-text-tool --strip --noupx example_plugin.py
 
 ### Local Distribution
 
-In Anna Admin:
+Local runs the **same v2 install pipeline as Binary** (extract → `tools/{tool_id}/v{version}/` → atomic `current` symlink → `bin/{name}` shim), but reads the archive from the Agent's local filesystem instead of an HTTPS URL. Multi-file archives (PyInstaller `--onedir` with bundled `.so` / `_internal/`) are fully supported — see `examples/multifile-binary/python-pyinstaller-onedir/`.
+
+Build a binary first, then archive it:
+
+```bash
+./build_binary.sh
+cd dist && tar czf example-text-tool.tar.gz example-text-tool
+```
+
+Then in Anna Admin:
 - Distribution method: **Local**
-- Path: enter the Python script path, e.g. `/path/to/example_plugin.py`
+- Local Archive Path: `/abs/path/to/dist/example-text-tool.tar.gz`
+- Version: `dev` (or any string)
 - Protocol: `stdio`
 
 ### Binary Distribution

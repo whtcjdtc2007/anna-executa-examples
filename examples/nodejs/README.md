@@ -93,9 +93,19 @@ In Anna Admin:
 
 ### Local Distribution
 
-In Anna Admin:
+Local runs the **same v2 install pipeline as Binary** (extract → `tools/{tool_id}/v{version}/` → atomic `current` symlink), reading the archive from the Agent's local filesystem instead of an HTTPS URL. No HTTP server needed.
+
+Build a standalone binary first (via `pkg` or SEA), then archive it:
+
+```bash
+./build_binary.sh
+cd dist && tar czf example-node-tool.tar.gz example-node-tool-*
+```
+
+Then in Anna Admin:
 - Distribution method: **Local**
-- Path: enter `node /path/to/example_plugin.js` (requires Node.js on the target machine)
+- Local Archive Path: `/abs/path/to/dist/example-node-tool.tar.gz`
+- Version: `dev` (or any string)
 
 ## File Descriptions
 
