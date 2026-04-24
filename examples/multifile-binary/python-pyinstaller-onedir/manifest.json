@@ -6,7 +6,11 @@
   "author": "Anna Developer",
   "runtime": {
     "binary": {
-      "entrypoint": "bin/example-multifile-tool",
+      "entrypoint": {
+        "default": "bin/example-multifile-tool",
+        "windows-x86_64": "bin/example-multifile-tool.exe",
+        "windows-arm64": "bin/example-multifile-tool.exe"
+      },
       "lib_dirs": ["lib"],
       "data_dirs": ["data"],
       "permissions": {
