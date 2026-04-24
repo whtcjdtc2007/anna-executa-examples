@@ -15,7 +15,8 @@ anna-executa-examples/
 ├── docs/                       # Development documentation
 │   ├── protocol-spec.md        # Protocol specification
 │   ├── authorization.md        # Platform authorization guide
-│   └── binary-distribution.md  # Binary distribution guide
+│   ├── binary-distribution.md  # Binary distribution guide
+│   └── common-pitfalls.md      # ⚠️ Read this first if your plugin shows as "Stopped"
 ├── examples/
 │   ├── python/                 # Python plugin examples
 │   │   ├── example_plugin.py       # Basic plugin (text processing)

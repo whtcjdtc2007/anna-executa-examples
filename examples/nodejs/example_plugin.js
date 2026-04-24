@@ -14,6 +14,15 @@
  *   - stdin:  Receives JSON-RPC requests (one JSON object per line)
  *   - stdout: Returns JSON-RPC responses (one JSON object per line)
  *   - stderr: Log output (does not interfere with protocol communication)
+ *
+ * ⚠️  CRITICAL — the plugin process must be LONG-RUNNING:
+ *   - Listen on `rl.on("line", ...)` until stdin closes (the Agent closes stdin
+ *     to shut you down). NEVER call `process.exit()` after one request.
+ *   - `process.stdout.write(... + "\n")` is line-buffered; that's fine, but
+ *     don't switch to `console.log` for protocol output (it doesn't guarantee
+ *     a single JSON object per line).
+ *   A one-shot process passes `describe` once and then shows up as **Stopped**
+ *   in the Agent UI forever, paying a fresh cold-start on every invoke.
  */
 
 const readline = require("readline");

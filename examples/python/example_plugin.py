@@ -18,6 +18,13 @@ Protocol requirements:
     - stdin:  Receives JSON-RPC requests (one JSON object per line)
     - stdout: Returns JSON-RPC responses (one JSON object per line)
     - stderr: Log output (does not interfere with protocol communication)
+
+⚠️  CRITICAL — the plugin process must be LONG-RUNNING:
+    - Loop on `for line in sys.stdin:` until EOF (the Agent closes stdin to shut you down)
+    - NEVER call `sys.exit()` after handling a single request
+    - Always `sys.stdout.flush()` after writing a response
+    A one-shot process passes `describe` once and then shows up as **Stopped**
+    in the Agent UI forever, paying a fresh cold-start on every invoke.
 """
 
 import json
