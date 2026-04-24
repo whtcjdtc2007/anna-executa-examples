@@ -15,6 +15,14 @@
 //   - stdin:  Receives JSON-RPC requests (one JSON object per line)
 //   - stdout: Returns JSON-RPC responses (one JSON object per line)
 //   - stderr: Log output (does not interfere with protocol communication)
+//
+// ⚠️  CRITICAL — the plugin process must be LONG-RUNNING:
+//   - Loop on `for scanner.Scan()` until stdin EOF (the Agent closes stdin
+//     to shut you down). NEVER `os.Exit(0)` after handling a single request.
+//   - Use `bufio.NewWriter(os.Stdout)` + explicit `Flush()` after each response,
+//     or write directly with `os.Stdout.Write` (unbuffered).
+//     A one-shot process passes `describe` once and then shows up as **Stopped**
+//     in the Agent UI forever, paying a fresh cold-start on every invoke.
 package main
 
 import (
@@ -57,7 +65,7 @@ var manifest = map[string]any{
 				{
 					"name":        "text",
 					"type":        "string",
-					"description": "The text to hash",					"required":    true,
+					"description": "The text to hash", "required": true,
 				},
 				{
 					"name":        "algorithm",

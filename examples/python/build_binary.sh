@@ -276,6 +276,40 @@ assert 'result' in d and d['result'].get('success') is True, f'invoke failed: {d
         echo -e "    ${RED}❌ error handling: ${result:0:120}${NC}"; ((fail++))
     fi
 
+    # Test 5: long-running stdio loop — process must stay alive after one describe
+    # ─────────────────────────────────────────────────────────────────────────────
+    # The Anna Agent reuses the same plugin process for many requests; a plugin
+    # that exits after one response shows up as "Stopped" in the UI forever.
+    # We feed `describe`, wait for the response, then check the process is still
+    # alive 1.5 s later. EOF only happens when we close stdin (mkfifo trick).
+    if python3 - "$binary" <<'PYTEST' 2>/dev/null; then
+import os, sys, json, time, subprocess
+binary = sys.argv[1]
+proc = subprocess.Popen([binary], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+proc.stdin.write(b'{"jsonrpc":"2.0","method":"describe","id":99}\n')
+proc.stdin.flush()
+# Read one line of response
+line = proc.stdout.readline()
+assert line and b'"result"' in line, f"no describe response: {line!r}"
+# Process MUST still be alive — we have not closed stdin yet
+time.sleep(1.5)
+if proc.poll() is not None:
+    proc.wait(timeout=1)
+    raise SystemExit(f"plugin exited after one describe (exit_code={proc.returncode})")
+# Clean shutdown via EOF
+proc.stdin.close()
+try:
+    proc.wait(timeout=3)
+except subprocess.TimeoutExpired:
+    proc.kill()
+PYTEST
+        echo -e "    ${GREEN}✅ long-running stdio loop${NC}"; ((pass++))
+    else
+        echo -e "    ${RED}❌ long-running stdio loop: process exited after one request${NC}"
+        echo -e "       ${YELLOW}fix: wrap request handling in 'for line in sys.stdin:' and never sys.exit()${NC}"
+        ((fail++))
+    fi
+
     echo -e "    Results: ${GREEN}${pass} passed${NC}, ${RED}${fail} failed${NC}"
     return "$fail"
 }

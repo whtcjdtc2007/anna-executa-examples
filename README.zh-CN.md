@@ -15,7 +15,8 @@ anna-executa-examples/
 ├── docs/                       # 开发文档
 │   ├── protocol-spec.md        # 协议规范
 │   ├── authorization.md        # 平台统一授权指南
-│   └── binary-distribution.md  # Binary 分发指南
+│   ├── binary-distribution.md  # Binary 分发指南
+│   └── common-pitfalls.md      # ⚠️ 插件显示为 "Stopped" 时先看这里
 ├── examples/
 │   ├── python/                 # Python 插件示例
 │   │   ├── example_plugin.py       # 基础插件（文本处理）
