@@ -1,0 +1,17 @@
+{
+  "slug": "focus-flow",
+  "name": "Focus Flow",
+  "tagline": "A calm, premium-feeling Pomodoro window for Anna.",
+  "description": "Focus Flow turns Anna into a deep-work companion. A minimal, designed timer window pairs a focus-session tool (Python stdio plugin) with a coaching skill, so you can start a Pomodoro from chat or from the window, get gentle reflections when you finish, and keep an honest log of what you actually focused on.\n\n**What's inside**\n\n- A premium single-window UI (glassmorphism, animated ring, dark/light themes).\n- `acme.focus_session` — Executa stdio tool that persists timer state.\n- `acme.focus_coach` — declarative SKILL.md that gives Anna the right tone.\n\n**How to use**\n\nMention the Focus Flow app in any chat (`#focus-flow`), or open the window directly. Pick a duration, name what you'll work on, and start. Anna watches the timer through the tool — she will not interrupt while it's running.",
+  "category": "productivity",
+  "logo_url": "https://example.com/focus-flow/logo.png",
+  "cover_url": "https://example.com/focus-flow/cover.png",
+  "screenshots": [
+    "https://example.com/focus-flow/shot-1.png",
+    "https://example.com/focus-flow/shot-2.png"
+  ],
+  "homepage_url": "https://github.com/openclaw/anna-executa-examples/tree/main/examples/anna-app-focus-flow",
+  "support_url": "https://github.com/openclaw/anna-executa-examples/issues",
+  "privacy_url": "https://github.com/openclaw/anna-executa-examples/tree/main/examples/anna-app-focus-flow#privacy",
+  "pricing_model": "free"
+}

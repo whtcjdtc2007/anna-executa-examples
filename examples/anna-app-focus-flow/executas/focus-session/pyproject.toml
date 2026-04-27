@@ -1,0 +1,24 @@
+# NOTE: ``name`` and the ``[project.scripts]`` key MUST equal the minted
+# tool_id from https://anna.partners/executa (e.g.
+# ``tool-yourhandle-focus-session-abcd1234``). Use
+# ``scripts/set-tool-id.py apply --tool <minted>`` to rewrite all four
+# files (this one + focus_session_plugin.py + manifest.json + bundle/app.js)
+# at once.
+[project]
+name = "tool-anna-focus-session-a33trjpv"
+version = "1.0.0"
+description = "Focus Session — Executa stdio tool plugin for the Focus Flow Anna App"
+requires-python = ">=3.10"
+authors = [{ name = "Acme Labs" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.scripts]
+"tool-anna-focus-session-a33trjpv" = "focus_session_plugin:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["focus_session_plugin"]

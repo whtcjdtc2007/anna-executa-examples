@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Focus Flow</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-state="idle">
+    <!-- Ambient gradient backdrop (animated via CSS) -->
+    <div class="aurora" aria-hidden="true">
+      <span class="aurora__blob aurora__blob--a"></span>
+      <span class="aurora__blob aurora__blob--b"></span>
+      <span class="aurora__blob aurora__blob--c"></span>
+    </div>
+
+    <main class="shell">
+      <header class="shell__head">
+        <div class="brand">
+          <span class="brand__mark" aria-hidden="true"></span>
+          <span class="brand__name">Focus Flow</span>
+        </div>
+        <button
+          class="iconbtn"
+          id="theme-toggle"
+          type="button"
+          aria-label="Toggle theme"
+          title="Toggle theme"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+          </svg>
+        </button>
+      </header>
+
+      <section class="card card--timer">
+        <div class="topic">
+          <input
+            id="topic-input"
+            type="text"
+            maxlength="120"
+            placeholder="What will you focus on?"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </div>
+
+        <div class="ring" role="img" aria-label="Focus timer">
+          <svg class="ring__svg" viewBox="0 0 220 220">
+            <defs>
+              <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="var(--accent-1)" />
+                <stop offset="100%" stop-color="var(--accent-2)" />
+              </linearGradient>
+            </defs>
+            <circle class="ring__track" cx="110" cy="110" r="96" />
+            <circle
+              class="ring__progress"
+              cx="110"
+              cy="110"
+              r="96"
+              stroke="url(#ringGrad)"
+            />
+          </svg>
+          <div class="ring__center">
+            <div class="ring__time" id="time-display" aria-live="polite">25:00</div>
+            <div class="ring__label" id="status-label">Ready</div>
+          </div>
+        </div>
+
+        <div class="presets" role="group" aria-label="Duration presets">
+          <button class="chip" data-minutes="15" type="button">15m</button>
+          <button class="chip is-active" data-minutes="25" type="button">25m</button>
+          <button class="chip" data-minutes="45" type="button">45m</button>
+          <button class="chip" data-minutes="60" type="button">60m</button>
+        </div>
+
+        <div class="controls">
+          <button class="btn btn--primary" id="primary-btn" type="button">Start</button>
+          <button class="btn btn--ghost" id="reset-btn" type="button" hidden>End</button>
+          <button
+            class="btn btn--ghost"
+            id="coach-btn"
+            type="button"
+            title="Ask Focus Coach"
+          >
+            Ask coach
+          </button>
+        </div>
+      </section>
+
+      <section class="card card--stats">
+        <header class="card__head">
+          <h2>Today</h2>
+          <span id="today-summary" class="muted">0 sessions · 0 min</span>
+        </header>
+        <ul class="history" id="history-list" aria-live="polite">
+          <li class="history__empty">No sessions yet — start your first block above.</li>
+        </ul>
+      </section>
+
+      <footer class="shell__foot">
+        <span id="conn-status" class="dot dot--off" title="Disconnected"></span>
+        <span class="muted">Anna App · v1.0.0</span>
+      </footer>
+    </main>
+
+    <!-- Anna App Runtime SDK is loaded by the host iframe wrapper.
+         When running outside Anna (e.g. opened directly for design preview)
+         we fall back to a no-op stub defined in app.js. -->
+    <script src="/static/anna-apps/_sdk/0.1.0/index.js" defer></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>

@@ -32,13 +32,20 @@ anna-executa-examples/
 │   │   ├── package.json
 │   │   ├── build_binary.sh
 │   │   └── README.md
-│   └── go/                     # Go plugin examples
-│       ├── main.go                 # Basic plugin (System info/Hash)
-│       ├── credential_plugin.go    # Credential plugin (Notion API Key)
-│       ├── google_oauth_plugin.go  # Google OAuth plugin (Drive)
-│       ├── go.mod
-│       ├── build.sh
-│       ├── Makefile
+│   ├── go/                     # Go plugin examples
+│   │   ├── main.go                 # Basic plugin (System info/Hash)
+│   │   ├── credential_plugin.go    # Credential plugin (Notion API Key)
+│   │   ├── google_oauth_plugin.go  # Google OAuth plugin (Drive)
+│   │   ├── go.mod
+│   │   ├── build.sh
+│   │   ├── Makefile
+│   │   └── README.md
+│   └── anna-app-focus-flow/    # ⭐ Complete Anna App example (tool + skill + UI bundle + manifest)
+│       ├── manifest.json           # AppManifest schema:1
+│       ├── app.json                # App metadata
+│       ├── bundle/                 # Premium glassmorphism UI (HTML/CSS/JS)
+│       ├── executas/focus-session/ # 1× Executa TOOL (Python stdio)
+│       ├── executas/focus-coach/   # 1× Executa SKILL (SKILL.md)
 │       └── README.md
 └── .github/
     └── workflows/
@@ -147,6 +154,7 @@ GOOGLE_ACCESS_TOKEN=ya29.xxx node examples/nodejs/google_oauth_plugin.js
 - [Protocol Specification](docs/protocol-spec.md) — Full JSON-RPC 2.0 over stdio protocol definition
 - [Platform Authorization](docs/authorization.md) — Credential declaration, auto-injection, and platform authorization integration
 - [Binary Distribution Guide](docs/binary-distribution.md) — Building, signing, and multi-platform deployment
+- [Anna App Example — Focus Flow](examples/anna-app-focus-flow/README.md) — End-to-end Anna App: 1 tool + 1 skill + premium UI bundle + full app manifest
 
 ## License
 

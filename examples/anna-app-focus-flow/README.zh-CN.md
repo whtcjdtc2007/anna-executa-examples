@@ -1,0 +1,319 @@
+# Focus Flow — Anna App 示例
+
+> 番茄钟 / 深度工作计时器，打包为可安装的 **Anna App**。包含一个 stdio Tool 插件
+> （`focus-session`）、一个教练 Skill（`focus-coach`），以及一个在 Anna UI Runtime
+> 沙箱中运行的精致 UI bundle。
+
+[English](./README.md)
+
+---
+
+## 目录结构
+
+```
+anna-app-focus-flow/
+├── app.json                       # App 元数据（slug、name、category…）
+├── manifest.json                  # AppManifest（schema:1）
+├── scripts/
+│   └── set-tool-id.py             # 一键把 Mint 出的 ID 写进 / 重置回 4 个文件
+├── bundle/                        # UI Runtime 加载的 static-spa
+│   ├── index.html
+│   ├── style.css
+│   ├── app.js                     # 调用 anna.* RPC SDK
+│   └── icon.svg
+└── executas/
+    ├── focus-session/             # stdio Tool 插件（Python / uv）
+    │   ├── pyproject.toml
+    │   ├── focus_session_plugin.py
+    │   └── README.md
+    └── focus-coach/
+        └── SKILL.md               # 声明式 Skill（YAML frontmatter）
+```
+
+## 三方协作
+
+```
+┌──────────────┐    anna.tools.invoke    ┌──────────────────────┐
+│ bundle/app.js│ ──────────────────────▶ │ Anna UI Runtime      │
+│  （沙箱）     │ ◀─────────────────────  │   ↳ host dispatcher  │
+└──────────────┘    JSON-RPC 结果        └──────────┬───────────┘
+                                                    │ NATS
+                                                    ▼
+                                       ┌────────────────────────┐
+                                       │ executas/focus-session │
+                                       │  stdio 插件            │
+                                       └────────────────────────┘
+```
+
+每当此 App 窗口获得焦点时，Anna 会把 Skill（`focus-coach`）注入到 LLM 的 system
+prompt，由它告诉模型何时 / 如何调用工具。
+
+---
+
+## Tool 表面 — 单分发方法
+
+`focus-session` 插件只暴露 **一个** 工具方法 `session`，通过 `action` 参数区分行为。
+Anna 中一个 Executa 对应一个运行中的插件（通过服务器 Mint 出的 `tool_id`
+匹配），bundle 再通过 `tools.invoke` 的 `method` 参数选择插件内部
+要调用的方法。插件收敛到单一分发方法后，每个 App 就只需一行
+Executa，bundle 只需在 `action` 上切换。
+
+| `action`    | 参数                          | 返回                                          |
+| ----------- | ----------------------------- | --------------------------------------------- |
+| `start`     | `duration_minutes`, `topic?`  | `{ active }`                                  |
+| `pause`     | —                             | `{ active }`                                  |
+| `resume`    | —                             | `{ active }`                                  |
+| `complete`  | `notes?`                      | `{ completed, today }`                        |
+| `get_state` | —                             | `{ active, today, recent }`                   |
+
+状态持久化到 `~/.anna/focus-flow/state.json`。stdio JSON-RPC 协议详见
+[executas/focus-session/README.md](./executas/focus-session/README.md)。
+
+---
+
+## AppManifest 关键字段
+
+`manifest.json` 由 matrix-nexus 中 [`AppManifest`][schema] Pydantic 模型
+（`extra="forbid"`）+ 静态 UI 校验器共同验证：
+
+```json
+{
+  "schema": 1,
+  "permissions": ["tools.invoke", "chat.write_message", "storage.get",
+                  "storage.set", "ui.svg"],
+  "required_executas": [
+    { "tool_id": "tool-CHANGEME-focus-session-CHANGEME", "min_version": "1.0.0" },
+    { "tool_id": "skill-CHANGEME-focus-coach-CHANGEME" }
+  ],
+  "ui": {
+    "bundle": { "format": "static-spa", "entry": "index.html" },
+    "views": [{ "name": "main", "title": "Focus Flow", "default": true,
+                "min_size": {"w":360,"h":520},
+                "default_size": {"w":480,"h":640},
+                "max_size": {"w":720,"h":960},
+                "icon": "icon.svg" }],
+    "host_api": {
+      "tools":   ["required:tool-CHANGEME-focus-session-CHANGEME"],
+      "chat":    ["write_message"],
+      "storage": ["get", "set"],
+      "window":  ["set_title"]
+    }
+  }
+}
+```
+
+> **先 Mint 你自己的 ID。** 上面两个 `tool_id` 都是占位符。
+> 在 <https://anna.partners/executa>（*My Tools* / *My Skills* →
+> **Create** → **🪪 Mint**）分别 Mint 出 Tool / Skill 的服务器 ID，
+> 再把 Mint 后的字符串填入 `manifest.json`（`required_executas` +
+> `host_api.tools`）和 `bundle/app.js`（`TOOL_ID`）。
+
+### Tool ID & ACL 不变量
+
+依据 `matrix-nexus/src/services/anna_app_rpc_dispatcher.py` 验证：
+
+- **仅 Mint 生成 `tool_id`。** Anna 仅在服务器端用
+  `tool-{handle}-{slug}-{uniq}` / `skill-{handle}-{slug}-{uniq}` 格式
+  生成 `tool_id`，客户端无法选择或覆盖。`required_executas[].tool_id`
+  必须是 Mint 出的字符串。
+- bundle 以
+  `anna.tools.invoke({ tool_id, method, args })` 调用工具。dispatcher
+  把整个 `tool_id` 作为 NATS 插件名、`method` 作为插件内部的
+  工具名路由。如果未提供 `method`，后端会回退到旧的
+  `tool_id="plugin.method"` 划分規则，作为向后兼容。
+- `_is_tool_allowed` 在 `tool_id` 与 `required_executas[].tool_id` /
+  `optional_executas[].tool_id` 之间做 **字面相等** 比较（`required:*` /
+  `optional:*` 通配符除外）。**没有** plugin 名前缀匹配。
+
+`host_api.tools` 接受 `["required:*"]`、`["optional:*"]`、`"required:<id>"`、
+`"optional:<id>"` 或裸 `"<id>"`——裸形与前缀形都必须出现在
+`required_executas` / `optional_executas` 中。
+
+### `host_api` 真实表面（依据 dispatcher 派发表）
+
+| 命名空间   | 方法                                                                     |
+| ---------- | ------------------------------------------------------------------------ |
+| `tools`    | `list`、`invoke({ tool_id, method, args })`                              |
+| `chat`     | `write_message({ role, content })`、`append_artifact`、`read_history`    |
+| `storage`  | `get({ key })`、`set({ key, value })`、`delete({ key })`                 |
+| `window`   | `hello`、`ready`、`set_title({title})`、`resize({w,h})`、`focus`、`close({reason})`、`open_view({view, payload})`、`report_error` |
+| `artifact`、`llm`、`fs`、`prefs` | 当前为占位（`not_implemented`）                  |
+
+注意：
+
+- `window.hello`、`window.ready`、`window.report_error` 即使不写在
+  `host_api.window` 中也会自动放行（位于 `_NO_AUTH_NEEDED`）。
+- 整个 `window` 命名空间被特例放行，不论 `host_api.window` 列表是什么——
+  在那里列出方法只是**展示性**的。
+- manifest 根的 `permissions[]` 是自由文本，仅用于展示 / 审计；
+  **运行时 ACL 由 `host_api.*` 强制执行**。
+
+---
+
+## bundle/app.js 中实际使用的 SDK 调用
+
+bundle 从 `/static/anna-apps/_sdk/0.1.0/index.js` 加载运行时 SDK（全局：
+`AnnaAppRuntime`），通过以下方式连接：
+
+```js
+const anna = await AnnaAppRuntime.connect();
+// ↑ 需要 URL 参数 `wid` 与 `t`，Anna 打开 iframe 时会自动注入。
+//   独立预览会抛错，bundle 回退到独立模式。
+```
+
+| 目的                  | 真实 SDK 调用                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------- |
+| 调用工具              | `anna.tools.invoke({ tool_id: "<minted>", method: "session", args: {...} })`                   |
+| 读取 storage          | `const { value } = await anna.storage.get({ key })`                                            |
+| 写入 storage          | `await anna.storage.set({ key, value })`                                                       |
+| 追加聊天消息          | `await anna.chat.write_message({ role: "user", content: "..." })`                              |
+| 更新窗口标题          | `await anna.window.set_title({ title })`                                                       |
+| 通知 ready            | `AnnaAppRuntime.connect()` 已自动发送 — 无需手工调用                                              |
+
+注意：**没有** `window.set_summary`，**没有** `storage.read/write`，
+`tools.invoke` 的 envelope 也不是 `{tool, method: ..., arguments}`——上述写法
+都会被 dispatcher 拒绝。（上面表格里的 `method` 是 **插件** 方法名，不是
+JSON-RPC envelope 的 key。）
+
+---
+
+## 安装 — Tool 插件（`focus-session`）
+
+插件是基于 stdio 的 Executa，使用 JSON-RPC 通信。推荐通过 `uv tool install`
+分发（Anna 同时支持 `pipx` / `binary` / `local`）。Mint 出的 Tool ID
+必须**完全一致地**出现在 4 个位置：`pyproject.toml` 的 `[project].name`
+与 `[project.scripts]` key、插件的 `MANIFEST["name"]`、`manifest.json`
+（`required_executas[].tool_id` + `ui.host_api.tools`）、以及
+`bundle/app.js` 的 `TOOL_ID`。仓库里默认是 `*-CHANGEME-*` 占位符，并附带
+一个脚本一次性同步这 4 处。
+
+```bash
+cd executas/focus-session
+# 1) 占位符冒烟测试（此时还不需要 Mint ID）：
+uv tool install . --reinstall
+echo '{"jsonrpc":"2.0","id":1,"method":"describe"}' \
+    | tool-CHANGEME-focus-session-CHANGEME
+uv tool uninstall tool-CHANGEME-focus-session-CHANGEME    # 清理
+```
+
+随后在 [anna.partners/executa](https://anna.partners/executa) 注册为 Executa：
+
+1. 进入 **My Tools** 标签页 → 点击 **Create Tool**，选择类型 `tool`，
+   填一个易读的 *display name*（如 `Focus Session`）。表单的 *Name* 字段
+   仅作展示——真正的路由身份是 Mint 出的 Tool ID，与这里填什么无关。
+2. 点击 Tool ID 旁的 **🪪 Mint** 按钮。
+   - Anna 会生成形如 `tool-{your-handle}-focus-session-{uniq}` 的
+     服务器控制 ID 并锁定到当前账号（草稿 24 小时内有效）。
+   - **你不能手动输入 ID**。该输入框为只读，在 Mint 成功之前 **Create**
+     按钮始终禁用；客户端提交的任何 `tool_id` 字段都会被服务器静默丢弃。
+3. 用脚本把 Mint 出的 ID 一次性写入 4 个文件：
+
+   ```bash
+   # 在示例根目录下：
+   scripts/set-tool-id.py apply --tool tool-yourhandle-focus-session-abcd1234
+   scripts/set-tool-id.py status   # 校对一下
+   ```
+
+4. 用新名字重装插件，确认 shim 可以被 PATH 解析：
+
+   ```bash
+   cd executas/focus-session
+   uv tool install . --reinstall --no-cache
+   which tool-yourhandle-focus-session-abcd1234   # → ~/.local/bin/<minted>
+   echo '{"jsonrpc":"2.0","id":1,"method":"describe"}' \
+       | tool-yourhandle-focus-session-abcd1234
+   ```
+
+   `describe` 返回的 `manifest.name` 必须等于 Mint 出的 `tool_id`，
+   否则 Agent 会显示 Stopped 卡片，bundle 的 `tools.invoke` 也无法路由。
+   （`set-tool-id.py` 已经替你改了 `MANIFEST["name"]`。）
+
+5. 回到表单，*Distribution* 区按你**实际使用的安装方式**填：
+
+   | Distribution | `package_name` 含义                | 何时使用                                     |
+   | ------------ | ---------------------------------- | -------------------------------------------- |
+   | `uv`         | uv 安装规格（这里就是 Mint ID）    | 上面用 `uv tool install .` 装的。**推荐。**   |
+   | `pipx`       | pipx 安装规格（Mint ID）           | 改用 `pipx install .` 时选这个。              |
+   | `binary`     | 不用，由 `binary_urls` 提供 per-OS | 你为各 OS 上传了下载 archive 时使用。         |
+   | `local`      | Agent 上 archive 的**绝对路径**    | Air-gapped / 自测；archive 已经在 Agent 上。 |
+
+   走 `uv` 这条路时，`package_name` 与 `executable_name` **都**填 Mint
+   出的 ID。matrix-nexus 在 Agent 上会用 `shutil.which(<executable_name>)`
+   定位可执行文件，所以它必须等于 `[project.scripts]` 的 entry point 名。
+
+6. 粘贴 `describe` 返回的 manifest（matrix-nexus 也会在保存后重新拉取
+   并缓存），点击 **Create** 提交草稿。
+
+> **修改插件代码后重装：** `uv tool install --reinstall .`
+> （仅 `uv tool install .` 在版本号未变时会跳过更新，旧字节码仍会被使用）。
+
+> **提交前重置示例仓库：** 跑 `scripts/set-tool-id.py reset`，把 4 个
+> 文件全部还原成 `*-CHANGEME-*` 占位符，避免把个人 Mint ID 推到上游。
+
+## 安装 — Skill（`focus-coach`）
+
+1. 在 <https://anna.partners/executa> 打开 **My Skills** → **Create Skill**。
+2. 填入名称（如 `focus-coach`），选择类型 `skill`，点击 **🪪 Mint**
+   预留服务器 ID（形如 `skill-{your-handle}-focus-coach-{uniq}`）。
+3. 上传或粘贴 `executas/focus-coach/SKILL.md` 作为 Skill 内容，点击 **Create**。
+4. 将 Mint 出的 Skill ID 填入 `manifest.json`（`required_executas`）。
+
+## 安装 — Anna App
+
+1. <https://anna.partners/executa> → **My Apps** → **Create App**。
+2. 填入 `app.json` 字段（slug = `focus-flow`，category = `productivity`）。
+3. 创建版本：通过 **Bundle 上传器** 上传 `manifest.json` + 整个 `bundle/`
+   目录；确保 manifest 里的 Tool / Skill `tool_id` 与上面 Mint 出的完全一致。
+4. matrix-nexus 校验：`AppManifest`（Pydantic）+ `validate_ui_section_static`
+   （CSP / view 几何 / `host_api.tools` 引用必须落在 `required_executas` /
+   `optional_executas` 中）。
+5. 发布 → **Install** → 在侧边栏打开。
+
+只有当用户账户已经安装了两个 Executa（Mint 出的 Tool 与 Skill ID），
+App 安装才会成功——Anna 会拒绝缺失 `required_executas` 的安装请求。
+
+---
+
+## 本地开发
+
+手动验证 Tool 插件：
+
+```bash
+cd executas/focus-session
+uv run python focus_session_plugin.py <<'EOF'
+{"jsonrpc":"2.0","id":1,"method":"describe"}
+{"jsonrpc":"2.0","id":2,"method":"invoke","params":{"tool":"session","arguments":{"action":"start","duration_minutes":1,"topic":"smoke test"}}}
+{"jsonrpc":"2.0","id":3,"method":"invoke","params":{"tool":"session","arguments":{"action":"get_state"}}}
+EOF
+```
+
+用真实 Pydantic schema 验证 manifest：
+
+```bash
+cd /path/to/matrix-nexus
+uv run python -c "
+import json
+from src.schemas.anna_app import AppManifest
+from src.services.anna_app_validator import validate_ui_section_static
+m = AppManifest.model_validate(json.load(open('/path/to/anna-app-focus-flow/manifest.json')))
+validate_ui_section_static(m)
+print('manifest OK')
+"
+```
+
+独立预览 bundle（不连接 host RPC）：
+
+```bash
+cd bundle
+python -m http.server 8080   # 然后访问 http://localhost:8080
+```
+
+会出现一条 toast 提示 host RPC 不可用，但布局仍可正常渲染。
+
+---
+
+## License
+
+MIT — 见 [`LICENSE`](../../LICENSE)。
+
+[schema]: https://github.com/openclaw/matrix-nexus/blob/main/src/schemas/anna_app.py

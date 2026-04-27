@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "permissions": [
+    "tools.invoke",
+    "chat.write_message",
+    "storage.get",
+    "storage.set",
+    "ui.svg"
+  ],
+  "required_executas": [
+    {
+      "tool_id": "tool-anna-focus-session-a33trjpv",
+      "min_version": "1.0.0",
+      "version": "latest"
+    },
+    {
+      "tool_id": "skill-CHANGEME-focus-coach-CHANGEME",
+      "version": "latest"
+    }
+  ],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Focus Flow app open. Treat the focus-session tool as the source of truth for timer state \u2014 call the focus-session Executa with method='session' and arguments {action:'get_state'} before commenting on the timer, and prefer {action:'start'} over freeform suggestions when the user wants to begin focusing. The Focus Coach skill defines tone and reflection protocol; follow it when responding inside this app's window.",
+  "user_message_prefix_template": "[Focus Flow] {user_message}",
+  "tags": ["productivity", "focus", "pomodoro", "deep-work"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Focus Flow",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 360, "h": 520 },
+        "default_size": { "w": 480, "h": 640 },
+        "max_size": { "w": 720, "h": 960 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "icon": "icon.svg"
+      }
+    ],
+    "host_api": {
+      "tools": ["required:tool-anna-focus-session-a33trjpv"],
+      "chat": ["write_message"],
+      "artifact": [],
+      "llm": [],
+      "fs": [],
+      "storage": ["get", "set"],
+      "prefs": [],
+      "window": ["set_title"]
+    },
+    "csp_overrides": {
+      "img-src": ["'self'", "data:", "blob:"],
+      "font-src": ["'self'", "data:"],
+      "style-src": ["'self'"],
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  }
+}
