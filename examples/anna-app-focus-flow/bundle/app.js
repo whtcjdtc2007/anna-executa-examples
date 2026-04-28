@@ -378,9 +378,7 @@ function bindUi() {
   els.primaryBtn.addEventListener("click", onPrimaryClick);
   els.resetBtn?.addEventListener("click", completeSession);
   els.coachBtn?.addEventListener("click", askCoach);
-  els.themeToggle?.addEventListener("click", () => {
-    document.documentElement.classList.toggle("theme-dark");
-  });
+  els.themeToggle?.addEventListener("click", toggleTheme);
   for (const chip of els.presets) {
     chip.addEventListener("click", () => {
       const m = parseInt(chip.dataset.minutes || "25", 10);
@@ -406,10 +404,54 @@ function setPresetDisabled(disabled) {
   for (const chip of els.presets) chip.disabled = !!disabled;
 }
 
-function honorSystemTheme() {
-  if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
-    document.documentElement.classList.add("theme-dark");
+// ---------------------------------------------------------------------------
+// Theme — CSS uses `[data-theme="light"]` / `[data-theme="dark"]` on <html>.
+// Defaults: CSS picks dark unless the OS is in light mode (handled by the
+// `prefers-color-scheme` media query in style.css). The toggle records an
+// explicit override that wins over both the system pref and the default.
+// We keep the override in localStorage so the choice survives reloads.
+// ---------------------------------------------------------------------------
+
+const THEME_STORAGE_KEY = "focusflow:theme";
+
+function effectiveTheme() {
+  const explicit = document.documentElement.getAttribute("data-theme");
+  if (explicit === "light" || explicit === "dark") return explicit;
+  return window.matchMedia?.("(prefers-color-scheme: light)").matches
+    ? "light"
+    : "dark";
+}
+
+function applyTheme(theme) {
+  // Only "light" / "dark" are valid; anything else clears the override and
+  // hands control back to the system pref via CSS.
+  if (theme === "light" || theme === "dark") {
+    document.documentElement.setAttribute("data-theme", theme);
+  } else {
+    document.documentElement.removeAttribute("data-theme");
   }
+}
+
+function toggleTheme() {
+  const next = effectiveTheme() === "dark" ? "light" : "dark";
+  applyTheme(next);
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, next);
+  } catch {
+    /* storage may be denied in sandboxed iframes; non-fatal */
+  }
+}
+
+function honorSystemTheme() {
+  // Restore an explicit user choice if there is one. Otherwise leave
+  // `data-theme` unset so the CSS media query drives the look automatically.
+  let saved = null;
+  try {
+    saved = localStorage.getItem(THEME_STORAGE_KEY);
+  } catch {
+    /* non-fatal */
+  }
+  if (saved === "light" || saved === "dark") applyTheme(saved);
 }
 
 function setBusy(on) {

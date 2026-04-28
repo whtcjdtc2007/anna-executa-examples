@@ -201,6 +201,29 @@ input {
   width: 16px;
   height: 16px;
 }
+/* Show the moon when dark is active (toggle goes → light), the sun when
+ * light is active (toggle goes → dark). Default = dark unless the system
+ * pref or an explicit override flips the page to light. */
+#theme-toggle .icon-sun {
+  display: none;
+}
+#theme-toggle .icon-moon {
+  display: block;
+}
+[data-theme="light"] #theme-toggle .icon-sun {
+  display: block;
+}
+[data-theme="light"] #theme-toggle .icon-moon {
+  display: none;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) #theme-toggle .icon-sun {
+    display: block;
+  }
+  :root:not([data-theme="dark"]) #theme-toggle .icon-moon {
+    display: none;
+  }
+}
 
 /* ---------- Cards ---------- */
 .card {
@@ -515,8 +538,20 @@ body.is-busy .chip {
   pointer-events: none;
   opacity: 0.7;
 }
-:root.theme-dark {
+
+/* Hint UA-styled controls (scrollbars, form widgets) about the active palette
+ * so they pick the right native colours. The actual token overrides live in
+ * the `:root` / `[data-theme="light"]` blocks at the top of the file. */
+:root {
   color-scheme: dark;
+}
+[data-theme="light"] {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+  }
 }
 
 /* ---------- Reduced motion ---------- */
