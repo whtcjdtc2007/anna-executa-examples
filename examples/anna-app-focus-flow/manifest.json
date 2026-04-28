@@ -3,8 +3,8 @@
   "permissions": [
     "tools.invoke",
     "chat.write_message",
-    "storage.get",
-    "storage.set",
+    "storage.read",
+    "storage.write",
     "ui.svg"
   ],
   "required_executas": [
@@ -14,7 +14,7 @@
       "version": "latest"
     },
     {
-      "tool_id": "skill-CHANGEME-focus-coach-CHANGEME",
+      "tool_id": "skill-anna-focus-coach-enq7vn7s",
       "version": "latest"
     }
   ],

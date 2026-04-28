@@ -158,6 +158,23 @@ def _focused_seconds(active: dict[str, Any]) -> int:
     return max(0, accumulated)
 
 
+def _active_view(active: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Return a copy of ``active`` enriched with derived fields the bundle UI
+    relies on (focused_seconds / remaining_seconds). Centralising this here
+    means every action returns the same shape, so the iframe never has to wait
+    for the next ``get_state`` poll just to learn the timer values.
+    """
+    if not active:
+        return None
+    view = dict(active)
+    focused = _focused_seconds(active)
+    view["focused_seconds"] = focused
+    view["remaining_seconds"] = max(
+        0, int(active.get("duration_seconds", 0)) - focused
+    )
+    return view
+
+
 # ---------------------------------------------------------------------------
 # Action implementations
 # ---------------------------------------------------------------------------
@@ -181,7 +198,7 @@ def _action_start(duration_minutes: int | None, topic: str) -> dict[str, Any]:
         "status": "running",
     }
     _save_state(state)
-    return {"active": state["active"]}
+    return {"active": _active_view(state["active"])}
 
 
 def _action_pause() -> dict[str, Any]:
@@ -194,7 +211,7 @@ def _action_pause() -> dict[str, Any]:
         active["status"] = "paused"
         active["running_since"] = None
         _save_state(state)
-    return {"active": active}
+    return {"active": _active_view(active)}
 
 
 def _action_resume() -> dict[str, Any]:
@@ -206,7 +223,7 @@ def _action_resume() -> dict[str, Any]:
         active["status"] = "running"
         active["running_since"] = _now()
         _save_state(state)
-    return {"active": active}
+    return {"active": _active_view(active)}
 
 
 def _action_complete(notes: str) -> dict[str, Any]:
@@ -234,18 +251,9 @@ def _action_complete(notes: str) -> dict[str, Any]:
 
 def _action_get_state() -> dict[str, Any]:
     state = _load_state()
-    active = state.get("active")
-    active_view = None
-    if active:
-        active_view = dict(active)
-        active_view["focused_seconds"] = _focused_seconds(active)
-        active_view["remaining_seconds"] = max(
-            0,
-            int(active.get("duration_seconds", 0)) - active_view["focused_seconds"],
-        )
     history = state.get("history", [])[:10]
     return {
-        "active": active_view,
+        "active": _active_view(state.get("active")),
         "today": _today_totals(state.get("history", [])),
         "recent": history,
     }
@@ -292,7 +300,15 @@ def handle_invoke(params: dict[str, Any]) -> Any:
     fn = TOOL_DISPATCH.get(tool_name)
     if fn is None:
         raise ValueError(f"unknown tool: {tool_name!r}")
-    return fn(**args)
+    # The Executa runtime expects an `InvokeResult` shape:
+    #   {"success": true, "data": <tool payload>}
+    # If we return the raw payload directly, `InvokeResult.from_dict` reads
+    # missing `success` as False and the host treats the call as a failure.
+    try:
+        payload = fn(**args)
+    except Exception as exc:  # surface tool errors via InvokeResult
+        return {"success": False, "error": f"{type(exc).__name__}: {exc}"}
+    return {"success": True, "data": payload}
 
 
 def handle_health(_params: dict[str, Any]) -> dict[str, Any]:
