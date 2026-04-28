@@ -82,8 +82,8 @@ stdio JSON-RPC contract.
 ```json
 {
   "schema": 1,
-  "permissions": ["tools.invoke", "chat.write_message", "storage.get",
-                  "storage.set", "ui.svg"],
+  "permissions": ["tools.invoke", "chat.write_message", "storage.read",
+                  "storage.write", "ui.svg"],
   "required_executas": [
     { "tool_id": "tool-CHANGEME-focus-session-CHANGEME", "min_version": "1.0.0" },
     { "tool_id": "skill-CHANGEME-focus-coach-CHANGEME" }
@@ -154,7 +154,11 @@ Notes:
 - The whole `window` namespace is special-cased to be allowed regardless of
   the `host_api.window` allow-list — listing methods there is informational.
 - `permissions[]` at the manifest root is a list of free-form strings used
-  for display / audit; **runtime ACL is enforced by `host_api.*`**.
+  for display / audit; **runtime ACL is enforced by `host_api.*`**. The
+  validator does, however, restrict `permissions[]` to a known vocabulary
+  — use `storage.read` / `storage.write` (not `storage.get` / `storage.set`)
+  here, even though the runtime methods are `storage.get` / `storage.set`
+  / `storage.delete`.
 
 ---
 
@@ -278,14 +282,30 @@ Then register it as an Executa at <https://anna.partners/executa>:
 ## Install — Anna App
 
 1. <https://anna.partners/executa> → **My Apps** → **Create App**.
-2. Fill in `app.json` fields (slug = `focus-flow`, category = `productivity`).
-3. Create a version: upload `manifest.json` plus the `bundle/` directory via
-   the **Bundle uploader**. Make sure both Tool and Skill `tool_id`s in
-   the manifest match the IDs you minted above.
-4. matrix-nexus validates: `AppManifest` (Pydantic) + `validate_ui_section_static`
-   (CSP / view geometry / `host_api.tools` references must resolve to declared
-   `required_executas` / `optional_executas`).
-5. Publish → **Install** → open the app from your sidebar.
+2. On the **Listing** tab, fill in `app.json` fields (slug = `focus-flow`,
+   category = `productivity`) and save.
+3. Create a version on the **Versions** tab:
+   - Click *Create*, paste the contents of `manifest.json` into the
+     manifest text box, set the version string, and submit. The manifest
+     is sent as a JSON object — there is no separate file upload for it.
+   - On the new version row, click **Bundle** and upload every file under
+     `bundle/` (`index.html`, `app.js`, `style.css`, `icon.svg`, …) through
+     the bundle uploader. Files are streamed directly to object storage
+     and finalized server-side.
+   - Make sure each `required_executas[].tool_id` in the manifest is
+     **literally identical** to the Tool / Skill IDs you minted above
+     (the runtime dispatcher does strict string equality).
+4. matrix-nexus runs three validation layers on the manifest:
+   - `AppManifest` (Pydantic v2, `extra="forbid"`) for shape & types.
+   - `validate_ui_section_static` for CSP, view geometry, and the rule
+     that every `host_api.tools` entry must resolve to a declared
+     `required_executas` / `optional_executas` ID.
+   - A DB check that every referenced Executa exists and its visibility
+     allows app bundling (`app_bundled` or `public`).
+5. **Submit for review** → wait for an admin to *Approve* the app →
+   **Publish** the version → **Install** from the app's detail page →
+   open it from your sidebar. Publish is rejected until the app reaches
+   the `APPROVED` (or already `PUBLISHED`) state.
 
 Both Executas (the minted Tool and Skill IDs) must be installed in the
 user's account before app install succeeds — Anna refuses installs whose

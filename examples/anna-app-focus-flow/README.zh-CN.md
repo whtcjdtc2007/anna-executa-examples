@@ -79,8 +79,8 @@ Executa，bundle 只需在 `action` 上切换。
 ```json
 {
   "schema": 1,
-  "permissions": ["tools.invoke", "chat.write_message", "storage.get",
-                  "storage.set", "ui.svg"],
+  "permissions": ["tools.invoke", "chat.write_message", "storage.read",
+                  "storage.write", "ui.svg"],
   "required_executas": [
     { "tool_id": "tool-CHANGEME-focus-session-CHANGEME", "min_version": "1.0.0" },
     { "tool_id": "skill-CHANGEME-focus-coach-CHANGEME" }
@@ -146,7 +146,11 @@ Executa，bundle 只需在 `action` 上切换。
 - 整个 `window` 命名空间被特例放行，不论 `host_api.window` 列表是什么——
   在那里列出方法只是**展示性**的。
 - manifest 根的 `permissions[]` 是自由文本，仅用于展示 / 审计；
-  **运行时 ACL 由 `host_api.*` 强制执行**。
+  **运行时 ACL 由 `host_api.*` 强制执行**。但校验器会限制
+  `permissions[]` 只能使用已知词汇——这里要用
+  `storage.read` / `storage.write`（不是 `storage.get` / `storage.set`），
+  尽管运行时实际的方法名是 `storage.get` / `storage.set` /
+  `storage.delete`。
 
 ---
 
@@ -261,13 +265,27 @@ uv tool uninstall tool-CHANGEME-focus-session-CHANGEME    # 清理
 ## 安装 — Anna App
 
 1. <https://anna.partners/executa> → **My Apps** → **Create App**。
-2. 填入 `app.json` 字段（slug = `focus-flow`，category = `productivity`）。
-3. 创建版本：通过 **Bundle 上传器** 上传 `manifest.json` + 整个 `bundle/`
-   目录；确保 manifest 里的 Tool / Skill `tool_id` 与上面 Mint 出的完全一致。
-4. matrix-nexus 校验：`AppManifest`（Pydantic）+ `validate_ui_section_static`
-   （CSP / view 几何 / `host_api.tools` 引用必须落在 `required_executas` /
-   `optional_executas` 中）。
-5. 发布 → **Install** → 在侧边栏打开。
+2. 在 **Listing** 标签页填入 `app.json` 字段（slug = `focus-flow`，
+   category = `productivity`）并保存。
+3. 在 **Versions** 标签页创建版本：
+   - 点 *Create*，把 `manifest.json` 的内容粘进 manifest 文本框，填写
+     版本号后提交。manifest 是以 JSON 对象提交的，不需要单独的文件上传。
+   - 在新版本行点 **Bundle**，通过 Bundle 上传器把 `bundle/` 目录下的
+     所有文件（`index.html`、`app.js`、`style.css`、`icon.svg`…）逐一
+     上传。文件会被直传到对象存储，并由服务端最终化。
+   - 确保 manifest 中每个 `required_executas[].tool_id` 与上面 Mint 出的
+     Tool / Skill ID **字面完全一致**（运行时 dispatcher 做严格字符串
+     相等比较）。
+4. matrix-nexus 对 manifest 跑三层校验：
+   - `AppManifest`（Pydantic v2，`extra="forbid"`）校验结构与类型。
+   - `validate_ui_section_static` 校验 CSP、view 几何，以及
+     `host_api.tools` 中的每一项必须落在 `required_executas` /
+     `optional_executas` 中。
+   - 数据库校验：被引用的 Executa 必须存在，且可见性允许被 App 打包
+     （`app_bundled` 或 `public`）。
+5. **提交审核** → 等管理员 *Approve* → **Publish** 该版本 → 在 App
+   详情页 **Install** → 在侧边栏打开。App 未达到 `APPROVED`
+   （或已经 `PUBLISHED`）状态前，发布会被拒绝。
 
 只有当用户账户已经安装了两个 Executa（Mint 出的 Tool 与 Skill ID），
 App 安装才会成功——Anna 会拒绝缺失 `required_executas` 的安装请求。
