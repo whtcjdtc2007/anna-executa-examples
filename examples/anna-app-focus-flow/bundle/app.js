@@ -29,7 +29,7 @@
  */
 
 // Replace this with the actual ID minted on https://anna.partners/executa.
-const TOOL_ID = "tool-anna-focus-session-a33trjpv";
+const TOOL_ID = "tool-test-focus-session-12345678";
 // Method on the running plugin (matches `tool` in the plugin's describe()).
 const TOOL_METHOD = "session";
 const STORAGE_KEY = "focus-flow:last-topic";

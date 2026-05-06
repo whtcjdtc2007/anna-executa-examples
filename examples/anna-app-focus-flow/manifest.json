@@ -1,5 +1,5 @@
 {
-  "schema": 1,
+  "schema": 2,
   "permissions": [
     "tools.invoke",
     "chat.write_message",
@@ -9,12 +9,12 @@
   ],
   "required_executas": [
     {
-      "tool_id": "tool-anna-focus-session-a33trjpv",
+      "tool_id": "tool-test-focus-session-12345678",
       "min_version": "1.0.0",
       "version": "latest"
     },
     {
-      "tool_id": "skill-anna-focus-coach-enq7vn7s",
+      "tool_id": "skill-CHANGEME-focus-coach-CHANGEME",
       "version": "latest"
     }
   ],
@@ -44,7 +44,7 @@
       }
     ],
     "host_api": {
-      "tools": ["required:tool-anna-focus-session-a33trjpv"],
+      "tools": ["required:tool-test-focus-session-12345678"],
       "chat": ["write_message"],
       "artifact": [],
       "llm": [],
@@ -60,5 +60,10 @@
       "script-src": ["'self'"]
     },
     "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "fixtures": ["fixtures/*.jsonl"],
+    "seed_storage": {},
+    "user_id": 1
   }
 }

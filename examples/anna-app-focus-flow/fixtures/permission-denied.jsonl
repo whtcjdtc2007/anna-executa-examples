@@ -1,0 +1,2 @@
+{"t": 0,    "dir": "out", "ns": "window", "method": "hello",  "args": {}, "result": {"wid": "dev-wid", "user_id": 1}}
+{"t": 50,   "dir": "out", "ns": "fs",     "method": "read",   "args": {"path": "/etc/passwd"}, "outcome": "denied", "error_code": "permission_denied"}

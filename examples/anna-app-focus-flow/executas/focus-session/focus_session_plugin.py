@@ -42,7 +42,7 @@ MANIFEST: dict[str, Any] = {
     # MUST equal the minted tool_id from https://anna.partners/executa.
     # Use ``scripts/set-tool-id.py apply --tool <minted>`` to fill this in
     # together with pyproject.toml, manifest.json, and bundle/app.js.
-    "name": "tool-anna-focus-session-a33trjpv",
+    "name": "tool-test-focus-session-12345678",
     "display_name": "Focus Session",
     "version": "1.0.0",
     "description": (

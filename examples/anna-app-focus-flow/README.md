@@ -315,7 +315,74 @@ user's account before app install succeeds — Anna refuses installs whose
 
 ## Local development
 
-Verify the tool plugin manually:
+The recommended loop uses [`@anna-ai/cli`](https://www.npmjs.com/package/@anna-ai/cli)
+(installed as a devDependency in this example's `package.json`). It spawns the
+harness on `http://localhost:5180`, auto-discovers the executa under
+`executas/focus-session/`, and proxies `anna.*` RPCs to a real Python bridge
+(`anna-app-runtime-local`) — exactly the same surface Anna uses in production.
+
+### 1. One-time setup
+
+```bash
+# from the repo root
+pnpm install                # installs @anna-ai/cli for every example
+uv --version                # uv is required to spawn the bridge / executas
+anna-app doctor             # checks uv, runtime pin, etc.
+```
+
+> If `which anna-app` finds nothing, run scripts via `pnpm` (e.g.
+> `pnpm --filter anna-app-focus-flow dev`) so the local CLI binary is on PATH.
+
+### 2. Run the dev harness
+
+```bash
+cd examples/anna-app-focus-flow
+pnpm dev                    # → anna-app dev
+# Harness UI:        http://localhost:5180
+# RPC log panel:     right side of the harness window
+# Bundle hot-reload: edits under bundle/ trigger reload
+```
+
+On first `tools.invoke`, the bridge lazy-spawns the executa with
+`uv run --project executas/focus-session <minted-tool-id>`. If the executa
+process exits immediately, the harness surfaces `tool_failed: executa
+process exited` in the RPC log — `cd executas/focus-session && uv sync`
+will print the real dependency-resolution error.
+
+### 3. Validate the manifest
+
+```bash
+pnpm validate               # → anna-app validate --strict
+```
+
+This runs the same three layers the server applies on submission
+(`AppManifest` Pydantic model + `validate_ui_section_static` + bundle
+file checks).
+
+### 4. Run the contract tests
+
+The pytest suite in `tests/plugin/` uses the published
+[`anna-executa-test`](https://pypi.org/project/anna-executa-test/) helper to
+spawn the plugin and assert the JSON-RPC contract.
+
+```bash
+cd executas/focus-session
+uv sync --extra dev         # installs pytest + anna-executa-test
+uv run pytest ../../tests/plugin -q
+```
+
+The vitest suite (`pnpm test`) covers the bundle / fixture parsing.
+
+### 5. Replay recorded fixtures
+
+```bash
+pnpm fixture:verify         # replay fixtures/*.jsonl through the harness
+pnpm fixture:summarize      # human-readable transcript of the happy path
+```
+
+### Lower-level checks (debug only)
+
+Drive the plugin's stdio JSON-RPC directly, bypassing the harness:
 
 ```bash
 cd executas/focus-session
@@ -326,28 +393,12 @@ uv run python focus_session_plugin.py <<'EOF'
 EOF
 ```
 
-Validate the manifest against the live Pydantic schema:
+Preview the bundle without host RPCs (a toast warns the SDK is unavailable;
+the layout still renders):
 
 ```bash
-cd /path/to/matrix-nexus
-uv run python -c "
-import json
-from src.schemas.anna_app import AppManifest
-from src.services.anna_app_validator import validate_ui_section_static
-m = AppManifest.model_validate(json.load(open('/path/to/anna-app-focus-flow/manifest.json')))
-validate_ui_section_static(m)
-print('manifest OK')
-"
+cd bundle && python -m http.server 8080   # http://localhost:8080
 ```
-
-Preview the bundle standalone (no host RPCs):
-
-```bash
-cd bundle
-python -m http.server 8080   # then open http://localhost:8080
-```
-
-A toast warns that host RPC is unavailable; the layout still renders.
 
 ---
 

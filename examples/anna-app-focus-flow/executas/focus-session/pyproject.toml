@@ -5,7 +5,7 @@
 # files (this one + focus_session_plugin.py + manifest.json + bundle/app.js)
 # at once.
 [project]
-name = "tool-anna-focus-session-a33trjpv"
+name = "tool-test-focus-session-12345678"
 version = "1.0.0"
 description = "Focus Session — Executa stdio tool plugin for the Focus Flow Anna App"
 requires-python = ">=3.10"
@@ -13,8 +13,14 @@ authors = [{ name = "Acme Labs" }]
 license = { text = "MIT" }
 dependencies = []
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "anna-executa-test>=0.1.0",
+]
+
 [project.scripts]
-"tool-anna-focus-session-a33trjpv" = "focus_session_plugin:main"
+"tool-test-focus-session-12345678" = "focus_session_plugin:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
