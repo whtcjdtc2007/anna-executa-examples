@@ -1,0 +1,5 @@
+{"t": 0,    "dir": "out", "ns": "window",  "method": "hello",  "args": {}, "result": {"wid": "dev-wid", "user_id": 1}}
+{"t": 12,   "dir": "out", "ns": "tools",   "method": "invoke", "args": {"tool_id": "tool-anna-focus-session-a33trjpv", "method": "session", "args": {"action": "get_state"}}, "result": {"success": true, "data": {"active": null}}}
+{"t": 280,  "dir": "out", "ns": "tools",   "method": "invoke", "args": {"tool_id": "tool-anna-focus-session-a33trjpv", "method": "session", "args": {"action": "start", "duration_minutes": 25, "topic": "ship phase 9"}}, "result": {"success": true, "data": {"active": {"view": {"status": "running", "remaining_seconds": 1500}}}}}
+{"t": 350,  "dir": "out", "ns": "window",  "method": "set_title", "args": {"title": "Focus · 25:00"}, "result": {"ok": true}}
+{"t": 1800, "dir": "in",  "name": "auth.refresh", "payload": {"reason": "rotate"}}

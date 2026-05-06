@@ -1,0 +1,17 @@
+{
+  "name": "anna-app-focus-flow",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Focus Flow — Anna App example with bundle + executa harness tests.",
+  "scripts": {
+    "dev": "anna-app dev",
+    "validate": "anna-app validate --strict",
+    "fixture:verify": "anna-app fixture verify fixtures/*.jsonl",
+    "fixture:summarize": "anna-app fixture summarize fixtures/happy-path.jsonl",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.9",
+    "vitest": "^2.1.0"
+  }
+}

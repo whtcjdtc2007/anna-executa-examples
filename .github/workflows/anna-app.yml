@@ -1,0 +1,49 @@
+name: anna-app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/anna-app-focus-flow/**"
+  pull_request:
+    paths:
+      - "examples/anna-app-focus-flow/**"
+
+defaults:
+  run:
+    working-directory: examples/anna-app-focus-flow
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: corepack enable
+      - run: pnpm install
+      - run: pnpm exec anna-app validate --strict
+      - run: pnpm exec anna-app fixture verify fixtures/*.jsonl
+
+  bundle-tests:
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+      - run: corepack enable
+      - run: pnpm install
+      - run: pnpm test
+
+  plugin-tests:
+    runs-on: ubuntu-latest
+    needs: validate
+    defaults:
+      run:
+        working-directory: examples/anna-app-focus-flow/executas/focus-session
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --extra dev
+      - run: uv run pytest ../../tests/plugin -v
