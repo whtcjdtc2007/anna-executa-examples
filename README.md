@@ -12,52 +12,53 @@ Executa is the plugin extension system for Anna Agent. Developers can write tool
 
 ```
 anna-executa-examples/
-├── docs/                       # Development documentation
-│   ├── protocol-spec.md        # Protocol specification
-│   ├── authorization.md        # Platform authorization guide
-│   ├── binary-distribution.md  # Binary distribution guide
-│   └── common-pitfalls.md      # ⚠️ Read this first if your plugin shows as "Stopped"
+├── docs/                                # Development documentation
+│   ├── protocol-spec.md                 # Protocol specification
+│   ├── authorization.md                 # Platform authorization guide
+│   ├── binary-distribution.md           # Binary distribution guide
+│   ├── sampling.md                      # Reverse LLM sampling (sampling/createMessage)
+│   └── common-pitfalls.md               # ⚠️ Read this first if your plugin shows as "Stopped"
 ├── examples/
-│   ├── python/                 # Python plugin examples
-│   │   ├── example_plugin.py       # Basic plugin (text processing)
-│   │   ├── credential_plugin.py    # Credential plugin (Weather API Key)
-│   │   ├── google_oauth_plugin.py  # Google OAuth plugin (Gmail)
-│   │   ├── pyproject.toml
-│   │   ├── build_binary.sh
-│   │   └── README.md
-│   ├── nodejs/                 # Node.js plugin examples
-│   │   ├── example_plugin.js       # Basic plugin (JSON/Base64/Hash)
-│   │   ├── credential_plugin.js    # Credential plugin (GitHub API Key)
-│   │   ├── google_oauth_plugin.js  # Google OAuth plugin (Calendar)
-│   │   ├── package.json
-│   │   ├── build_binary.sh
-│   │   └── README.md
-│   ├── go/                     # Go plugin examples
-│   │   ├── main.go                 # Basic plugin (System info/Hash)
-│   │   ├── credential_plugin.go    # Credential plugin (Notion API Key)
-│   │   ├── google_oauth_plugin.go  # Google OAuth plugin (Drive)
-│   │   ├── go.mod
+│   ├── python/                          # Python plugin examples (each in its own subdir)
+│   │   ├── basic-tool/                  # Basic plugin (text processing)
+│   │   ├── credential-tool/             # Credential plugin (Weather API Key)
+│   │   ├── google-oauth-tool/           # Google OAuth plugin (Gmail)
+│   │   ├── sampling-summarizer/         # Sampling plugin v2 (reverse sampling/createMessage)
+│   │   └── build_binary.sh              # Builds all examples (or one) via PyInstaller
+│   ├── nodejs/                          # Node.js plugin examples
+│   │   ├── example_plugin.js            # Basic plugin (JSON/Base64/Hash)
+│   │   ├── credential_plugin.js         # Credential plugin (GitHub API Key)
+│   │   ├── google_oauth_plugin.js       # Google OAuth plugin (Calendar)
+│   │   ├── sampling-tool.js             # Sampling plugin v2
+│   │   └── build_binary.sh
+│   ├── go/                              # Go plugin examples
+│   │   ├── main.go                      # Basic plugin (system info / hash)
+│   │   ├── credential_plugin.go         # Credential plugin (Notion API Key)
+│   │   ├── google_oauth_plugin.go       # Google OAuth plugin (Drive)
+│   │   ├── sampling-tool/               # Sampling plugin v2 (separate go.mod)
 │   │   ├── build.sh
-│   │   ├── Makefile
-│   │   └── README.md
-│   └── anna-app-focus-flow/    # ⭐ Complete Anna App example (tool + skill + UI bundle + manifest)
-│       ├── manifest.json           # AppManifest schema:1
-│       ├── app.json                # App metadata
-│       ├── bundle/                 # Premium glassmorphism UI (HTML/CSS/JS)
-│       ├── executas/focus-session/ # 1× Executa TOOL (Python stdio)
-│       ├── executas/focus-coach/   # 1× Executa SKILL (SKILL.md)
-│       └── README.md
+│   │   └── Makefile
+│   ├── multifile-binary/                # Multi-file Binary distribution examples
+│   │   └── python-pyinstaller-onedir/   # PyInstaller --onedir + manifest.json
+│   └── anna-app-focus-flow/             # ⭐ Complete Anna App (tool + skill + UI bundle + manifest)
+├── sdk/                                 # Reference SDKs used by the sampling examples
+│   ├── python/                          # executa_sdk
+│   ├── nodejs/                          # @anna/executa-sdk
+│   └── go/                              # github.com/anna/executa-sdk
 └── .github/
     └── workflows/
-        └── build-release.yml   # Multi-platform CI/CD example
+        ├── build-release.yml            # Multi-platform CI/CD example
+        └── anna-app.yml                 # Anna App packaging workflow
 ```
 
 ## Quick Start
 
 ### Python Plugin
 
+Each Python example is a self-contained subdirectory with its own `pyproject.toml` and PyInstaller spec.
+
 ```bash
-cd examples/python
+cd examples/python/basic-tool
 
 # Run directly
 python example_plugin.py
@@ -65,8 +66,11 @@ python example_plugin.py
 # Test the protocol
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python example_plugin.py 2>/dev/null
 
-# Build as a standalone binary
-./build_binary.sh --test
+# Install via uv
+uv tool install . && example-text-tool
+
+# Build as a standalone binary (from examples/python/, builds all subdirs or one)
+cd .. && ./build_binary.sh --test
 ```
 
 ### Node.js Plugin
@@ -89,7 +93,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node example_plugin.js 2>/
 ```bash
 cd examples/go
 
-# Run directly
+# Run directly (each plugin has its own func main — pass the file explicitly)
 go run main.go
 
 # Test the protocol
@@ -98,7 +102,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run main.go 2>/dev/null
 # Build a native binary
 go build -o dist/example-go-tool main.go
 
-# Build binaries for all platforms
+# Build binaries for all platforms / all plugins
 make all
 ```
 
@@ -108,7 +112,8 @@ Each language includes a credential plugin example demonstrating how to declare 
 
 ```bash
 # Python — Weather query (requires WEATHER_API_KEY)
-echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/credential-tool/credential_plugin.py 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | \
+  python examples/python/credential-tool/credential_plugin.py 2>/dev/null
 
 # Provide credentials via environment variables for local development
 WEATHER_API_KEY=your_key python examples/python/credential-tool/credential_plugin.py
@@ -126,7 +131,8 @@ Each language also includes a Google OAuth plugin example showing how to consume
 
 ```bash
 # Python — Gmail read (requires GMAIL_ACCESS_TOKEN via Google OAuth)
-echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/google-oauth-tool/google_oauth_plugin.py 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | \
+  python examples/python/google-oauth-tool/google_oauth_plugin.py 2>/dev/null
 
 # Node.js — Google Calendar (requires GOOGLE_ACCESS_TOKEN via Google OAuth)
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/google_oauth_plugin.js 2>/dev/null
@@ -138,6 +144,21 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/google_
 GOOGLE_ACCESS_TOKEN=ya29.xxx node examples/nodejs/google_oauth_plugin.js
 ```
 
+### Sampling Plugins (v2) — Reverse `sampling/createMessage`
+
+Plugins can ask the host to perform an LLM completion on their behalf. The host owns model selection, billing and quota — the plugin needs no API key. See [docs/sampling.md](docs/sampling.md).
+
+```bash
+# Python
+python examples/python/sampling-summarizer/sampling_summarizer.py
+
+# Node.js
+node examples/nodejs/sampling-tool.js
+
+# Go (separate go.mod inside the subdirectory)
+cd examples/go/sampling-tool && go run ./...
+```
+
 ## Distribution Methods
 
 | Method | Installation | Use Case |
@@ -147,13 +168,15 @@ GOOGLE_ACCESS_TOKEN=ya29.xxx node examples/nodejs/google_oauth_plugin.js
 | **npm** | `npm install -g <package>` | Node.js tools |
 | **Homebrew** | `brew install <formula>` | macOS / Linux |
 | **Binary** | HTTP download | Pre-built binaries (any language) |
-| **Local** | Local archive on Agent host (`.tar.gz`/`.tgz`/`.zip` or raw exe) | Dev iteration, internal/air-gapped distribution — same install pipeline as Binary, supports multi-file binaries |
+| **Local** | Local archive on Agent host (`.tar.gz`/`.tgz`/`.zip` or raw exe) | Dev iteration, internal/air-gapped distribution — same install pipeline as Binary, supports multi-file binaries (see [`examples/multifile-binary/`](examples/multifile-binary/)) |
 
 ## Documentation
 
 - [Protocol Specification](docs/protocol-spec.md) — Full JSON-RPC 2.0 over stdio protocol definition
 - [Platform Authorization](docs/authorization.md) — Credential declaration, auto-injection, and platform authorization integration
 - [Binary Distribution Guide](docs/binary-distribution.md) — Building, signing, and multi-platform deployment
+- [Reverse Sampling](docs/sampling.md) — Plugins requesting LLM completions from the host
+- [Common Pitfalls](docs/common-pitfalls.md) — Read this first when a plugin shows as "Stopped"
 - [Anna App Example — Focus Flow](examples/anna-app-focus-flow/README.md) — End-to-end Anna App: 1 tool + 1 skill + premium UI bundle + full app manifest
 
 ## License
