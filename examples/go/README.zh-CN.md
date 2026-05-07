@@ -11,6 +11,7 @@ For English version, see [README.md](README.md)
 | **基础插件** | `main.go` | 系统信息查询、哈希计算、字符串工具 |
 | **凭据插件** | `credential_plugin.go` | Notion 查询工具，演示凭据声明与平台统一授权集成（API Key 模式） |
 | **Google OAuth 插件** | `google_oauth_plugin.go` | Google Drive 文件浏览工具，演示通过平台授权使用 Google OAuth2 访问令牌 |
+| **Sampling 插件（v2）** | `sampling-tool/` | 文本摘要器，通过反向 `sampling/createMessage` 请 host 代理完成一次 LLM 推理（插件无需 API key，模型选择/计费/配额均由 host 接管）。与其他 Go 示例不同，该示例位于独立子目录中，拥有自己的 `go.mod`（使用 `replace` 指向本地的 Go SDK）。详见 [docs/sampling.zh-CN.md](../../docs/sampling.zh-CN.md)。 |
 
 > **注意：** 每个文件都有自己的 `func main()`。使用 `go run <文件>.go` 运行特定插件，不要使用 `go run .`。
 
@@ -235,6 +236,40 @@ func toolMyTool(args map[string]any) map[string]any {
 case "my_tool":
     result = toolMyTool(args)
 ```
+
+## 使用 Host LLM Sampling（Executa v2）
+
+`sampling-tool/` 演示了长期运行的插件如何请 host（Anna）代理完成一次
+LLM 推理 —— 插件从不持有 API key，也不选择模型。与本目录其他 Go
+示例不同，它位于独立子目录中，拥有自己的 `go.mod`（通过 `replace`
+指向 `../../../sdk/go`），以便使用本地 Sampling SDK。
+
+关键要点（示例中已接好线）：
+
+1. **v2 握手。** 实现 `initialize`，以 `protocolVersion: "2.0"` 和
+   `client_capabilities: { sampling: {} }` 响应。
+2. **Manifest 声明。** 在 `describe` 返回的 manifest 中加上
+   `host_capabilities: ["llm.sample"]`，否则 Nexus 会以
+   `-32008 not_negotiated` 拒绝。
+3. **反向 RPC。** 使用 [`sdk/go/sampling`](../../sdk/go/sampling/sampling.go)：
+
+   ```go
+   import sampling "github.com/anna-executa/sdk/go/sampling"
+
+   client := sampling.New(nil) // 默认使用 stdin/stdout
+   res, err := client.CreateMessage(sampling.CreateMessageRequest{
+       Messages:     []sampling.Message{{Role: "user", Content: sampling.TextContent{Type: "text", Text: "请总结…"}}},
+       MaxTokens:    400,
+       SystemPrompt: "你是一个简洁的助手。",
+       // 不传 ModelPreferences → host 回退到用户的 preferred_model。
+       Metadata:     map[string]any{"executa_invoke_id": invokeID},
+   }, 60*time.Second)
+   ```
+
+4. **用户授权。** 最终用户需在 Anna Admin 为该 Executa 打开 sampling
+   开关（写入 `sampling_grant.enabled = true`）。
+
+完整线协议与错误码：[docs/sampling.zh-CN.md](../../docs/sampling.zh-CN.md)。
 
 ## Go 的优势
 

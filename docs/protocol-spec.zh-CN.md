@@ -314,6 +314,22 @@ Agent 定期调用，确认插件进程仍在正常运行。
 | `-32602` | Invalid params | 参数缺失或类型错误 |
 | `-32603` | Internal error | 工具执行时发生异常 |
 
+### Sampling 专用错误码（v2）
+
+Host 在响应 `sampling/createMessage` 时可能返回（详见 [sampling.zh-CN.md](sampling.zh-CN.md)）：
+
+| 码 | 名称 | 含义 |
+|----|------|------|
+| `-32001` | `not_granted` | 用户未授予该 Executa 的 `sampling_grant` |
+| `-32002` | `quota_exceeded` | 用户账户配额耗尽 |
+| `-32003` | `provider_error` | 上游 LLM 提供商错误 |
+| `-32004` | `invalid_request` | sampling 参数非法 |
+| `-32005` | `timeout` | 超过 host 设定的墙钟预算 |
+| `-32006` | `max_calls_exceeded` | 单次 invoke 内 sampling 次数超限 |
+| `-32007` | `max_tokens_exceeded` | 单次 invoke 内累计 token 超限 |
+| `-32008` | `not_negotiated` | host 未协商到 v2，或插件 manifest 未声明 `host_capabilities: ["llm.sample"]` |
+| `-32009` | `user_denied` | 用户显式拒绝该次 sampling |
+
 ## 超时
 
 | 方法 | 默认超时 | 说明 |
@@ -326,16 +342,77 @@ Agent 定期调用，确认插件进程仍在正常运行。
 
 ```
 1. Agent 启动插件进程 (fork + exec)
-2. Agent → stdin: describe
-3. Plugin → stdout: manifest (工具列表)
-4. Agent 注册工具到 LLM tool schema
-5. 循环:
+2. (仅 v2) Agent → stdin: initialize {protocolVersion:"2.0", host_capabilities}
+   Plugin → stdout: { protocolVersion, serverInfo, client_capabilities? }
+   （未实现 initialize 的插件直接返回 method-not-found，Agent 自动回退到 v1）
+3. Agent → stdin: describe
+4. Plugin → stdout: manifest (工具列表、host_capabilities …)
+5. Agent 注册工具到 LLM tool schema
+6. 循环:
    a. LLM 决定调用工具
-   b. Agent → stdin: invoke {tool, arguments}
-   c. Plugin → stdout: result / error
-6. Agent 可选: 定期发送 health 检查
-7. Agent 终止: 关闭 stdin → 插件退出
+   b. Agent → stdin: invoke {tool, arguments, invoke_id?, sampling_token?}
+   c. Plugin（可选）→ stdout: sampling/createMessage {…}
+      Agent → stdin: response {result|error}
+   d. Plugin → stdout: invoke result / error
+7. Agent 可选: 定期发送 health 检查
+8. Agent 终止: 关闭 stdin → 插件退出
 ```
+
+## 协议 v2 —— `initialize` 握手与反向 RPC
+
+Executa **2.0** 完全向后兼容 **1.1**。Agent 启动后首先发送 `initialize`；
+若插件未实现，Agent 自动回退到 v1（无反向 RPC，无 sampling 能力）。
+
+**请求（Agent → Plugin）：**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 0,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2.0",
+    "host_capabilities": { "llm.sample": true }
+  }
+}
+```
+
+**响应（Plugin → Agent）：**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 0,
+  "result": {
+    "protocolVersion": "2.0",
+    "serverInfo": { "name": "my-tool", "version": "0.1.0" },
+    "client_capabilities": { "sampling": {} },
+    "capabilities": {}
+  }
+}
+```
+
+协商完成后，**反向 RPC 方法可用**：
+
+- `sampling/createMessage` —— 插件请求 host 执行一次 LLM 补全。
+  完整 payload 与策略见 [sampling.zh-CN.md](sampling.zh-CN.md)。插件还
+  必须在 manifest 中声明 `host_capabilities: ["llm.sample"]`，否则 host
+  会以 `-32008 not_negotiated` 拒绝。
+
+v2 协商成功后，每次 `invoke` 都会附带两个新参数：
+
+```json
+{
+  "tool": "summarize",
+  "arguments": { "...": "..." },
+  "invoke_id": "<uuid hex>",
+  "sampling_token": "<短期 JWT，仅当用户授予 sampling 时存在>"
+}
+```
+
+`invoke_id` 是单次 invoke 的关联 ID，插件每次发起 `sampling/createMessage`
+时 **必须** 在 `metadata` 中回传，以便计费审计将 sampling 支出归到原始
+工具调用上。
 
 ## 凭据与平台统一授权
 

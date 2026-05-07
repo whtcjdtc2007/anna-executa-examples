@@ -20,7 +20,7 @@ Binary 分发允许你将插件编译为**独立可执行文件**，无需目标
 
 | 语言 | 构建工具 | 示例目录 | 构建命令 |
 |------|---------|---------|---------|
-| Python | PyInstaller / Nuitka | `examples/python/` | `./build_binary.sh` |
+| Python | PyInstaller / Nuitka | `examples/python/<subdir>/` | `examples/python/build_binary.sh`（构建全部）或 `cd <subdir> && ../build_binary.sh` |
 | Node.js | pkg / nexe / esbuild+sea | `examples/nodejs/` | `./build_binary.sh` |
 | Go | `go build` | `examples/go/` | `make all` |
 

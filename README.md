@@ -108,10 +108,10 @@ Each language includes a credential plugin example demonstrating how to declare 
 
 ```bash
 # Python — Weather query (requires WEATHER_API_KEY)
-echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/credential_plugin.py 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/credential-tool/credential_plugin.py 2>/dev/null
 
 # Provide credentials via environment variables for local development
-WEATHER_API_KEY=your_key python examples/python/credential_plugin.py
+WEATHER_API_KEY=your_key python examples/python/credential-tool/credential_plugin.py
 
 # Node.js — GitHub query (requires GITHUB_TOKEN)
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/credential_plugin.js 2>/dev/null
@@ -126,7 +126,7 @@ Each language also includes a Google OAuth plugin example showing how to consume
 
 ```bash
 # Python — Gmail read (requires GMAIL_ACCESS_TOKEN via Google OAuth)
-echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/google_oauth_plugin.py 2>/dev/null
+echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python examples/python/google-oauth-tool/google_oauth_plugin.py 2>/dev/null
 
 # Node.js — Google Calendar (requires GOOGLE_ACCESS_TOKEN via Google OAuth)
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node examples/nodejs/google_oauth_plugin.js 2>/dev/null

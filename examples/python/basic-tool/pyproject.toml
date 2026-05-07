@@ -1,13 +1,14 @@
 [project]
 name = "example-text-tool"
 version = "1.0.0"
-description = "Example Executa plugin — demonstrates how to create text processing tools callable by Anna Agent"
+description = "Example Executa plugin — text processing tools (word_count, text_transform, batch_word_count)"
 requires-python = ">=3.10"
 authors = [{ name = "Anna Developer" }]
 license = { text = "MIT" }
-dependencies = [
-    "pyinstaller>=6.19.0",
-]
+dependencies = []
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.19.0"]
 
 [project.scripts]
 example-text-tool = "example_plugin:main"

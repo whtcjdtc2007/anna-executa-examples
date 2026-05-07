@@ -11,6 +11,7 @@ For English version, see [README.md](README.md)
 | **基础插件** | `example_plugin.js` | JSON 格式化、Base64 编解码、哈希计算 |
 | **凭据插件** | `credential_plugin.js` | GitHub 查询工具，演示凭据声明与平台统一授权集成（API Key 模式） |
 | **Google OAuth 插件** | `google_oauth_plugin.js` | Google Calendar 日程管理工具，演示通过平台授权使用 Google OAuth2 访问令牌 |
+| **Sampling 插件（v2）** | `sampling-tool.js` | 文本摘要器，通过反向 `sampling/createMessage` 请 host 代理完成一次 LLM 推理（插件无需 API key，模型选择/计费/配额均由 host 接管）。详见 [docs/sampling.zh-CN.md](../../docs/sampling.zh-CN.md)。 |
 
 ## 运行方式
 
@@ -218,3 +219,35 @@ function toolMyTool(args) {
 // 3. 注册
 TOOL_DISPATCH["my_tool"] = toolMyTool;
 ```
+
+## 使用 Host LLM Sampling（Executa v2）
+
+`sampling-tool.js` 演示了长期运行的插件如何请 host（Anna）
+代理完成一次 LLM 推理 —— 插件从不持有 API key，也不选择模型。
+
+关键要点（示例中已接好线）：
+
+1. **v2 握手。** 实现 `initialize`，以 `protocolVersion: "2.0"` 和
+   `client_capabilities: { sampling: {} }` 响应。
+2. **Manifest 声明。** 在 `describe` 返回的 manifest 中加上
+   `host_capabilities: ["llm.sample"]`，否则 Nexus 会以
+   `-32008 not_negotiated` 拒绝。
+3. **反向 RPC。** 使用 SDK [`../../sdk/nodejs/sampling.js`](../../sdk/nodejs/sampling.js)：
+
+   ```javascript
+   const { SamplingClient } = require("../../sdk/nodejs");
+
+   const sampling = new SamplingClient({ writeFrame });
+   const result = await sampling.createMessage({
+     messages: [{ role: "user", content: { type: "text", text: "请总结…" } }],
+     maxTokens: 400,
+     systemPrompt: "你是一个简洁的助手。",
+     // 不传 modelPreferences → host 回退到用户的 preferred_model。
+     metadata: { executa_invoke_id: invokeId },
+   });
+   ```
+
+4. **用户授权。** 最终用户需在 Anna Admin 为该 Executa 打开 sampling
+   开关（写入 `sampling_grant.enabled = true`）。
+
+完整线协议与错误码：[docs/sampling.zh-CN.md](../../docs/sampling.zh-CN.md)。
