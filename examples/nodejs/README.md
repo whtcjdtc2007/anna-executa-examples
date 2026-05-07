@@ -11,6 +11,7 @@ This directory contains two complete Node.js Executa plugin examples:
 | **Basic Plugin** | `example_plugin.js` | JSON formatting, Base64 encoding/decoding, hash computation |
 | **Credential Plugin** | `credential_plugin.js` | GitHub query tool, demonstrating credential (API Key) declaration and platform authorization integration |
 | **Google OAuth Plugin** | `google_oauth_plugin.js` | Google Calendar manager, demonstrating Google OAuth credential consumption via platform authorization |
+| **Sampling Plugin (v2)** | `sampling-tool.js` | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](../../docs/sampling.md). |
 
 ## How to Run
 
@@ -218,3 +219,36 @@ function toolMyTool(args) {
 // 3. Register
 TOOL_DISPATCH["my_tool"] = toolMyTool;
 ```
+
+## Using Host LLM Sampling (Executa v2)
+
+`sampling-tool.js` shows how a long-running plugin can ask the host (Anna)
+to run an LLM completion on its behalf — the plugin never holds an API key
+and never picks a model.
+
+Key ingredients (already wired in the example):
+
+1. **v2 handshake.** Implement `initialize`; reply with
+   `protocolVersion: "2.0"` and `client_capabilities: { sampling: {} }`.
+2. **Manifest declaration.** Add `host_capabilities: ["llm.sample"]` to
+   the manifest returned by `describe`, otherwise Nexus refuses with
+   `-32008 not_negotiated`.
+3. **Reverse RPC.** Use the SDK in [`../../sdk/nodejs/sampling.js`](../../sdk/nodejs/sampling.js):
+
+   ```javascript
+   const { SamplingClient } = require("../../sdk/nodejs");
+
+   const sampling = new SamplingClient({ writeFrame });
+   const result = await sampling.createMessage({
+     messages: [{ role: "user", content: { type: "text", text: "Summarize…" } }],
+     maxTokens: 400,
+     systemPrompt: "You are a concise assistant.",
+     // No modelPreferences → host falls back to the user's preferred_model.
+     metadata: { executa_invoke_id: invokeId },
+   });
+   ```
+
+4. **End-user grant.** The user must enable sampling for this Executa in
+   Anna Admin (writes `sampling_grant.enabled = true`).
+
+Full wire reference and error codes: [docs/sampling.md](../../docs/sampling.md).

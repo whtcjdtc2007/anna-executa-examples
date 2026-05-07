@@ -11,6 +11,7 @@ This directory contains three standalone Go Executa plugin examples. Each file i
 | **Basic Plugin** | `main.go` | System information queries, hash computation, string utilities |
 | **Credential Plugin** | `credential_plugin.go` | Notion query tool, demonstrating credential (API Key) declaration and platform authorization integration |
 | **Google OAuth Plugin** | `google_oauth_plugin.go` | Google Drive browser, demonstrating Google OAuth credential consumption via platform authorization |
+| **Sampling Plugin (v2)** | `sampling-tool/` | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). Lives in its own subdirectory with a separate `go.mod` that uses `replace` to consume the local Go SDK. See [docs/sampling.md](../../docs/sampling.md). |
 
 > **Note:** Each file has its own `func main()`. Use `go run <file>.go` to run a specific plugin, not `go run .`.
 
@@ -235,6 +236,41 @@ func toolMyTool(args map[string]any) map[string]any {
 case "my_tool":
     result = toolMyTool(args)
 ```
+
+## Using Host LLM Sampling (Executa v2)
+
+`sampling-tool/` shows how a long-running plugin can ask the host (Anna)
+to run an LLM completion on its behalf — the plugin never holds an API key
+and never picks a model. Unlike the other Go examples it lives in its own
+subdirectory with its own `go.mod` (uses a `replace` directive pointing at
+`../../../sdk/go`) so it can import the local Sampling SDK.
+
+Key ingredients (already wired in the example):
+
+1. **v2 handshake.** Implement `initialize`; reply with
+   `protocolVersion: "2.0"` and `client_capabilities: { sampling: {} }`.
+2. **Manifest declaration.** Add `host_capabilities: ["llm.sample"]` to
+   the manifest returned by `describe`, otherwise Nexus refuses with
+   `-32008 not_negotiated`.
+3. **Reverse RPC.** Use [`sdk/go/sampling`](../../sdk/go/sampling/sampling.go):
+
+   ```go
+   import sampling "github.com/anna-executa/sdk/go/sampling"
+
+   client := sampling.New(nil) // wires stdin/stdout by default
+   res, err := client.CreateMessage(sampling.CreateMessageRequest{
+       Messages:     []sampling.Message{{Role: "user", Content: sampling.TextContent{Type: "text", Text: "Summarize…"}}},
+       MaxTokens:    400,
+       SystemPrompt: "You are a concise assistant.",
+       // No ModelPreferences → host falls back to the user's preferred_model.
+       Metadata:     map[string]any{"executa_invoke_id": invokeID},
+   }, 60*time.Second)
+   ```
+
+4. **End-user grant.** The user must enable sampling for this Executa in
+   Anna Admin (writes `sampling_grant.enabled = true`).
+
+Full wire reference and error codes: [docs/sampling.md](../../docs/sampling.md).
 
 ## Advantages of Go
 

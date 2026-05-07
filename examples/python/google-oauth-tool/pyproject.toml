@@ -1,0 +1,22 @@
+[project]
+name = "gmail-tool"
+version = "1.0.0"
+description = "Example Executa OAuth plugin — Gmail message query demonstrating Google OAuth2 access token consumption via platform authorization"
+requires-python = ">=3.10"
+authors = [{ name = "Anna Developer" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.19.0"]
+
+[project.scripts]
+gmail-tool = "google_oauth_plugin:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["google_oauth_plugin.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

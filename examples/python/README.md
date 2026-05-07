@@ -4,72 +4,114 @@
 
 ## Overview
 
-This directory contains two complete Python Executa plugin examples:
+Each example is a **self-contained subdirectory** with its own
+`pyproject.toml`, plugin source, and PyInstaller spec. This mirrors the
+Go `sampling-tool/` layout and lets each example be installed,
+distributed, or built in isolation.
 
-| Example | File | Description |
-|---------|------|-------------|
-| **Basic Plugin** | `example_plugin.py` | Text processing toolkit (word_count, text_transform, batch_word_count) |
-| **Credential Plugin** | `credential_plugin.py` | Weather query tool, demonstrating credential (API Key) declaration and platform authorization integration |
-| **Google OAuth Plugin** | `google_oauth_plugin.py` | Gmail reader, demonstrating Google OAuth credential consumption via platform authorization |
+| Example | Subdirectory | Description |
+|---------|--------------|-------------|
+| **Basic Plugin** | [`basic-tool/`](basic-tool/) | Text processing toolkit (`word_count`, `text_transform`, `batch_word_count`). |
+| **Credential Plugin** | [`credential-tool/`](credential-tool/) | Weather query tool — declares an API-Key credential and consumes it via the platform's unified authorization. |
+| **Google OAuth Plugin** | [`google-oauth-tool/`](google-oauth-tool/) | Gmail reader — consumes Google OAuth2 access tokens injected by the platform (no OAuth flow inside the plugin). |
+| **Sampling Plugin (v2)** | [`sampling-summarizer/`](sampling-summarizer/) | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](../../docs/sampling.md). |
+
+## Subdirectory Layout
+
+Every example follows the same convention:
+
+```
+<example-subdir>/
+  pyproject.toml          # name, scripts, build config
+  <plugin>.py             # the plugin source — single file, self-contained
+  pyinstaller.spec        # PyInstaller --onefile config (binary name)
+```
+
+Shared at the top level:
+
+```
+examples/python/
+  README.md / README.zh-CN.md
+  build_binary.sh         # builds ALL examples, or one when invoked with a subdir arg
+```
 
 ## How to Run
 
-### Run Directly (Development/Debugging)
+### Run Directly (Development / Debugging)
 
 ```bash
+cd basic-tool
 python example_plugin.py
-```
 
-Test in another terminal:
-
-```bash
+# In another terminal
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python example_plugin.py 2>/dev/null
 ```
 
+The other examples follow the same pattern — `cd <subdir>` and run the
+single `.py` file. Each subdirectory's plugin file lists the tool name
+in its `MANIFEST` constant near the top.
+
 ### Install via uv (Recommended Local Distribution Method)
 
-```bash
-# Install as a global tool
-uv tool install .
+Each subdirectory is its own installable package. Install whichever you
+need; they do not collide.
 
-# Run
-example-text-tool
+```bash
+cd basic-tool && uv tool install . && example-text-tool
+cd credential-tool && uv tool install . && weather-tool
+cd google-oauth-tool && uv tool install . && gmail-tool
+cd sampling-summarizer && uv tool install . && sampling-summarizer
 ```
 
 ### Install via pipx
 
 ```bash
-pipx install .
-example-text-tool
+cd basic-tool && pipx install . && example-text-tool
 ```
 
 ## Build as Standalone Binary
 
-### PyInstaller (Recommended)
+The shared `build_binary.sh` lives at this directory's root. It detects
+plugin subdirectories (those with a `pyproject.toml` and at least one
+`*.py`) and dispatches the build into each.
+
+### Build all examples
 
 ```bash
-# One-click build
-./build_binary.sh
-
-# Build and test
-./build_binary.sh --test
+./build_binary.sh                  # PyInstaller --onefile, all subdirs
+./build_binary.sh --test           # …also run protocol smoke tests
+./build_binary.sh --nuitka --test  # use Nuitka instead
 ```
 
-### Nuitka (Smaller Size)
+### Build a specific example
+
+From the root, name one or more subdirectories:
 
 ```bash
-./build_binary.sh --nuitka --test
+./build_binary.sh basic-tool
+./build_binary.sh credential-tool sampling-summarizer --test
 ```
 
-### Manual Build
+…or invoke the script from inside the subdirectory:
 
 ```bash
+cd sampling-summarizer
+../build_binary.sh --test
+```
+
+Output: `<subdir>/dist/<plugin-name>` (one single-file executable per
+plugin).
+
+### Manual build
+
+```bash
+cd basic-tool
 pip install pyinstaller
 
-# Using spec file
-pyinstaller example-text-tool.spec
+# Using the spec file
+pyinstaller pyinstaller.spec
 
-# Or command line
+# Or by command line
 pyinstaller --onefile --name example-text-tool --strip --noupx example_plugin.py
 ```
 
@@ -77,12 +119,16 @@ pyinstaller --onefile --name example-text-tool --strip --noupx example_plugin.py
 
 ### Local Distribution
 
-Local runs the **same v2 install pipeline as Binary** (extract → `tools/{tool_id}/v{version}/` → atomic `current` symlink → `bin/{name}` shim), but reads the archive from the Agent's local filesystem instead of an HTTPS URL. Multi-file archives (PyInstaller `--onedir` with bundled `.so` / `_internal/`) are fully supported — see `examples/multifile-binary/python-pyinstaller-onedir/`.
-
-Build a binary first, then archive it:
+Local runs the **same v2 install pipeline as Binary** (extract →
+`tools/{tool_id}/v{version}/` → atomic `current` symlink → `bin/{name}`
+shim), but reads the archive from the Agent's local filesystem instead
+of an HTTPS URL. Multi-file archives (PyInstaller `--onedir` with
+bundled `.so` / `_internal/`) are fully supported — see
+[`examples/multifile-binary/python-pyinstaller-onedir/`](../multifile-binary/python-pyinstaller-onedir/).
 
 ```bash
-./build_binary.sh
+cd basic-tool
+../build_binary.sh basic-tool
 cd dist && tar czf example-text-tool.tar.gz example-text-tool
 ```
 
@@ -94,36 +140,28 @@ Then in Anna Admin:
 
 ### Binary Distribution
 
-1. Build binary: `./build_binary.sh`
-2. Package: `cd dist && tar czf example-text-tool-darwin-arm64.tar.gz example-text-tool`
-3. Upload to GitHub Releases / S3 / any HTTP service
-4. Configure the Binary URL in Anna Admin
+1. Build a binary inside the example subdirectory (see above).
+2. Package: `cd <subdir>/dist && tar czf <name>-darwin-arm64.tar.gz <name>`.
+3. Upload to GitHub Releases / S3 / any HTTP service.
+4. Configure the Binary URL in Anna Admin.
 
 ### uv Distribution
 
 In Anna Admin:
 - Distribution method: **uv**
-- Package name: `example-text-tool` (or PyPI package name)
-
-## File Descriptions
-
-| File | Description |
-|------|-------------|
-| `example_plugin.py` | Basic plugin main program (can be run directly) |
-| `credential_plugin.py` | Credential plugin example — API Key pattern (platform authorization integration) |
-| `google_oauth_plugin.py` | Google OAuth plugin example — Gmail reader via OAuth access token |
-| `pyproject.toml` | Python package configuration (required for uv/pipx installation) |
-| `build_binary.sh` | One-click build script (PyInstaller / Nuitka) |
-| `example-text-tool.spec` | PyInstaller configuration file |
-| `weather-tool.spec` | Credential plugin PyInstaller configuration file |
+- Package name: the `name` declared in that subdirectory's `pyproject.toml`
+  (e.g. `example-text-tool`, `weather-tool`, `gmail-tool`,
+  `sampling-summarizer`).
 
 ## Credential Plugin Example
 
-`credential_plugin.py` demonstrates integration with Anna Nexus's platform authorization:
+[`credential-tool/credential_plugin.py`](credential-tool/credential_plugin.py)
+demonstrates integration with Anna Nexus's platform authorization.
 
 ### Credential Declaration
 
-Declare required credentials in the Manifest's `credentials` field — naming aligned with platform providers enables automatic mapping:
+Declare required credentials in the Manifest's `credentials` field —
+naming aligned with platform providers enables automatic mapping:
 
 ```python
 "credentials": [
@@ -151,6 +189,8 @@ def tool_get_weather(city: str, *, credentials: dict | None = None) -> dict:
 ### Local Development Testing
 
 ```bash
+cd credential-tool
+
 # Provide credentials via environment variables
 WEATHER_API_KEY=your_key python credential_plugin.py
 
@@ -165,11 +205,16 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","argumen
 
 ## Google OAuth Plugin Example
 
-`google_oauth_plugin.py` demonstrates consuming **OAuth2 access tokens** provided by the platform. Unlike API Key credentials, the plugin does NOT manage the OAuth flow — the platform handles authorization, token exchange, and auto-refresh.
+[`google-oauth-tool/google_oauth_plugin.py`](google-oauth-tool/google_oauth_plugin.py)
+demonstrates consuming **OAuth2 access tokens** provided by the
+platform. Unlike API Key credentials, the plugin does NOT manage the
+OAuth flow — the platform handles authorization, token exchange, and
+auto-refresh.
 
 ### Key Difference from API Key Plugins
 
-From the plugin's perspective, the code is **identical** — just read from `context.credentials`. The only difference is naming alignment:
+From the plugin's perspective, the code is **identical** — just read
+from `context.credentials`. The only difference is naming alignment:
 
 ```python
 # API Key plugin — custom service credential
@@ -182,6 +227,8 @@ From the plugin's perspective, the code is **identical** — just read from `con
 ### Local Development Testing
 
 ```bash
+cd google-oauth-tool
+
 # Provide OAuth token via environment variable
 GMAIL_ACCESS_TOKEN=ya29.xxx python google_oauth_plugin.py
 
@@ -197,6 +244,8 @@ echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_messages","argum
 ## Protocol Interaction Examples
 
 ```bash
+cd basic-tool
+
 # Get tool manifest
 echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python example_plugin.py 2>/dev/null
 
@@ -211,6 +260,9 @@ echo '{"jsonrpc":"2.0","method":"health","id":4}' | python example_plugin.py 2>/
 ```
 
 ## Adding Your Own Tools
+
+Pick the example closest to what you want to build (basic / credential /
+OAuth / sampling), copy its subdirectory, then:
 
 1. Add a tool definition in `MANIFEST["tools"]` (name, description, parameters)
 2. Implement the tool function
@@ -227,3 +279,41 @@ def tool_my_tool(arg1: str, arg2: int = 10) -> dict:
 # 3. Register
 TOOL_DISPATCH["my_tool"] = tool_my_tool
 ```
+
+If your new example needs its own published name, also update the
+subdirectory's `pyproject.toml` (`[project] name`, `[project.scripts]`)
+and rename the binary in `pyinstaller.spec`.
+
+## Using Host LLM Sampling (Executa v2)
+
+[`sampling-summarizer/sampling_summarizer.py`](sampling-summarizer/sampling_summarizer.py)
+shows how a long-running plugin can ask the host (Anna) to run an LLM
+completion on its behalf — the plugin never holds an API key and never
+picks a model.
+
+Key ingredients (already wired in the example):
+
+1. **v2 handshake.** Implement `initialize`; reply with
+   `protocolVersion: "2.0"` and `client_capabilities: { sampling: {} }`.
+2. **Manifest declaration.** Add `host_capabilities: ["llm.sample"]` to
+   the manifest returned by `describe`, otherwise Nexus refuses with
+   `-32008 not_negotiated`.
+3. **Reverse RPC.** Use the SDK in [`../../sdk/python/executa_sdk/sampling.py`](../../sdk/python/executa_sdk/sampling.py):
+
+   ```python
+   from executa_sdk import SamplingClient
+
+   sampling = SamplingClient(write_frame=write_frame)  # write_frame = your stdout writer
+   result = await sampling.create_message(
+       messages=[{"role": "user", "content": {"type": "text", "text": "Summarize…"}}],
+       max_tokens=400,
+       system_prompt="You are a concise assistant.",
+       # No model_preferences → host falls back to the user's preferred_model.
+       metadata={"executa_invoke_id": invoke_id},
+   )
+   ```
+
+4. **End-user grant.** The user must enable sampling for this Executa in
+   Anna Admin (writes `sampling_grant.enabled = true`).
+
+Full wire reference and error codes: [docs/sampling.md](../../docs/sampling.md).

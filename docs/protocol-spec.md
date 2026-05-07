@@ -314,6 +314,22 @@ Follows JSON-RPC 2.0 standard error codes, with custom extensions:
 | `-32602` | Invalid params | Missing parameters or type mismatch |
 | `-32603` | Internal error | Exception occurred during tool execution |
 
+### Sampling-specific error codes (v2)
+
+Returned by the host on `sampling/createMessage` (see [sampling.md](sampling.md)):
+
+| Code | Name | Meaning |
+|------|------|---------|
+| `-32001` | `not_granted` | User has not granted `sampling_grant` for this Executa |
+| `-32002` | `quota_exceeded` | User account quota exhausted |
+| `-32003` | `provider_error` | Upstream LLM provider failed |
+| `-32004` | `invalid_request` | Malformed sampling params |
+| `-32005` | `timeout` | Sampling exceeded host wall-clock budget |
+| `-32006` | `max_calls_exceeded` | Per-invoke sampling call cap reached |
+| `-32007` | `max_tokens_exceeded` | Per-invoke total-tokens cap reached |
+| `-32008` | `not_negotiated` | Host did not negotiate Executa v2, or plugin manifest does not declare `host_capabilities: ["llm.sample"]` |
+| `-32009` | `user_denied` | User explicitly rejected this sampling request |
+
 ## Timeouts
 
 | Method | Default Timeout | Description |
@@ -326,16 +342,86 @@ Follows JSON-RPC 2.0 standard error codes, with custom extensions:
 
 ```
 1. Agent starts the plugin process (fork + exec)
-2. Agent → stdin: describe
-3. Plugin → stdout: manifest (tool list)
-4. Agent registers tools into the LLM tool schema
-5. Loop:
+2. (v2 only) Agent → stdin: initialize {protocolVersion:"2.0", host_capabilities}
+   Plugin → stdout: { protocolVersion, serverInfo, client_capabilities? }
+   (Plugins that don't recognise `initialize` simply return method-not-found;
+    the Agent then falls back to v1 silently.)
+3. Agent → stdin: describe
+4. Plugin → stdout: manifest (tool list, host_capabilities, ...)
+5. Agent registers tools into the LLM tool schema
+6. Loop:
    a. LLM decides to call a tool
-   b. Agent → stdin: invoke {tool, arguments}
-   c. Plugin → stdout: result / error
-6. Agent optionally: sends periodic health checks
-7. Agent terminates: closes stdin → plugin exits
+   b. Agent → stdin: invoke {tool, arguments, invoke_id?, sampling_token?}
+   c. Plugin (optionally) → stdout: sampling/createMessage {…}
+      Agent → stdin: response {result|error}
+   d. Plugin → stdout: invoke result / error
+7. Agent optionally: sends periodic health checks
+8. Agent terminates: closes stdin → plugin exits
 ```
+
+## Protocol v2 — `initialize` Handshake & Reverse RPC
+
+Executa **2.0** is fully backwards compatible with **1.1**. The Agent sends
+an `initialize` request first; if the plugin does not implement it, the
+Agent falls back to v1 (no reverse RPC, no sampling).
+
+**Request (Agent → Plugin):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 0,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2.0",
+    "host_capabilities": { "llm.sample": true }
+  }
+}
+```
+
+**Response (Plugin → Agent):**
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 0,
+  "result": {
+    "protocolVersion": "2.0",
+    "serverInfo": { "name": "my-tool", "version": "0.1.0" },
+    "client_capabilities": { "sampling": {} },
+    "capabilities": {}
+  }
+}
+```
+
+After negotiation, **two reverse RPC methods become available**:
+
+- `sampling/createMessage` — plugin asks host to perform an LLM completion.
+  See [sampling.md](sampling.md) for the full payload schema and policy
+  rules. Plugins MUST also declare `host_capabilities: ["llm.sample"]` in
+  their manifest, or the host will reject sampling requests with
+  `-32008 not_negotiated`.
+
+When v2 is negotiated, every `invoke` request carries two extra params:
+
+```json
+{
+  "tool": "summarize",
+  "arguments": { "...": "..." },
+  "invoke_id": "<uuid hex>",
+  "sampling_token": "<short-lived JWT, only present when user granted sampling>"
+}
+```
+
+`invoke_id` is a per-invoke correlation ID that the plugin MUST echo back
+on every `sampling/createMessage` request via the `metadata` field — this
+ties sampling spend to the originating tool invocation for billing audit.
+
+## Lifecycle (legacy)
+
+The pre-v2 lifecycle is identical except that step 2 is skipped — the
+Agent goes straight to `describe`, and reverse RPC methods are not
+available.
 
 ## Credentials and Platform Authorization
 

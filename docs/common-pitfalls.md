@@ -196,8 +196,66 @@ Three options, in order of preference:
 
 ---
 
+## 6. Sampling: missing `host_capabilities` declaration
+
+**Symptom.** Your plugin issues `sampling/createMessage`, the host
+returns `error: { code: -32008, message: "not_negotiated" }`, and the
+Agent log says *"executa X did not declare host_capabilities['llm.sample']"*.
+
+**Cause.** Even after v2 negotiation, Nexus refuses sampling unless the
+plugin's published manifest also declares the capability.
+
+**Fix.**
+
+```json
+{
+  "name": "my-tool",
+  "host_capabilities": ["llm.sample"],
+  "tools": [ /* ... */ ]
+}
+```
+
+Re-publish the Executa version and ask users to update.
+
+---
+
+## 7. Sampling: plugin process exits before reverse RPC completes
+
+**Symptom.** First sampling call works in dev, but in production the
+result never arrives — Anna logs *"unmatched response id=…"* on the
+plugin side and a timeout on the host side.
+
+**Cause.** The plugin returned the `invoke` result and immediately did
+`process.exit()` / `sys.exit()`, killing the stdin reader before the
+reverse-RPC response could be dispatched.
+
+**Fix.** Treat the plugin process exactly as it should be treated for
+ordinary tool calls — long-running, exits only when stdin closes. See
+the SDK examples (`sdk/{python,nodejs,go}`) for the recommended
+single-reader-with-dispatch pattern.
+
+---
+
+## 8. Sampling: `-32007 max_tokens_exceeded` on a single call
+
+**Symptom.** A reasonable sampling request fails with
+`-32007 max_tokens_exceeded` even though `maxTokens` is well under
+8 192.
+
+**Cause.** The cap is **cumulative across the same `invoke_id`**, not
+per call. Default total is 32 000 tokens.
+
+**Fix.** Either:
+
+- send fewer / smaller sampling calls per tool invocation, or
+- ask the user to raise `sampling_grant.maxTokensTotal` in their Anna
+  Admin (host caps it at 32 000 in v1).
+
+---
+
 ## See also
 
 - [Protocol Specification](./protocol-spec.md) — line-delimited JSON-RPC 2.0 over stdio
+- [Sampling](./sampling.md) — reverse `sampling/createMessage` RPC
 - [Binary Distribution](./binary-distribution.md) — single-file vs multi-file archive shapes
 - [Multi-file Python example](../examples/multifile-binary/python-pyinstaller-onedir/) — reference layout

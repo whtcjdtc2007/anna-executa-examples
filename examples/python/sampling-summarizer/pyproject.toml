@@ -1,0 +1,30 @@
+[project]
+name = "sampling-summarizer"
+version = "0.1.0"
+description = "Example Executa v2 sampling plugin — summarizer that asks the host to perform an LLM completion via reverse sampling/createMessage"
+requires-python = ">=3.10"
+authors = [{ name = "Anna Developer" }]
+license = { text = "MIT" }
+dependencies = [
+    "executa-sdk>=0.1.0",
+]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.19.0"]
+
+[project.scripts]
+sampling-summarizer = "sampling_summarizer:main"
+
+# When installing from this repo (e.g. `uv tool install .`), resolve
+# `executa-sdk` from the local path instead of PyPI. Mirrors the Go
+# example's `replace ../../../sdk/go` directive in go.mod.
+[tool.uv.sources]
+executa-sdk = { path = "../../../sdk/python", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["sampling_summarizer.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

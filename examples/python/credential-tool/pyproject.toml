@@ -1,0 +1,22 @@
+[project]
+name = "weather-tool"
+version = "1.0.0"
+description = "Example Executa credential plugin — weather query tool demonstrating API-Key credential declaration and platform-managed authorization"
+requires-python = ">=3.10"
+authors = [{ name = "Anna Developer" }]
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.19.0"]
+
+[project.scripts]
+weather-tool = "credential_plugin:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["credential_plugin.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

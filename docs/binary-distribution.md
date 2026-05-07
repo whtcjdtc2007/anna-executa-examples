@@ -20,7 +20,7 @@ Complete examples are available for each language:
 
 | Language | Build Tool | Example Directory | Build Command |
 |----------|-----------|-------------------|---------------|
-| Python | PyInstaller / Nuitka | `examples/python/` | `./build_binary.sh` |
+| Python | PyInstaller / Nuitka | `examples/python/<subdir>/` | `examples/python/build_binary.sh` (builds all) or `cd <subdir> && ../build_binary.sh` |
 | Node.js | pkg / nexe / esbuild+sea | `examples/nodejs/` | `./build_binary.sh` |
 | Go | `go build` | `examples/go/` | `make all` |
 

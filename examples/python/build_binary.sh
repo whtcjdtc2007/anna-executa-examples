@@ -2,29 +2,98 @@
 # ============================================================
 # Executa Plugin Binary Build Script (Python)
 # ============================================================
-# Automatically discovers and compiles all Python Executa plugins
-# in the current directory into standalone binaries.
+# Builds Python Executa plugins into standalone binaries.
 #
-# Usage:
-#   ./build_binary.sh                  # PyInstaller --onefile (default, compile all)
+# Layout: the script lives at the root of `examples/python/`. Each
+# example is a self-contained subdirectory with its own pyproject.toml
+# and at least one *.py plugin file (e.g. basic-tool/, credential-tool/,
+# google-oauth-tool/, sampling-summarizer/).
+#
+# Usage (from examples/python/ — builds ALL examples):
+#   ./build_binary.sh                  # PyInstaller --onefile (default)
 #   ./build_binary.sh --nuitka         # Nuitka compilation
 #   ./build_binary.sh --test           # Run protocol tests after build
-#   ./build_binary.sh --nuitka --test  # Nuitka compilation + tests
-#   ./build_binary.sh example_plugin.py                # Compile only specified file(s)
-#   ./build_binary.sh credential_plugin.py --test      # Compile specified file(s) + tests
+#   ./build_binary.sh basic-tool       # Build a single subdirectory
+#   ./build_binary.sh basic-tool credential-tool --test
 #
-# Auto-discovery rules:
-#   Scans all *.py in the current directory, skipping __*.py / setup.py / conftest.py / test_*.py
-#   Extracts MANIFEST["name"] from each .py as the binary name (falls back to filename if not found)
+# Usage (from inside a subdirectory — builds just that one):
+#   cd basic-tool && ../build_binary.sh
+#   cd basic-tool && ../build_binary.sh --test
+#
+# Auto-discovery rules (per subdirectory):
+#   Scans all *.py in the directory, skipping __*.py / setup.py /
+#   conftest.py / test_*.py.
+#   Extracts MANIFEST["name"] from each .py as the binary name (falls
+#   back to filename if not found).
 #
 # Output:
-#   dist/<plugin-name>                 # One single-file executable per plugin
+#   <subdir>/dist/<plugin-name>        # One single-file executable per plugin
 # ============================================================
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ── Multi-subdir dispatch ─────────────────────────────────────
+# If invoked from the root (or any non-plugin dir) without an explicit
+# subdirectory, iterate every plugin subdirectory and recurse into each.
+# A "plugin subdirectory" has both a pyproject.toml and at least one *.py.
+
+is_plugin_dir() {
+    local d="$1"
+    [[ -f "$d/pyproject.toml" ]] || return 1
+    compgen -G "$d/*.py" >/dev/null
+}
+
+# Split args into "subdirs to build" vs "flags to forward".
+SUBDIR_ARGS=()
+FORWARD_ARGS=()
+for arg in "$@"; do
+    if [[ -d "$ROOT_DIR/$arg" ]] && is_plugin_dir "$ROOT_DIR/$arg"; then
+        SUBDIR_ARGS+=("$arg")
+    else
+        FORWARD_ARGS+=("$arg")
+    fi
+done
+
+# Decide whether we are in "dispatch" mode or "build current dir" mode.
+if is_plugin_dir "$PWD"; then
+    : # Run as-is in the current directory below.
+elif [[ ${#SUBDIR_ARGS[@]} -gt 0 ]]; then
+    rc=0
+    for sd in "${SUBDIR_ARGS[@]}"; do
+        echo
+        echo "══════════════════════════════════════════════════════"
+        echo "  → $sd"
+        echo "══════════════════════════════════════════════════════"
+        ( cd "$ROOT_DIR/$sd" && bash "$ROOT_DIR/build_binary.sh" "${FORWARD_ARGS[@]}" ) || rc=$?
+    done
+    exit $rc
+else
+    # Iterate every plugin subdirectory of ROOT_DIR.
+    found=0
+    rc=0
+    for d in "$ROOT_DIR"/*/; do
+        d="${d%/}"
+        if is_plugin_dir "$d"; then
+            found=1
+            echo
+            echo "══════════════════════════════════════════════════════"
+            echo "  → ${d##*/}"
+            echo "══════════════════════════════════════════════════════"
+            ( cd "$d" && bash "$ROOT_DIR/build_binary.sh" "${FORWARD_ARGS[@]}" ) || rc=$?
+        fi
+    done
+    if [[ $found -eq 0 ]]; then
+        echo "No plugin subdirectories (containing both pyproject.toml and *.py) found under $ROOT_DIR" >&2
+        exit 1
+    fi
+    exit $rc
+fi
+
+# Below this line we are inside a single plugin subdirectory; remaining
+# args are flags only (subdir args were consumed by the dispatcher).
+set -- "${FORWARD_ARGS[@]}"
 
 # Colors
 RED='\033[0;31m'
