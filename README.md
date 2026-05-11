@@ -17,6 +17,7 @@ anna-executa-examples/
 │   ├── authorization.md                 # Platform authorization guide
 │   ├── binary-distribution.md           # Binary distribution guide
 │   ├── sampling.md                      # Reverse LLM sampling (sampling/createMessage)
+│   ├── persistent-storage.md            # Anna Persistent Storage (storage/* + files/*)
 │   └── common-pitfalls.md               # ⚠️ Read this first if your plugin shows as "Stopped"
 ├── examples/
 │   ├── python/                          # Python plugin examples (each in its own subdir)
@@ -24,6 +25,7 @@ anna-executa-examples/
 │   │   ├── credential-tool/             # Credential plugin (Weather API Key)
 │   │   ├── google-oauth-tool/           # Google OAuth plugin (Gmail)
 │   │   ├── sampling-summarizer/         # Sampling plugin v2 (reverse sampling/createMessage)
+│   │   ├── storage-notebook/            # Persistent Storage plugin v2 (reverse storage/* + files/*)
 │   │   └── build_binary.sh              # Builds all examples (or one) via PyInstaller
 │   ├── nodejs/                          # Node.js plugin examples
 │   │   ├── example_plugin.js            # Basic plugin (JSON/Base64/Hash)
@@ -159,6 +161,18 @@ node examples/nodejs/sampling-tool.js
 cd examples/go/sampling-tool && go run ./...
 ```
 
+### Persistent Storage Plugins (v2) — Reverse `storage/*` + `files/*`
+
+Plugins can persist per-user / per-app state and upload binary
+attachments without holding any cloud-storage credential — Anna owns the
+bucket, encryption, quota and per-app ACL. See
+[docs/persistent-storage.md](docs/persistent-storage.md).
+
+```bash
+# Python
+python examples/python/storage-notebook/storage_notebook.py
+```
+
 ## Distribution Methods
 
 | Method | Installation | Use Case |
@@ -176,6 +190,7 @@ cd examples/go/sampling-tool && go run ./...
 - [Platform Authorization](docs/authorization.md) — Credential declaration, auto-injection, and platform authorization integration
 - [Binary Distribution Guide](docs/binary-distribution.md) — Building, signing, and multi-platform deployment
 - [Reverse Sampling](docs/sampling.md) — Plugins requesting LLM completions from the host
+- [Persistent Storage](docs/persistent-storage.md) — Per-user / per-app KV + object storage hosted by Anna
 - [Common Pitfalls](docs/common-pitfalls.md) — Read this first when a plugin shows as "Stopped"
 - [Anna App Example — Focus Flow](examples/anna-app-focus-flow/README.md) — End-to-end Anna App: 1 tool + 1 skill + premium UI bundle + full app manifest
 

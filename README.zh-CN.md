@@ -17,6 +17,7 @@ anna-executa-examples/
 │   ├── authorization.md                 # 平台统一授权指南
 │   ├── binary-distribution.md           # Binary 分发指南
 │   ├── sampling.md                      # 反向 LLM 采样（sampling/createMessage）
+│   ├── persistent-storage.md            # Anna Persistent Storage（storage/* + files/*）
 │   └── common-pitfalls.md               # ⚠️ 插件显示为 "Stopped" 时先看这里
 ├── examples/
 │   ├── python/                          # Python 插件示例（每个示例独立子目录）
@@ -24,6 +25,7 @@ anna-executa-examples/
 │   │   ├── credential-tool/             # 凭据插件（天气 API Key）
 │   │   ├── google-oauth-tool/           # Google OAuth 插件（Gmail）
 │   │   ├── sampling-summarizer/         # Sampling v2 插件（反向 sampling/createMessage）
+│   │   ├── storage-notebook/            # Persistent Storage v2 插件（反向 storage/* + files/*）
 │   │   └── build_binary.sh              # 通过 PyInstaller 构建所有示例（或单个）
 │   ├── nodejs/                          # Node.js 插件示例
 │   │   ├── example_plugin.js            # 基础插件（JSON/Base64/Hash）
@@ -158,6 +160,17 @@ node examples/nodejs/sampling-tool.js
 cd examples/go/sampling-tool && go run ./...
 ```
 
+### Persistent Storage 插件（v2）— 反向 `storage/*` + `files/*`
+
+插件可以持久化按用户 / 应用维度的状态，并上传二进制附件，全程不需要任何
+云存储凭据 —— bucket、加密、配额、按应用 ACL 均由 Anna 负责。详见
+[docs/persistent-storage.zh-CN.md](docs/persistent-storage.zh-CN.md)。
+
+```bash
+# Python
+python examples/python/storage-notebook/storage_notebook.py
+```
+
 ## 分发方式
 
 | 方式 | 安装途径 | 适用场景 |
@@ -175,6 +188,7 @@ cd examples/go/sampling-tool && go run ./...
 - [平台统一授权](docs/authorization.zh-CN.md) — 凭据声明、自动注入与平台授权集成
 - [Binary 分发指南](docs/binary-distribution.zh-CN.md) — 构建、签名、多平台部署
 - [反向 Sampling](docs/sampling.zh-CN.md) — 插件请求宿主执行 LLM 补全
+- [Persistent Storage](docs/persistent-storage.zh-CN.md) — 由 Anna 托管的按用户 / 应用维度 KV + 对象存储
 - [常见踩坑](docs/common-pitfalls.md) — 插件显示为 "Stopped" 时先看这里
 - [Anna App 示例 — Focus Flow](examples/anna-app-focus-flow/README.zh-CN.md) — 端到端 Anna App：1 工具 + 1 技能 + 高质感 UI bundle + 完整 manifest
 
