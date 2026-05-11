@@ -15,6 +15,7 @@ distributed, or built in isolation.
 | **Credential Plugin** | [`credential-tool/`](credential-tool/) | Weather query tool — declares an API-Key credential and consumes it via the platform's unified authorization. |
 | **Google OAuth Plugin** | [`google-oauth-tool/`](google-oauth-tool/) | Gmail reader — consumes Google OAuth2 access tokens injected by the platform (no OAuth flow inside the plugin). |
 | **Sampling Plugin (v2)** | [`sampling-summarizer/`](sampling-summarizer/) | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](../../docs/sampling.md). |
+| **Storage Plugin (v2)** | [`storage-notebook/`](storage-notebook/) | Notebook + attachment uploader that uses Anna Persistent Storage via reverse `storage/*` and `files/*` RPC (per-user/app KV plus two-step object uploads via the host's presigned URL). See [docs/persistent-storage.md](../../docs/persistent-storage.md). |
 
 ## Subdirectory Layout
 
@@ -61,6 +62,7 @@ cd basic-tool && uv tool install . && example-text-tool
 cd credential-tool && uv tool install . && weather-tool
 cd google-oauth-tool && uv tool install . && gmail-tool
 cd sampling-summarizer && uv tool install . && sampling-summarizer
+cd storage-notebook && uv tool install . && storage-notebook
 ```
 
 ### Install via pipx
@@ -151,7 +153,7 @@ In Anna Admin:
 - Distribution method: **uv**
 - Package name: the `name` declared in that subdirectory's `pyproject.toml`
   (e.g. `example-text-tool`, `weather-tool`, `gmail-tool`,
-  `sampling-summarizer`).
+  `sampling-summarizer`, `storage-notebook`).
 
 ## Credential Plugin Example
 
@@ -262,7 +264,7 @@ echo '{"jsonrpc":"2.0","method":"health","id":4}' | python example_plugin.py 2>/
 ## Adding Your Own Tools
 
 Pick the example closest to what you want to build (basic / credential /
-OAuth / sampling), copy its subdirectory, then:
+OAuth / sampling / storage), copy its subdirectory, then:
 
 1. Add a tool definition in `MANIFEST["tools"]` (name, description, parameters)
 2. Implement the tool function
@@ -317,3 +319,47 @@ Key ingredients (already wired in the example):
    Anna Admin (writes `sampling_grant.enabled = true`).
 
 Full wire reference and error codes: [docs/sampling.md](../../docs/sampling.md).
+
+## Using Persistent Storage (Executa v2)
+
+[`storage-notebook/storage_notebook.py`](storage-notebook/storage_notebook.py)
+shows how a plugin can persist per-user/app state and upload binary
+attachments without ever holding cloud-storage credentials of its own —
+Anna owns the bucket, the encryption, the quota, and the per-app ACL.
+
+Key ingredients (already wired in the example):
+
+1. **v2 handshake.** Implement `initialize`; reply with
+   `protocolVersion: "2.0"` and
+   `client_capabilities: { storage: { kv: true, files: true } }`.
+2. **Manifest declaration.** Declare the host capabilities you need
+   (`aps.kv`, `aps.files` — or the `storage.user` / `storage.app` /
+   `storage.tool` scope you intend to use). Without this Nexus refuses
+   with `-32008 not_negotiated`.
+3. **Reverse RPC.** Use the SDK in [`../../sdk/python/executa_sdk/storage.py`](../../sdk/python/executa_sdk/storage.py)
+   and [`files.py`](../../sdk/python/executa_sdk/files.py):
+
+   ```python
+   from executa_sdk import StorageClient, FilesClient, make_response_router
+
+   storage = StorageClient()
+   files = FilesClient()
+   route_response = make_response_router(storage, files)  # multiplex stdin
+
+   # Optimistic-concurrency KV write
+   cur = await storage.get("notes/log")
+   await storage.set("notes/log", new_value, if_match=cur.get("etag"))
+
+   # Two-step file upload (presigned PUT → finalize)
+   info = await files.upload_begin(path="attachments/x.txt", size_bytes=N,
+                                   content_type="text/plain")
+   # …PUT bytes to info["put_url"]…
+   await files.upload_complete(path="attachments/x.txt", etag=etag, size_bytes=N)
+   ```
+
+4. **End-user grant.** The user must enable persistent storage for
+   this Executa in Anna Admin (writes
+   `storage_grant.scopes = ["user", …]` plus quota overrides).
+
+Full wire reference, error codes and quota semantics:
+[docs/persistent-storage.md](../../docs/persistent-storage.md).
