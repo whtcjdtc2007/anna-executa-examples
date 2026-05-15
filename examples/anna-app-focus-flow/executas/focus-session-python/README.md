@@ -2,6 +2,8 @@
 
 Executa stdio Tool plugin used by the **Focus Flow** Anna App.
 
+中文版：[README.zh-CN.md](./README.zh-CN.md)
+
 | Field            | Value                                                |
 | ---------------- | ---------------------------------------------------- |
 | Plugin name      | server-minted `tool_id` (e.g. `tool-yourhandle-focus-session-abcd1234`) |

@@ -1,0 +1,6 @@
+{
+  "tool_id": "tool-test-focus-session-12345678",
+  "type": "go",
+  "enabled": false,
+  "_comment": "Disabled by default; the Python flavour is the canonical example. To run the Go implementation instead: (1) set `enabled: true` here; (2) set `enabled: false` in ../focus-session-python/executa.json; (3) ensure `go` 1.21+ is on PATH. `anna-app dev` will run `go run .` in this directory; first launch compiles + caches the binary, subsequent launches are instant. For production, run `go build -o bin/tool-test-focus-session-12345678 .` and switch this entry to `\"type\": \"binary\"`."
+}

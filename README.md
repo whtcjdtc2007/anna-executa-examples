@@ -42,7 +42,11 @@ anna-executa-examples/
 │   │   └── Makefile
 │   ├── multifile-binary/                # Multi-file Binary distribution examples
 │   │   └── python-pyinstaller-onedir/   # PyInstaller --onedir + manifest.json
-│   └── anna-app-focus-flow/             # ⭐ Complete Anna App (tool + skill + UI bundle + manifest)
+│   └── anna-app-focus-flow/             # ⭐ Complete Anna App — UI bundle + skill + tool plugin
+│                                        #     The tool plugin ships in three flavours:
+│                                        #     focus-session-{python,node,go}; pick one via
+│                                        #     `executa.json` or `--executa` CLI flag.
+│                                        #     See docs/multi-language-anna-apps.md.
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk
