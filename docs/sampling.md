@@ -6,6 +6,12 @@
 > LLM completion **on the user's behalf** — without the plugin needing
 > its own LLM API key, model selection logic, or quota tracking.
 
+> **For multi-turn / tool-using agent runs**, see the
+> [agent-sessions.md](agent-sessions.md) guide and the
+> [`executa-agent-demo`](../examples/python/executa-agent-demo/) example —
+> they extend this same reverse-RPC pattern to bring **plugin/app parity**
+> with the anna-app iframe agent surface.
+
 ## Why?
 
 Many useful tools want to invoke an LLM as part of their work

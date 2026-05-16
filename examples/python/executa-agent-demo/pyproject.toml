@@ -1,0 +1,24 @@
+[project]
+name = "executa-agent-demo"
+version = "0.1.0"
+description = "Anna Executa demonstrating reverse-RPC agent.session.* parity with anna-app iframes"
+requires-python = ">=3.10"
+dependencies = [
+    "executa-sdk>=0.1.0",
+]
+
+[project.scripts]
+executa-agent-demo = "executa_agent_demo:main"
+
+# When installing from this repo (e.g. `uv tool install .`), resolve
+# `executa-sdk` from the local path instead of PyPI. Mirrors
+# `sampling-summarizer/pyproject.toml`.
+[tool.uv.sources]
+executa-sdk = { path = "../../../sdk/python", editable = true }
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["executa_agent_demo"]
