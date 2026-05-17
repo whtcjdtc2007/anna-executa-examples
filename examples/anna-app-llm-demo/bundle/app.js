@@ -1,5 +1,8 @@
 // LLM Demo — exercises anna.llm.complete + anna.agent.session.* surfaces.
-// Pure DOM + the global `anna` runtime injected by the host iframe.
+//
+// The Anna App Runtime SDK (loaded via <script src="/static/anna-apps/_sdk/.../index.js">
+// in index.html) exposes `window.AnnaAppRuntime`. Call `.connect()` to do the
+// host handshake and obtain the `anna` instance that has .llm / .agent / etc.
 
 "use strict";
 
@@ -10,6 +13,22 @@ const errBox = $("errors");
 const sessionUuidEl = $("session-uuid");
 
 let session = null;
+
+// Bootstrap the runtime. All click handlers await `annaReady` so they never
+// touch `window.anna` before the handshake completes.
+const annaReady = (async () => {
+  if (!window.AnnaAppRuntime) {
+    throw new Error(
+      "AnnaAppRuntime global missing — SDK script failed to load",
+    );
+  }
+  const anna = await window.AnnaAppRuntime.connect();
+  window.anna = anna;
+  return anna;
+})().catch((err) => {
+  showError("runtime.connect", err);
+  throw err;
+});
 
 function showError(label, err) {
   const code = (err && (err.code || err.error?.code)) || "unknown";
@@ -29,7 +48,8 @@ $("complete-btn").addEventListener("click", async () => {
   clearError();
   out.textContent = "(calling llm.complete…)";
   try {
-    const reply = await window.anna.llm.complete({
+    const anna = await annaReady;
+    const reply = await anna.llm.complete({
       messages: [
         {
           role: "user",
@@ -51,7 +71,8 @@ $("complete-btn").addEventListener("click", async () => {
 $("session-create-btn").addEventListener("click", async () => {
   clearError();
   try {
-    session = await window.anna.agent.session({ submode: "auto" });
+    const anna = await annaReady;
+    session = await anna.agent.session({ submode: "auto" });
     sessionUuidEl.textContent = session.appSessionUuid || "(no uuid?)";
     sessionUuidEl.classList.remove("muted");
     $("run-btn").disabled = false;

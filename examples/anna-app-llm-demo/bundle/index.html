@@ -39,6 +39,9 @@
       <pre id="errors" class="out err">(none)</pre>
     </section>
 
-    <script src="app.js"></script>
+    <!-- Anna App Runtime SDK — must be loaded before app.js so that
+         window.anna.{llm,agent,...} exist when app.js runs. -->
+    <script src="/static/anna-apps/_sdk/0.2.0/index.js" defer></script>
+    <script src="app.js" defer></script>
   </body>
 </html>

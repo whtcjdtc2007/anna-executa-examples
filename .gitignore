@@ -17,3 +17,6 @@ examples/go/sampling-tool/sampling-tool
 
 # Go build artifacts
 examples/anna-app-focus-flow/executas/focus-session-go/focus-session-go
+
+# Local anna-app dev registration cache
+.anna/

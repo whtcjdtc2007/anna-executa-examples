@@ -27,7 +27,7 @@ Then:
 pnpm dev:mock
 
 # Against a real anna server you've logged into:
-anna-app login --host https://nexus.example.com   # one-time
+anna-app login --host https://anna.partners   # one-time
 pnpm dev:real
 
 # UI-only (LLM disabled):
