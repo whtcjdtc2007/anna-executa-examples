@@ -11,7 +11,10 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "@anna-ai/cli": "^0.1.11",
+    "@anna-ai/cli": "latest",
     "vitest": "^2.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }
