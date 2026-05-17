@@ -11,8 +11,5 @@
   },
   "devDependencies": {
     "@anna-ai/cli": "latest"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
   }
 }
