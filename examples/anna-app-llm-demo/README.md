@@ -7,18 +7,26 @@ Agent surfaces** from inside its iframe:
 - `anna.agent.session({ submode: "auto" })` — create a session,
   stream `run()` frames, fetch `history()`, then `delete()`.
 
-Used as a smoke test for matrix-nexus's
+Used as a smoke test for the **anna server**'s
 `docs/design/app-llm-and-agent-access.md` Phase 6 deliverables.
 
 ---
 
 ## Run
 
+First install local deps (pulls in `@anna-ai/cli`):
+
+```bash
+pnpm install
+```
+
+Then:
+
 ```bash
 # Mocked (offline, deterministic, no network):
 pnpm dev:mock
 
-# Against a real Nexus you've logged into:
+# Against a real anna server you've logged into:
 anna-app login --host https://nexus.example.com   # one-time
 pnpm dev:real
 
@@ -51,8 +59,8 @@ order:
 > **Note on `agent.session`**: the canonical full ACL also includes
 > `"agent": { "session": { "auto": true, "fixed": null }, "tools": [] }`,
 > but the published `@anna-ai/app-schema@0.1.0` JSON Schema does not yet
-> know about that key (it lands in 0.2.0). The host (matrix-nexus) and
-> the runtime (anna-app-core) both honor it today, so once you bump the
+> know about that key (it lands in 0.2.0). The anna server and the
+> runtime (anna-app-core) both honor it today, so once you bump the
 > schema package the example manifest can grow that block — see
 > `bundle/app.js` which exercises `anna.agent.session(...)` against the
 > mock fixtures.
@@ -67,12 +75,14 @@ order:
 | `bundle/index.html` | Tiny single-page UI |
 | `bundle/app.js` | Pure DOM + `window.anna.*` calls |
 | `bundle/style.css` | Light styling |
-| `fixtures/happy-path.jsonl` | Mock fixtures consumed by `--llm mock` |
+| `fixtures/happy-path.jsonl` | Mock fixtures consumed by `--mock-llm` |
 
 ---
 
 ## See also
 
-- Design spec: `matrix-nexus/docs/design/app-llm-and-agent-access.md`
-- App-side API doc: `matrix-nexus/docs/developers/apps/llm-and-agent.md`
-- Local dev guide: `matrix-nexus/docs/developers/apps/local-dev-llm.md`
+In the anna server repo (project codename: `matrix-nexus`):
+
+- Design spec: `docs/design/app-llm-and-agent-access.md`
+- App-side API doc: `docs/developers/apps/llm-and-agent.md`
+- Local dev guide: `docs/developers/apps/local-dev-llm.md`

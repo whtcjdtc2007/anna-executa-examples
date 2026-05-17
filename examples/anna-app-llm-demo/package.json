@@ -4,9 +4,12 @@
   "version": "0.1.0",
   "description": "Minimal anna-app exercising anna.llm.complete + anna.agent.session.* from the iframe.",
   "scripts": {
-    "dev:mock": "anna-app dev --llm mock --mock-llm fixtures/happy-path.jsonl",
-    "dev:real": "anna-app dev --llm real",
+    "dev:mock": "anna-app dev --mock-llm fixtures/happy-path.jsonl",
+    "dev:real": "anna-app dev",
     "dev:off": "anna-app dev --no-llm",
     "validate": "anna-app validate"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.11"
   }
 }
