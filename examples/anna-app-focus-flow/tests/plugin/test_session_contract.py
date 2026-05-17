@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from anna_executa_test import assert_jsonrpc_ok, executa
 
-PLUGIN_DIR = Path(__file__).resolve().parents[2] / "executas" / "focus-session"
+PLUGIN_DIR = Path(__file__).resolve().parents[2] / "executas" / "focus-session-python"
 
 
 @pytest.fixture(scope="module")
@@ -57,4 +57,7 @@ def test_start_then_complete_round_trip(plugin):
         },
     )
     assert_jsonrpc_ok(complete)
-    assert complete["data"]["active"] is None
+    # _action_complete returns {"completed": record, "today": totals};
+    # an active session was just started, so "completed" must be populated.
+    assert complete["data"]["completed"] is not None
+    assert complete["data"]["completed"]["topic"] == "contract test"
