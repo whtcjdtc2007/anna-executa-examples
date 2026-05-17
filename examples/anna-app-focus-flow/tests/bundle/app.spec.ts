@@ -2,7 +2,7 @@
 // Run with: pnpm test
 import { describe, it, expect, beforeEach } from "vitest";
 import { mountBundle, HostApiError } from "@anna-ai/cli/test";
-import manifest from "../../manifest.json" assert { type: "json" };
+import manifest from "../../manifest.json" with { type: "json" };
 
 const TOOL_ID = "tool-test-focus-session-12345678";
 
