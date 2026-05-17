@@ -3,8 +3,45 @@
 > Pomodoro / deep-work timer packaged as an installable **Anna App**. Bundles a
 > stdio Tool plugin (`focus-session`), a coaching Skill (`focus-coach`), and a
 > premium UI bundle that renders inside Anna's UI Runtime sandbox.
+>
+> The plugin ships in **three flavours** — Python, Node.js and Go — all
+> conforming to the same JSON-RPC contract. Pick the one that matches your
+> stack, and use the same example to verify the harness works against all
+> three runtimes.
 
 [简体中文](./README.zh-CN.md)
+
+---
+
+## Choose your language
+
+The App's UI bundle, manifest and Skill are language-agnostic. The
+`focus-session` Tool plugin ships in three flavours; the `enabled` field
+in each `executa.json` decides which one `anna-app dev` launches:
+
+| Flavour | Directory                                                              | Default `enabled` | Runtime requirement |
+| ------- | ---------------------------------------------------------------------- | ----------------- | ------------------- |
+| Python  | [`executas/focus-session-python/`](./executas/focus-session-python/)   | `true`  | `uv` 0.1+ on PATH |
+| Node.js | [`executas/focus-session-node/`](./executas/focus-session-node/)       | `false` | `node` 18+ on PATH (no `npm install` needed) |
+| Go      | [`executas/focus-session-go/`](./executas/focus-session-go/)           | `false` | `go` 1.21+ (or a pre-built binary) |
+
+All three share the same `~/.anna/focus-flow/state.json`, the same
+`session` tool surface and the same InvokeResult envelope — the bundle
+never knows which backend is running. To switch flavours declaratively,
+flip `enabled` to `true` for the one you want and `false` for the other
+two (only one can be active at a time; `anna-app dev` warns on duplicate
+`tool_id`s).
+
+You can also leave `enabled` alone and pick the flavour for a single
+run via the CLI flag — `--executa` overrides `enabled: false`:
+
+```bash
+anna-app dev --executa dir=./executas/focus-session-node
+anna-app dev --executa dir=./executas/focus-session-go,type=go
+```
+
+For the full discovery rules and `executa.json` schema see
+[`docs/multi-language-anna-apps.md`](../../docs/multi-language-anna-apps.md).
 
 ---
 
@@ -12,22 +49,33 @@
 
 ```
 anna-app-focus-flow/
-├── app.json                       # App metadata (slug, name, category…)
-├── manifest.json                  # AppManifest (schema:1) — see below
+├── app.json                          # App metadata (slug, name, category…)
+├── manifest.json                     # AppManifest (schema:2)
 ├── scripts/
-│   └── set-tool-id.py             # apply / reset minted IDs across all 4 files
-├── bundle/                        # static-spa UI loaded by UI Runtime
+│   └── set-tool-id.py                # apply / reset minted IDs across the Python flavour files
+├── bundle/                           # static-spa UI loaded by UI Runtime
 │   ├── index.html
 │   ├── style.css
-│   ├── app.js                     # talks to anna.* RPC SDK
+│   ├── app.js                        # talks to anna.* RPC SDK
 │   └── icon.svg
 └── executas/
-    ├── focus-session/             # stdio Tool plugin (Python / uv)
+    ├── focus-session-python/         # stdio Tool plugin — Python / uv (default)
+    │   ├── executa.json              #   {tool_id, type:"python", enabled:true}
     │   ├── pyproject.toml
     │   ├── focus_session_plugin.py
     │   └── README.md
+    ├── focus-session-node/           # stdio Tool plugin — Node.js 18+
+    │   ├── executa.json              #   {tool_id, type:"node", enabled:false}
+    │   ├── package.json
+    │   ├── focus_session_plugin.js
+    │   └── README.md
+    ├── focus-session-go/             # stdio Tool plugin — Go 1.21+
+    │   ├── executa.json              #   {tool_id, type:"go", enabled:false}
+    │   ├── go.mod
+    │   ├── main.go
+    │   └── README.md
     └── focus-coach/
-        └── SKILL.md               # declarative Skill (YAML frontmatter)
+        └── SKILL.md                  # declarative Skill (YAML frontmatter)
 ```
 
 ## How the pieces connect
@@ -39,10 +87,11 @@ anna-app-focus-flow/
 └──────────────┘    JSON-RPC result      └──────────┬───────────┘
                                                     │ NATS
                                                     ▼
-                                       ┌────────────────────────┐
-                                       │ executas/focus-session │
-                                       │  stdio plugin          │
-                                       └────────────────────────┘
+                                       ┌─────────────────────────────────┐
+                                       │ executas/focus-session-{python, │
+                                       │   node, go}  — pick one via     │
+                                       │   executa.json (stdio plugin)   │
+                                       └─────────────────────────────────┘
 ```
 
 The Skill (`focus-coach`) is loaded into the LLM's system prompt by Anna
@@ -69,7 +118,7 @@ Keeping the plugin to a single dispatcher method means there's only ever
 | `get_state`  | —                             | `{ active, today, recent }`                   |
 
 State persists to `~/.anna/focus-flow/state.json`. See
-[executas/focus-session/README.md](./executas/focus-session/README.md) for the
+[executas/focus-session-python/README.md](./executas/focus-session-python/README.md) for the
 stdio JSON-RPC contract.
 
 ---
@@ -202,7 +251,7 @@ in four places — `pyproject.toml`'s `[project].name` and
 placeholders and a helper that flips all four atomically.
 
 ```bash
-cd executas/focus-session
+cd executas/focus-session-python
 # 1) Smoke-test the placeholder build (does not need the minted ID yet):
 uv tool install . --reinstall
 echo '{"jsonrpc":"2.0","id":1,"method":"describe"}' \
@@ -233,7 +282,7 @@ Then register it as an Executa at <https://anna.partners/executa>:
 4. Re-install the plugin under its new name and confirm the shim resolves:
 
    ```bash
-   cd executas/focus-session
+   cd executas/focus-session-python
    uv tool install . --reinstall --no-cache
    which tool-yourhandle-focus-session-abcd1234   # → ~/.local/bin/<minted>
    echo '{"jsonrpc":"2.0","id":1,"method":"describe"}' \
@@ -318,7 +367,7 @@ user's account before app install succeeds — Anna refuses installs whose
 The recommended loop uses [`@anna-ai/cli`](https://www.npmjs.com/package/@anna-ai/cli)
 (installed as a devDependency in this example's `package.json`). It spawns the
 harness on `http://localhost:5180`, auto-discovers the executa under
-`executas/focus-session/`, and proxies `anna.*` RPCs to a real Python bridge
+`executas/focus-session-python/`, and proxies `anna.*` RPCs to a real Python bridge
 (`anna-app-runtime-local`) — exactly the same surface Anna uses in production.
 
 ### 1. One-time setup
@@ -344,9 +393,9 @@ pnpm dev                    # → anna-app dev
 ```
 
 On first `tools.invoke`, the bridge lazy-spawns the executa with
-`uv run --project executas/focus-session <minted-tool-id>`. If the executa
+`uv run --project executas/focus-session-python <minted-tool-id>`. If the executa
 process exits immediately, the harness surfaces `tool_failed: executa
-process exited` in the RPC log — `cd executas/focus-session && uv sync`
+process exited` in the RPC log — `cd executas/focus-session-python && uv sync`
 will print the real dependency-resolution error.
 
 ### 3. Validate the manifest
@@ -366,7 +415,7 @@ The pytest suite in `tests/plugin/` uses the published
 spawn the plugin and assert the JSON-RPC contract.
 
 ```bash
-cd executas/focus-session
+cd executas/focus-session-python
 uv sync --extra dev         # installs pytest + anna-executa-test
 uv run pytest ../../tests/plugin -q
 ```
@@ -385,7 +434,7 @@ pnpm fixture:summarize      # human-readable transcript of the happy path
 Drive the plugin's stdio JSON-RPC directly, bypassing the harness:
 
 ```bash
-cd executas/focus-session
+cd executas/focus-session-python
 uv run python focus_session_plugin.py <<'EOF'
 {"jsonrpc":"2.0","id":1,"method":"describe"}
 {"jsonrpc":"2.0","id":2,"method":"invoke","params":{"tool":"session","arguments":{"action":"start","duration_minutes":1,"topic":"smoke test"}}}

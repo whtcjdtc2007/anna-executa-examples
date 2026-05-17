@@ -1,10 +1,10 @@
-// Bundle harness test — drives bundle/app.js via @anna/cli/test (mountBundle).
+// Bundle harness test — drives bundle/app.js via @anna-ai/cli/test (mountBundle).
 // Run with: pnpm test
 import { describe, it, expect, beforeEach } from "vitest";
-import { mountBundle, HostApiError } from "@anna/cli/test";
-import manifest from "../../manifest.json" assert { type: "json" };
+import { mountBundle, HostApiError } from "@anna-ai/cli/test";
+import manifest from "../../manifest.json" with { type: "json" };
 
-const TOOL_ID = "tool-anna-focus-session-a33trjpv";
+const TOOL_ID = "tool-test-focus-session-12345678";
 
 function defaultMocks() {
   // Minimal in-memory focus-session simulator. Mirrors the real plugin's

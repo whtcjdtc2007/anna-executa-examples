@@ -1,0 +1,6 @@
+{
+  "tool_id": "tool-test-focus-session-12345678",
+  "type": "node",
+  "enabled": false,
+  "_comment": "Disabled by default; the Python flavour is the canonical example. To run the Node.js implementation instead: (1) set `enabled: true` here; (2) set `enabled: false` in ../focus-session-python/executa.json; (3) ensure Node 18+ is on PATH. No npm install needed — the plugin uses only Node built-ins."
+}

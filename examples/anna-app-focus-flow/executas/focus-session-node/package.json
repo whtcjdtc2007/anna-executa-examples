@@ -1,0 +1,21 @@
+{
+  "name": "tool-test-focus-session-12345678",
+  "version": "1.0.0",
+  "description": "Focus Session — Executa stdio tool plugin (Node.js flavour)",
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "bin": {
+    "tool-test-focus-session-12345678": "focus_session_plugin.js"
+  },
+  "main": "focus_session_plugin.js",
+  "scripts": {
+    "start": "node focus_session_plugin.js"
+  },
+  "executa": {
+    "tool_id": "tool-test-focus-session-12345678"
+  }
+}

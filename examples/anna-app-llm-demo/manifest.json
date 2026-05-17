@@ -1,0 +1,43 @@
+{
+  "schema": 2,
+  "permissions": [
+    "chat.write_message"
+  ],
+  "required_executas": [],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the LLM Demo app open. It calls anna.llm.complete and anna.agent.session directly from the iframe; you do not need to summon any windows.",
+  "tags": ["demo", "llm", "agent"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "LLM Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 420, "h": 540 },
+        "default_size": { "w": 560, "h": 720 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      }
+    ],
+    "host_api": {
+      "llm": ["complete"],
+      "chat": ["write_message"],
+      "window": ["set_title"]
+    },
+    "csp_overrides": {
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "fixtures": ["fixtures/*.jsonl"],
+    "user_id": 1
+  }
+}

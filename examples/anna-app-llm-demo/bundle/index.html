@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LLM Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>anna-app LLM Demo</h1>
+      <p class="muted">
+        Exercises <code>anna.llm.complete</code>,
+        <code>anna.agent.session({ submode: "auto" })</code>, and
+        <code>session.history()</code>.
+      </p>
+    </header>
+
+    <section>
+      <h2>1. One-shot completion</h2>
+      <textarea id="complete-input" rows="2">Say hello in three short sentences.</textarea>
+      <button id="complete-btn">Run llm.complete</button>
+      <pre id="complete-out" class="out">(no output yet)</pre>
+    </section>
+
+    <section>
+      <h2>2. Agent session (auto submode)</h2>
+      <button id="session-create-btn">Create session</button>
+      <span id="session-uuid" class="muted">no session</span>
+      <textarea id="run-input" rows="2">What is 12 × 13?</textarea>
+      <button id="run-btn" disabled>session.run (streamed)</button>
+      <button id="history-btn" disabled>session.history</button>
+      <button id="delete-btn" disabled>session.delete</button>
+      <pre id="run-out" class="out">(no output yet)</pre>
+    </section>
+
+    <section>
+      <h2>Errors</h2>
+      <pre id="errors" class="out err">(none)</pre>
+    </section>
+
+    <!-- Anna App Runtime SDK — must be loaded before app.js so that
+         window.anna.{llm,agent,...} exist when app.js runs. -->
+    <script src="/static/anna-apps/_sdk/0.2.0/index.js" defer></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>

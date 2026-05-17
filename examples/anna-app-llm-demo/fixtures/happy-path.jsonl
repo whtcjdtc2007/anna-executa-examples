@@ -1,0 +1,5 @@
+{"ns":"llm","method":"complete","result":{"role":"assistant","content":{"type":"text","text":"Hello! Greetings. Welcome aboard."},"model":"mock","stopReason":"endTurn","usage":{"inputTokens":7,"outputTokens":9,"totalTokens":16}}}
+{"ns":"agent","method":"session.create","result":{"app_session_uuid":"aps_demo_mock_0001","expires_in":600,"submode":"auto","granted_tools":[]}}
+{"ns":"agent","method":"session.run","events":[{"payload":{"event":"token","text":"12 "}},{"payload":{"event":"token","text":"× "}},{"payload":{"event":"token","text":"13 "}},{"payload":{"event":"token","text":"= "}},{"payload":{"event":"token","text":"156"}},{"payload":{"event":"complete"}}]}
+{"ns":"agent","method":"session.history","result":{"messages":[{"role":"user","content":"What is 12 × 13?"},{"role":"assistant","content":"12 × 13 = 156"}]}}
+{"ns":"agent","method":"session.delete","result":{"deleted":true}}

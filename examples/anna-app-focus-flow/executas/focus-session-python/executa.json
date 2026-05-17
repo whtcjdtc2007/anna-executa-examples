@@ -1,0 +1,6 @@
+{
+  "tool_id": "tool-test-focus-session-12345678",
+  "type": "python",
+  "enabled": true,
+  "_comment": "Run `anna-app dev` from the app root to launch this executa. To switch to the Node.js or Go flavour, set `enabled: false` here and `enabled: true` in the corresponding sibling executa.json (only one focus-session can be active per app)."
+}

@@ -1,0 +1,121 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@anna-ai/cli':
+        specifier: latest
+        version: 0.1.12
+
+packages:
+
+  '@anna-ai/app-runtime@0.2.0':
+    resolution: {integrity: sha512-MXJX2hjfN224aW7I66MQeCgR3nPyU5lNanaHL9+Sgiv+UB7PhWX8oiGBbPFHAwPLcGM6cD5QNjNquB+fxIvBGg==}
+
+  '@anna-ai/app-schema@0.4.0':
+    resolution: {integrity: sha512-+9FdUWs28g9bj9HEGSFbdgda/9A7qU2eo3koNrxBFg3niaGYgrmUq1YKHBxIBRc0rqLd1unGyNSZtdoy26LY/Q==}
+
+  '@anna-ai/cli@0.1.12':
+    resolution: {integrity: sha512-3aVgPpQTC3rvsnmpmTStMHRRSI881hDb1JuAIfysOdEoSirzvyRv2pckH9LPm+jikBnX0FOlW0NGNLdT18YE9Q==}
+    engines: {node: '>=22'}
+    hasBin: true
+
+  ajv-formats@3.0.1:
+    resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
+    peerDependencies:
+      ajv: ^8.0.0
+    peerDependenciesMeta:
+      ajv:
+        optional: true
+
+  ajv@8.20.0:
+    resolution: {integrity: sha512-Thbli+OlOj+iMPYFBVBfJ3OmCAnaSyNn4M1vz9T6Gka5Jt9ba/HIR56joy65tY6kx/FCF5VXNB819Y7/GUrBGA==}
+
+  commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
+    engines: {node: '>=18'}
+
+  fast-deep-equal@3.1.3:
+    resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
+
+  fast-uri@3.1.2:
+    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
+
+  json-schema-traverse@1.0.0:
+    resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
+
+  kleur@4.1.5:
+    resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
+    engines: {node: '>=6'}
+
+  require-from-string@2.0.2:
+    resolution: {integrity: sha512-Xf0nWe6RseziFMu+Ap9biiUbmplq6S9/p+7w7YXP/JBHhrUDDUhwa+vANyubuqfZWTveU//DYVGsDG7RKL/vEw==}
+    engines: {node: '>=0.10.0'}
+
+  smol-toml@1.6.1:
+    resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
+    engines: {node: '>= 18'}
+
+  ws@8.20.1:
+    resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
+snapshots:
+
+  '@anna-ai/app-runtime@0.2.0': {}
+
+  '@anna-ai/app-schema@0.4.0': {}
+
+  '@anna-ai/cli@0.1.12':
+    dependencies:
+      '@anna-ai/app-runtime': 0.2.0
+      '@anna-ai/app-schema': 0.4.0
+      ajv: 8.20.0
+      ajv-formats: 3.0.1(ajv@8.20.0)
+      commander: 12.1.0
+      kleur: 4.1.5
+      smol-toml: 1.6.1
+      ws: 8.20.1
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
+
+  ajv-formats@3.0.1(ajv@8.20.0):
+    optionalDependencies:
+      ajv: 8.20.0
+
+  ajv@8.20.0:
+    dependencies:
+      fast-deep-equal: 3.1.3
+      fast-uri: 3.1.2
+      json-schema-traverse: 1.0.0
+      require-from-string: 2.0.2
+
+  commander@12.1.0: {}
+
+  fast-deep-equal@3.1.3: {}
+
+  fast-uri@3.1.2: {}
+
+  json-schema-traverse@1.0.0: {}
+
+  kleur@4.1.5: {}
+
+  require-from-string@2.0.2: {}
+
+  smol-toml@1.6.1: {}
+
+  ws@8.20.1: {}

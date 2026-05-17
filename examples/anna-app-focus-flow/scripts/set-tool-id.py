@@ -3,8 +3,8 @@
 
 The Focus Flow example needs the *same* Tool ID written into four files:
 
-    - executas/focus-session/pyproject.toml      ([project].name + [project.scripts])
-    - executas/focus-session/focus_session_plugin.py   (MANIFEST["name"])
+    - executas/focus-session-python/pyproject.toml      ([project].name + [project.scripts])
+    - executas/focus-session-python/focus_session_plugin.py   (MANIFEST["name"])
     - manifest.json                              (required_executas + ui.host_api.tools)
     - bundle/app.js                              (TOOL_ID constant)
 

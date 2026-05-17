@@ -1,0 +1,10 @@
+# pnpm v11+ settings (the file is required even for non-workspace projects;
+# pnpm no longer reads these fields from package.json). See
+# https://pnpm.io/settings#allowbuilds
+#
+# vitest 透过 esbuild 编译测试文件，esbuild 的 postinstall 仅是把同版本预编
+# 译二进制拷到自己的 bin 目录。pnpm v10+ 默认拒绝任意依赖运行 install
+# 脚本，CI (ci=true) 下被忽略的构建脚本会以 ERR_PNPM_IGNORED_BUILDS 非 0
+# 退出。下面显式放行 esbuild，其它任何包仍走默认（拒绝）。
+allowBuilds:
+  esbuild: true
