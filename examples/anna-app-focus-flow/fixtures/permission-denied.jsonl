@@ -1,2 +1,5 @@
-{"t": 0,    "dir": "out", "ns": "window", "method": "hello",  "args": {}, "result": {"wid": "dev-wid", "user_id": 1}}
-{"t": 50,   "dir": "out", "ns": "fs",     "method": "read",   "args": {"path": "/etc/passwd"}, "outcome": "denied", "error_code": "permission_denied"}
+{"t":0,"kind":"meta","harness_version":"0.1","session_id":"dev-session","window_uuid":"dev-wid"}
+{"t":1,"kind":"req","id":1,"ns":"window","method":"hello","args":{}}
+{"t":2,"kind":"res","id":1,"ok":true,"result":{"wid":"dev-wid","user_id":1}}
+{"t":50,"kind":"req","id":2,"ns":"fs","method":"read","args":{"path":"/etc/passwd"}}
+{"t":51,"kind":"res","id":2,"ok":false,"error":{"code":"permission_denied","message":"access to /etc/passwd denied by host policy"}}
