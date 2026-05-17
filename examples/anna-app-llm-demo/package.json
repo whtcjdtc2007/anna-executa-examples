@@ -10,6 +10,9 @@
     "validate": "anna-app validate"
   },
   "devDependencies": {
-    "@anna-ai/cli": "^0.1.11"
+    "@anna-ai/cli": "latest"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }
