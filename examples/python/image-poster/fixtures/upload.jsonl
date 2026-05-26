@@ -1,0 +1,1 @@
+{"ns":"host","method":"uploadFile","match":{"modeEquals":"inline"},"result":{"download_url":"https://mock.cdn/uploaded/poster.png","r2_key":"exec-uploads/dev/mock-user/image-poster/inv-1/image/poster.png","size_bytes":2048,"expires_at":"2030-01-01T00:00:00Z"}}

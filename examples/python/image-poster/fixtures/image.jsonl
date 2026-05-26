@@ -1,0 +1,3 @@
+{"ns":"image","method":"generate","match":{"promptIncludes":"Mars"},"result":{"images":[{"url":"https://mock.cdn/mars-poster.png","mimeType":"image/png","width":1024,"height":1024}],"model":"mock-dalle-3","quota_used":{"images_today":1,"images_quota":50}}}
+{"ns":"image","method":"generate","result":{"images":[{"url":"https://mock.cdn/default-poster.png","mimeType":"image/png","width":1024,"height":1024}],"model":"mock-dalle-3"}}
+{"ns":"image","method":"edit","result":{"images":[{"url":"https://mock.cdn/restyled-poster.png","mimeType":"image/png","width":1024,"height":1024}],"model":"mock-edit-v1"}}

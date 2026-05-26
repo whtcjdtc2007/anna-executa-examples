@@ -1,0 +1,32 @@
+[project]
+name = "image-poster"
+version = "0.1.0"
+description = "Example Executa v2 image plugin — generates a poster image via reverse image/generate, optionally edits it via image/edit, and re-uploads the result via host/uploadFile."
+requires-python = ">=3.10"
+authors = [{ name = "Anna Developer" }]
+license = { text = "MIT" }
+dependencies = [
+    "executa-sdk>=0.1.0",
+]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.19.0"]
+
+[project.scripts]
+image-poster = "image_poster:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Resolve `executa-sdk` from the local in-repo SDK when installing from
+# this checkout. Mirrors sampling-summarizer / storage-notebook.
+[tool.uv.sources]
+executa-sdk = { path = "../../../sdk/python", editable = true }
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["image_poster.py"]

@@ -9,8 +9,12 @@
 
 const sampling = require("./sampling");
 const storage = require("./storage");
+const image = require("./image");
+const hostUpload = require("./host_upload");
 
 module.exports = {
   ...sampling,
   ...storage,
+  ...image,
+  ...hostUpload,
 };
