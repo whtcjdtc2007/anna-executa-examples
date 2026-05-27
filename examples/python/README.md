@@ -14,8 +14,8 @@ distributed, or built in isolation.
 | **Basic Plugin** | [`basic-tool/`](basic-tool/) | Text processing toolkit (`word_count`, `text_transform`, `batch_word_count`). |
 | **Credential Plugin** | [`credential-tool/`](credential-tool/) | Weather query tool — declares an API-Key credential and consumes it via the platform's unified authorization. |
 | **Google OAuth Plugin** | [`google-oauth-tool/`](google-oauth-tool/) | Gmail reader — consumes Google OAuth2 access tokens injected by the platform (no OAuth flow inside the plugin). |
-| **Sampling Plugin (v2)** | [`sampling-summarizer/`](sampling-summarizer/) | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](https://anna.talentai.com/developers/reference/executa-sampling). |
-| **Storage Plugin (v2)** | [`storage-notebook/`](storage-notebook/) | Notebook + attachment uploader that uses Anna Persistent Storage via reverse `storage/*` and `files/*` RPC (per-user/app KV plus two-step object uploads via the host's presigned URL). See [docs/persistent-storage.md](https://anna.talentai.com/developers/reference/executa-persistent-storage). |
+| **Sampling Plugin (v2)** | [`sampling-summarizer/`](sampling-summarizer/) | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling). |
+| **Storage Plugin (v2)** | [`storage-notebook/`](storage-notebook/) | Notebook + attachment uploader that uses Anna Persistent Storage via reverse `storage/*` and `files/*` RPC (per-user/app KV plus two-step object uploads via the host's presigned URL). See [docs/persistent-storage.md](https://anna.partners/developers/reference/executa-persistent-storage). |
 
 ## Subdirectory Layout
 
@@ -203,7 +203,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python credential_plugin.p
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","arguments":{"city":"Beijing"},"context":{"credentials":{"WEATHER_API_KEY":"test_key"}}},"id":2}' | python credential_plugin.py 2>/dev/null
 ```
 
-> See [Platform Authorization Documentation](https://anna.talentai.com/developers/reference/executa-credentials) for details
+> See [Platform Authorization Documentation](https://anna.partners/developers/reference/executa-credentials) for details
 
 ## Google OAuth Plugin Example
 
@@ -241,7 +241,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python google_oauth_plugin
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_messages","arguments":{"query":"is:unread","max_results":5},"context":{"credentials":{"GMAIL_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | python google_oauth_plugin.py 2>/dev/null
 ```
 
-> See [Platform Authorization Documentation](https://anna.talentai.com/developers/reference/executa-credentials) for the full OAuth flow
+> See [Platform Authorization Documentation](https://anna.partners/developers/reference/executa-credentials) for the full OAuth flow
 
 ## Protocol Interaction Examples
 
@@ -318,7 +318,7 @@ Key ingredients (already wired in the example):
 4. **End-user grant.** The user must enable sampling for this Executa in
    Anna Admin (writes `sampling_grant.enabled = true`).
 
-Full wire reference and error codes: [docs/sampling.md](https://anna.talentai.com/developers/reference/executa-sampling).
+Full wire reference and error codes: [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling).
 
 ## Using Persistent Storage (Executa v2)
 
@@ -362,4 +362,4 @@ Key ingredients (already wired in the example):
    `storage_grant.scopes = ["user", …]` plus quota overrides).
 
 Full wire reference, error codes and quota semantics:
-[docs/persistent-storage.md](https://anna.talentai.com/developers/reference/executa-persistent-storage).
+[docs/persistent-storage.md](https://anna.partners/developers/reference/executa-persistent-storage).

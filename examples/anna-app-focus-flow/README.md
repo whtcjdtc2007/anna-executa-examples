@@ -41,7 +41,7 @@ anna-app dev --executa dir=./executas/focus-session-go,type=go
 ```
 
 For the full discovery rules and `executa.json` schema see the
-[anna-app CLI reference](https://anna.talentai.com/developers/reference/cli).
+[anna-app CLI reference](https://anna.partners/developers/reference/cli).
 
 ---
 

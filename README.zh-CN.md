@@ -68,7 +68,7 @@ anna-app executa dev --invoke greet --args '{"name":"Ada"}'
 它会从 `executa.json` / `pyproject.toml` / `package.json` / `go.mod` /
 `bin/` 自动识别启动方式，完整执行 `initialize` 握手，并能 mock 或转发
 反向 `sampling/createMessage`。完整说明见
-[`anna-app` CLI 参考](https://anna.talentai.com/developers/reference/cli)。
+[`anna-app` CLI 参考](https://anna.partners/developers/reference/cli)。
 
 ### Python 插件
 
@@ -162,7 +162,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run examples/go/google_
 
 ### Sampling 插件（v2）— 反向 `sampling/createMessage`
 
-插件可以请求宿主代为执行一次 LLM 补全。模型选择、计费与配额由宿主负责，插件无需任何 API Key。详见 [docs/sampling.zh-CN.md](https://anna.talentai.com/developers/reference/executa-sampling)。
+插件可以请求宿主代为执行一次 LLM 补全。模型选择、计费与配额由宿主负责，插件无需任何 API Key。详见 [docs/sampling.zh-CN.md](https://anna.partners/developers/reference/executa-sampling)。
 
 ```bash
 # Python
@@ -179,7 +179,7 @@ cd examples/go/sampling-tool && go run ./...
 
 插件可以持久化按用户 / 应用维度的状态，并上传二进制附件，全程不需要任何
 云存储凭据 —— bucket、加密、配额、按应用 ACL 均由 Anna 负责。详见
-[docs/persistent-storage.zh-CN.md](https://anna.talentai.com/developers/reference/executa-persistent-storage)。
+[docs/persistent-storage.zh-CN.md](https://anna.partners/developers/reference/executa-persistent-storage)。
 
 ```bash
 # Python
@@ -199,13 +199,13 @@ python examples/python/storage-notebook/storage_notebook.py
 
 ## 文档
 
-- [协议规范](https://anna.talentai.com/developers/reference/executa-protocol) — JSON-RPC 2.0 over stdio 完整协议定义
-- [本地 Executa 运行器](https://anna.talentai.com/developers/reference/cli) — `anna-app executa dev`：隔离运行单个插件（REPL + 一次性）
-- [平台统一授权](https://anna.talentai.com/developers/reference/executa-credentials) — 凭据声明、自动注入与平台授权集成
-- [Binary 分发指南](https://anna.talentai.com/developers/reference/executa-distribution) — 构建、签名、多平台部署
-- [反向 Sampling](https://anna.talentai.com/developers/reference/executa-sampling) — 插件请求宿主执行 LLM 补全
-- [Persistent Storage](https://anna.talentai.com/developers/reference/executa-persistent-storage) — 由 Anna 托管的按用户 / 应用维度 KV + 对象存储
-- [常见踩坑](https://anna.talentai.com/developers/reference/executa-pitfalls) — 插件显示为 "Stopped" 时先看这里
+- [协议规范](https://anna.partners/developers/reference/executa-protocol) — JSON-RPC 2.0 over stdio 完整协议定义
+- [本地 Executa 运行器](https://anna.partners/developers/reference/cli) — `anna-app executa dev`：隔离运行单个插件（REPL + 一次性）
+- [平台统一授权](https://anna.partners/developers/reference/executa-credentials) — 凭据声明、自动注入与平台授权集成
+- [Binary 分发指南](https://anna.partners/developers/reference/executa-distribution) — 构建、签名、多平台部署
+- [反向 Sampling](https://anna.partners/developers/reference/executa-sampling) — 插件请求宿主执行 LLM 补全
+- [Persistent Storage](https://anna.partners/developers/reference/executa-persistent-storage) — 由 Anna 托管的按用户 / 应用维度 KV + 对象存储
+- [常见踩坑](https://anna.partners/developers/reference/executa-pitfalls) — 插件显示为 "Stopped" 时先看这里
 - [Anna App 示例 — Focus Flow](examples/anna-app-focus-flow/README.zh-CN.md) — 端到端 Anna App：1 工具 + 1 技能 + 高质感 UI bundle + 完整 manifest
 
 ## 许可证

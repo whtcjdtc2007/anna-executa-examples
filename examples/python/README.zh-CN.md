@@ -13,8 +13,8 @@ For English version, see [README.md](README.md)
 | **基础插件** | [`basic-tool/`](basic-tool/) | 文本处理工具集（`word_count`、`text_transform`、`batch_word_count`）。 |
 | **凭据插件** | [`credential-tool/`](credential-tool/) | 天气查询工具，演示声明 API Key 凭据并通过平台统一授权消费。 |
 | **Google OAuth 插件** | [`google-oauth-tool/`](google-oauth-tool/) | Gmail 邮件查询工具，演示通过平台注入 Google OAuth2 访问令牌（OAuth 流程不在插件中）。 |
-| **Sampling 插件（v2）** | [`sampling-summarizer/`](sampling-summarizer/) | 文本摘要器，通过反向 `sampling/createMessage` 请 host 代理完成一次 LLM 推理（插件无需 API key，模型选择/计费/配额均由 host 接管）。详见 [docs/sampling.zh-CN.md](https://anna.talentai.com/developers/reference/executa-sampling)。 |
-| **Storage 插件（v2）** | [`storage-notebook/`](storage-notebook/) | 笔记本 + 附件上传示例，通过反向 `storage/*`、`files/*` RPC 使用 Anna Persistent Storage（按用户/应用维度的 KV，配合宿主预签名 URL 的两步式对象上传）。详见 [docs/persistent-storage.zh-CN.md](https://anna.talentai.com/developers/reference/executa-persistent-storage)。 |
+| **Sampling 插件（v2）** | [`sampling-summarizer/`](sampling-summarizer/) | 文本摘要器，通过反向 `sampling/createMessage` 请 host 代理完成一次 LLM 推理（插件无需 API key，模型选择/计费/配额均由 host 接管）。详见 [docs/sampling.zh-CN.md](https://anna.partners/developers/reference/executa-sampling)。 |
+| **Storage 插件（v2）** | [`storage-notebook/`](storage-notebook/) | 笔记本 + 附件上传示例，通过反向 `storage/*`、`files/*` RPC 使用 Anna Persistent Storage（按用户/应用维度的 KV，配合宿主预签名 URL 的两步式对象上传）。详见 [docs/persistent-storage.zh-CN.md](https://anna.partners/developers/reference/executa-persistent-storage)。 |
 
 ## 子目录约定
 
@@ -196,7 +196,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python credential_plugin.p
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_weather","arguments":{"city":"Beijing"},"context":{"credentials":{"WEATHER_API_KEY":"test_key"}}},"id":2}' | python credential_plugin.py 2>/dev/null
 ```
 
-> 详见 [平台统一授权文档](https://anna.talentai.com/developers/reference/executa-credentials)
+> 详见 [平台统一授权文档](https://anna.partners/developers/reference/executa-credentials)
 
 ## Google OAuth 插件示例
 
@@ -232,7 +232,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | python google_oauth_plugin
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_messages","arguments":{"query":"is:unread","max_results":5},"context":{"credentials":{"GMAIL_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | python google_oauth_plugin.py 2>/dev/null
 ```
 
-> 详见 [平台统一授权文档](https://anna.talentai.com/developers/reference/executa-credentials) 了解完整 OAuth 流程
+> 详见 [平台统一授权文档](https://anna.partners/developers/reference/executa-credentials) 了解完整 OAuth 流程
 
 ## 协议交互示例
 
@@ -307,7 +307,7 @@ TOOL_DISPATCH["my_tool"] = tool_my_tool
 4. **用户授权。** 最终用户需在 Anna Admin 为该 Executa 打开 sampling
    开关（写入 `sampling_grant.enabled = true`）。
 
-完整线协议与错误码：[docs/sampling.zh-CN.md](https://anna.talentai.com/developers/reference/executa-sampling)。
+完整线协议与错误码：[docs/sampling.zh-CN.md](https://anna.partners/developers/reference/executa-sampling)。
 
 ## 使用 Persistent Storage（Executa v2）
 
@@ -349,4 +349,4 @@ TOOL_DISPATCH["my_tool"] = tool_my_tool
 4. **用户授权。** 最终用户需在 Anna Admin 为该 Executa 打开持久化
    存储开关（写入 `storage_grant.scopes = ["user", …]` 及配额覆盖）。
 
-完整线协议、错误码与配额语义：[docs/persistent-storage.zh-CN.md](https://anna.talentai.com/developers/reference/executa-persistent-storage)。
+完整线协议、错误码与配额语义：[docs/persistent-storage.zh-CN.md](https://anna.partners/developers/reference/executa-persistent-storage)。

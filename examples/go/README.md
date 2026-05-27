@@ -11,7 +11,7 @@ This directory contains three standalone Go Executa plugin examples. Each file i
 | **Basic Plugin** | `main.go` | System information queries, hash computation, string utilities |
 | **Credential Plugin** | `credential_plugin.go` | Notion query tool, demonstrating credential (API Key) declaration and platform authorization integration |
 | **Google OAuth Plugin** | `google_oauth_plugin.go` | Google Drive browser, demonstrating Google OAuth credential consumption via platform authorization |
-| **Sampling Plugin (v2)** | `sampling-tool/` | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). Lives in its own subdirectory with a separate `go.mod` that uses `replace` to consume the local Go SDK. See [docs/sampling.md](https://anna.talentai.com/developers/reference/executa-sampling). |
+| **Sampling Plugin (v2)** | `sampling-tool/` | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). Lives in its own subdirectory with a separate `go.mod` that uses `replace` to consume the local Go SDK. See [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling). |
 
 > **Note:** Each file has its own `func main()`. Use `go run <file>.go` to run a specific plugin, not `go run .`.
 
@@ -161,7 +161,7 @@ NOTION_TOKEN=ntn_xxx go run credential_plugin.go
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"search_pages","arguments":{"query":"test"},"context":{"credentials":{"NOTION_TOKEN":"ntn_test"}}},"id":2}' | go run credential_plugin.go 2>/dev/null
 ```
 
-> See [Platform Authorization Documentation](https://anna.talentai.com/developers/reference/executa-credentials) for details
+> See [Platform Authorization Documentation](https://anna.partners/developers/reference/executa-credentials) for details
 
 ## Google OAuth Plugin Example
 
@@ -192,7 +192,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | go run google_oauth_plugin
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_files","arguments":{"max_results":5},"context":{"credentials":{"GOOGLE_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | go run google_oauth_plugin.go 2>/dev/null
 ```
 
-> See [Platform Authorization Documentation](https://anna.talentai.com/developers/reference/executa-credentials) for the full OAuth flow
+> See [Platform Authorization Documentation](https://anna.partners/developers/reference/executa-credentials) for the full OAuth flow
 
 ## Protocol Interaction Examples
 
@@ -270,7 +270,7 @@ Key ingredients (already wired in the example):
 4. **End-user grant.** The user must enable sampling for this Executa in
    Anna Admin (writes `sampling_grant.enabled = true`).
 
-Full wire reference and error codes: [docs/sampling.md](https://anna.talentai.com/developers/reference/executa-sampling).
+Full wire reference and error codes: [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling).
 
 ## Advantages of Go
 

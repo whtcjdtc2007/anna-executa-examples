@@ -11,7 +11,7 @@ This directory contains two complete Node.js Executa plugin examples:
 | **Basic Plugin** | `example_plugin.js` | JSON formatting, Base64 encoding/decoding, hash computation |
 | **Credential Plugin** | `credential_plugin.js` | GitHub query tool, demonstrating credential (API Key) declaration and platform authorization integration |
 | **Google OAuth Plugin** | `google_oauth_plugin.js` | Google Calendar manager, demonstrating Google OAuth credential consumption via platform authorization |
-| **Sampling Plugin (v2)** | `sampling-tool.js` | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](https://anna.talentai.com/developers/reference/executa-sampling). |
+| **Sampling Plugin (v2)** | `sampling-tool.js` | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling). |
 
 ## How to Run
 
@@ -151,7 +151,7 @@ GITHUB_TOKEN=ghp_xxx node credential_plugin.js
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"get_repo","arguments":{"owner":"octocat","repo":"hello-world"},"context":{"credentials":{"GITHUB_TOKEN":"ghp_test"}}},"id":2}' | node credential_plugin.js 2>/dev/null
 ```
 
-> See [Platform Authorization Documentation](https://anna.talentai.com/developers/reference/executa-credentials) for details
+> See [Platform Authorization Documentation](https://anna.partners/developers/reference/executa-credentials) for details
 
 ## Google OAuth Plugin Example
 
@@ -182,7 +182,7 @@ echo '{"jsonrpc":"2.0","method":"describe","id":1}' | node google_oauth_plugin.j
 echo '{"jsonrpc":"2.0","method":"invoke","params":{"tool":"list_events","arguments":{"max_results":5},"context":{"credentials":{"GOOGLE_ACCESS_TOKEN":"ya29.test_token"}}},"id":2}' | node google_oauth_plugin.js 2>/dev/null
 ```
 
-> See [Platform Authorization Documentation](https://anna.talentai.com/developers/reference/executa-credentials) for the full OAuth flow
+> See [Platform Authorization Documentation](https://anna.partners/developers/reference/executa-credentials) for the full OAuth flow
 
 ## Protocol Interaction Examples
 
@@ -251,4 +251,4 @@ Key ingredients (already wired in the example):
 4. **End-user grant.** The user must enable sampling for this Executa in
    Anna Admin (writes `sampling_grant.enabled = true`).
 
-Full wire reference and error codes: [docs/sampling.md](https://anna.talentai.com/developers/reference/executa-sampling).
+Full wire reference and error codes: [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling).

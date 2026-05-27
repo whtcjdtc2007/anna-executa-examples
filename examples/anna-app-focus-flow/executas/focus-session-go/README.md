@@ -59,7 +59,7 @@ Then change `executa.json` to:
 `anna-app dev` will now launch `bin/tool-test-focus-session-12345678`
 directly, with no `go` toolchain required — this is also the shape of a
 real distribution; see the
-[Executa distribution reference](https://anna.talentai.com/developers/reference/executa-distribution).
+[Executa distribution reference](https://anna.partners/developers/reference/executa-distribution).
 
 You can also override via the CLI flag:
 

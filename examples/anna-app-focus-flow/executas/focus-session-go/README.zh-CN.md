@@ -49,7 +49,7 @@ go build -o bin/tool-test-focus-session-12345678 .
 
 这时 `anna-app dev` 会直接启动 `bin/tool-test-focus-session-12345678`，
 无需 `go` 工具链——这也是真实分发场景的形态，参见
-[Executa 分发参考](https://anna.talentai.com/developers/reference/executa-distribution)。
+[Executa 分发参考](https://anna.partners/developers/reference/executa-distribution)。
 
 也可以用 CLI flag 直接覆盖：
 

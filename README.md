@@ -68,7 +68,7 @@ anna-app executa dev --invoke greet --args '{"name":"Ada"}'
 It auto-detects the launcher from `executa.json` / `pyproject.toml` /
 `package.json` / `go.mod` / `bin/`, performs the full `initialize`
 handshake, and can either mock or relay reverse `sampling/createMessage`
-calls. See the [`anna-app` CLI reference](https://anna.talentai.com/developers/reference/cli) for
+calls. See the [`anna-app` CLI reference](https://anna.partners/developers/reference/cli) for
 the full reference.
 
 ### Python Plugin
@@ -164,7 +164,7 @@ GOOGLE_ACCESS_TOKEN=ya29.xxx node examples/nodejs/google_oauth_plugin.js
 
 ### Sampling Plugins (v2) — Reverse `sampling/createMessage`
 
-Plugins can ask the host to perform an LLM completion on their behalf. The host owns model selection, billing and quota — the plugin needs no API key. See [docs/sampling.md](https://anna.talentai.com/developers/reference/executa-sampling).
+Plugins can ask the host to perform an LLM completion on their behalf. The host owns model selection, billing and quota — the plugin needs no API key. See [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling).
 
 ```bash
 # Python
@@ -182,7 +182,7 @@ cd examples/go/sampling-tool && go run ./...
 Plugins can persist per-user / per-app state and upload binary
 attachments without holding any cloud-storage credential — Anna owns the
 bucket, encryption, quota and per-app ACL. See
-[docs/persistent-storage.md](https://anna.talentai.com/developers/reference/executa-persistent-storage).
+[docs/persistent-storage.md](https://anna.partners/developers/reference/executa-persistent-storage).
 
 ```bash
 # Python
@@ -202,13 +202,13 @@ python examples/python/storage-notebook/storage_notebook.py
 
 ## Documentation
 
-- [Protocol Specification](https://anna.talentai.com/developers/reference/executa-protocol) — Full JSON-RPC 2.0 over stdio protocol definition
-- [Local Executa Runner](https://anna.talentai.com/developers/reference/cli) — `anna-app executa dev`: run one plugin in isolation (REPL + one-shot)
-- [Platform Authorization](https://anna.talentai.com/developers/reference/executa-credentials) — Credential declaration, auto-injection, and platform authorization integration
-- [Binary Distribution Guide](https://anna.talentai.com/developers/reference/executa-distribution) — Building, signing, and multi-platform deployment
-- [Reverse Sampling](https://anna.talentai.com/developers/reference/executa-sampling) — Plugins requesting LLM completions from the host
-- [Persistent Storage](https://anna.talentai.com/developers/reference/executa-persistent-storage) — Per-user / per-app KV + object storage hosted by Anna
-- [Common Pitfalls](https://anna.talentai.com/developers/reference/executa-pitfalls) — Read this first when a plugin shows as "Stopped"
+- [Protocol Specification](https://anna.partners/developers/reference/executa-protocol) — Full JSON-RPC 2.0 over stdio protocol definition
+- [Local Executa Runner](https://anna.partners/developers/reference/cli) — `anna-app executa dev`: run one plugin in isolation (REPL + one-shot)
+- [Platform Authorization](https://anna.partners/developers/reference/executa-credentials) — Credential declaration, auto-injection, and platform authorization integration
+- [Binary Distribution Guide](https://anna.partners/developers/reference/executa-distribution) — Building, signing, and multi-platform deployment
+- [Reverse Sampling](https://anna.partners/developers/reference/executa-sampling) — Plugins requesting LLM completions from the host
+- [Persistent Storage](https://anna.partners/developers/reference/executa-persistent-storage) — Per-user / per-app KV + object storage hosted by Anna
+- [Common Pitfalls](https://anna.partners/developers/reference/executa-pitfalls) — Read this first when a plugin shows as "Stopped"
 - [Anna App Example — Focus Flow](examples/anna-app-focus-flow/README.md) — End-to-end Anna App: 1 tool + 1 skill + premium UI bundle + full app manifest
 
 ## License
