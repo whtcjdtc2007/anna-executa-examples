@@ -1,0 +1,28 @@
+[project]
+name = "tool-test-embed-via-executa-12345678"
+version = "0.1.0"
+description = "Demo Executa: computes text embeddings on behalf of the calling app via embeddings/create reverse-RPC."
+requires-python = ">=3.10"
+authors = [{ name = "Anna Developer" }]
+license = { text = "MIT" }
+dependencies = [
+    "executa-sdk>=0.1.0",
+]
+
+[project.scripts]
+# The script name MUST equal `project.name` (= the minted tool_id),
+# because `anna-app dev` spawns the executa with `uvx <project.name>`.
+"tool-test-embed-via-executa-12345678" = "embed_via_executa_plugin:main"
+
+# When installing from this repo (e.g. `uv tool install .`), resolve
+# `executa-sdk` from the local path instead of PyPI.
+[tool.uv.sources]
+executa-sdk = { path = "../../../../sdk/python", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["embed_via_executa_plugin.py"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

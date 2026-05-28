@@ -1,0 +1,85 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 1.25rem;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+h1 { margin: 0 0 0.25rem; font-size: 1.4rem; }
+h2 { margin: 1.5rem 0 0.5rem; font-size: 1.05rem; }
+h3 { margin: 0.8rem 0 0.3rem; font-size: 0.95rem; }
+h3.small { font-size: 0.8rem; font-weight: normal; text-transform: uppercase; letter-spacing: 0.05em; }
+.muted { color: #888; font-size: 0.9rem; }
+section { border-top: 1px solid #ddd2; padding-top: 0.5rem; }
+
+textarea, input[type="text"], button {
+  font: inherit;
+  display: block;
+  margin: 0.4rem 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+input[type="text"], textarea {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #8884;
+  background: transparent;
+}
+button {
+  padding: 0.45rem 0.8rem;
+  width: auto;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #8884;
+  background: #4682b422;
+}
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.out {
+  background: #80808014;
+  border: 1px solid #8882;
+  border-radius: 6px;
+  padding: 0.6rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+  font-size: 0.82rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.out.err { color: #c0392b; }
+
+.mode-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0.2rem;
+}
+.mode-row label { font-size: 0.9rem; color: #666; }
+.mode-row select {
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #8884;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+}
+.mode-hint { margin: 0.1rem 0 0.4rem; font-size: 0.8rem; }
+
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0.6rem 0 0.4rem;
+  font-size: 0.9rem;
+}
+.result-grid > div { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.85rem; }
+
+details { margin-top: 0.5rem; }
+details summary { cursor: pointer; }

@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Embed Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>anna-app Embed Demo</h1>
+      <p class="muted">
+        Exercises <code>anna.llm.embed</code> (direct HOST API) and
+        <code>anna.tools.invoke</code> against an Executa that calls
+        <code>embeddings/create</code> reverse-RPC.
+      </p>
+    </header>
+
+    <section>
+      <h2>1. Compute embedding</h2>
+      <div class="mode-row">
+        <label for="embed-mode">Embed source:</label>
+        <select id="embed-mode">
+          <option value="direct" selected>Direct &mdash; anna.llm.embed</option>
+          <option value="executa">Via Executa &mdash; anna.tools.invoke &rarr; embeddings/create</option>
+        </select>
+      </div>
+      <p class="muted mode-hint" id="mode-hint">
+        Calls the host embeddings provider directly from the iframe.
+      </p>
+
+      <label class="muted" for="embed-input">Text to embed</label>
+      <textarea id="embed-input" rows="3">The quick brown fox jumps over the lazy dog.</textarea>
+
+      <label class="muted" for="embed-model">Model alias (optional)</label>
+      <input id="embed-model" type="text" value="anna-managed-v1" />
+
+      <button id="embed-btn">Compute embedding</button>
+
+      <div class="result-grid">
+        <div><span class="muted">Model:</span> <span id="r-model">&mdash;</span></div>
+        <div><span class="muted">Dimensions:</span> <span id="r-dims">&mdash;</span></div>
+        <div><span class="muted">prompt_tokens:</span> <span id="r-tokens">&mdash;</span></div>
+        <div><span class="muted">Latency:</span> <span id="r-latency">&mdash;</span></div>
+        <div><span class="muted">Cost (USD):</span> <span id="r-cost">&mdash;</span></div>
+      </div>
+
+      <h3 class="muted small">first 8 floats</h3>
+      <pre id="r-preview" class="out">(no output yet)</pre>
+
+      <details>
+        <summary class="muted">raw response</summary>
+        <pre id="r-raw" class="out">(no output yet)</pre>
+      </details>
+    </section>
+
+    <section>
+      <h2>Errors</h2>
+      <pre id="errors" class="out err">(none)</pre>
+    </section>
+
+    <!-- Anna App Runtime SDK -->
+    <script src="/static/anna-apps/_sdk/0.2.0/index.js" defer></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>

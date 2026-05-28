@@ -1,0 +1,51 @@
+{
+  "schema": 2,
+  "permissions": [
+    "chat.write_message",
+    "tools.invoke"
+  ],
+  "required_executas": [
+    {
+      "tool_id": "tool-test-embed-via-executa-12345678",
+      "min_version": "0.1.0",
+      "version": "latest"
+    }
+  ],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Embed Demo app open. It can compute embeddings either directly (anna.llm.embed) or via the tool-test-embed-via-executa-12345678 Executa (which calls embeddings/create back to the host). You do not need to summon any windows.",
+  "tags": ["demo", "embed", "embeddings", "executa"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Embed Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 460, "h": 560 },
+        "default_size": { "w": 600, "h": 720 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      }
+    ],
+    "host_api": {
+      "llm": ["embed"],
+      "tools": ["required:tool-test-embed-via-executa-12345678"],
+      "chat": ["write_message"],
+      "window": ["set_title"]
+    },
+    "csp_overrides": {
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "fixtures": ["fixtures/*.jsonl"],
+    "user_id": 1
+  }
+}

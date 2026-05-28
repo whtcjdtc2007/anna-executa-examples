@@ -1,0 +1,19 @@
+version = 1
+revision = 1
+requires-python = ">=3.10"
+
+[[package]]
+name = "executa-sdk"
+version = "0.1.0"
+source = { editable = "../../../../sdk/python" }
+
+[[package]]
+name = "tool-test-embed-via-executa-12345678"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "executa-sdk" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "executa-sdk", editable = "../../../../sdk/python" }]

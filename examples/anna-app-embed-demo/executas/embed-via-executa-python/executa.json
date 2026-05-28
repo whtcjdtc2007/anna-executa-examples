@@ -1,0 +1,6 @@
+{
+  "tool_id": "tool-test-embed-via-executa-12345678",
+  "type": "python",
+  "enabled": true,
+  "_comment": "Auto-discovered by `anna-app dev` when launched from the app root. Exposes an `embed` tool that wraps host embeddings/create reverse-RPC. Disable here if you want to test the app without the Executa-embed path."
+}

@@ -46,6 +46,11 @@ from .host_upload import (  # noqa: F401
     UploadError,
     METHOD_HOST_UPLOAD_FILE,
 )
+from .embeddings import (  # noqa: F401
+    EmbeddingsClient,
+    EmbeddingsError,
+    METHOD_EMBEDDINGS_CREATE,
+)
 from .context import InvokeContext  # noqa: F401
 
 __all__ = [
@@ -62,6 +67,8 @@ __all__ = [
     "ImageError",
     "HostUploadClient",
     "UploadError",
+    "EmbeddingsClient",
+    "EmbeddingsError",
     "InvokeContext",
     "PROTOCOL_VERSION_V1",
     "PROTOCOL_VERSION_V2",
@@ -76,4 +83,5 @@ __all__ = [
     "METHOD_IMAGE_GENERATE",
     "METHOD_IMAGE_EDIT",
     "METHOD_HOST_UPLOAD_FILE",
+    "METHOD_EMBEDDINGS_CREATE",
 ]

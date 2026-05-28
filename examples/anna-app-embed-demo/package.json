@@ -1,0 +1,15 @@
+{
+  "name": "anna-app-embed-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Minimal anna-app exercising anna.llm.embed (HOST API) + embeddings/create (reverse RPC via Executa).",
+  "scripts": {
+    "dev:mock": "anna-app dev --mock-llm fixtures/happy-path.jsonl",
+    "dev:real": "anna-app dev",
+    "dev:off": "anna-app dev --no-llm",
+    "validate": "anna-app validate"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "latest"
+  }
+}
