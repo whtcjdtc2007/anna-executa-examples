@@ -1,0 +1,9 @@
+{
+  "slug": "example-text-tool",
+  "name": "example-text-tool",
+  "version": "1.0.0",
+  "executa_type": "tool",
+  "description": "Example Executa plugin — text processing tools (word_count, text_transform, batch_word_count)",
+  "tool_id": "tool-dev-example-text-tool",
+  "type": "python"
+}

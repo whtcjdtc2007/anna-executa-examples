@@ -202,10 +202,21 @@ Executa，bundle 只需在 `action` 上切换。
 
 ## bundle/app.js 中实际使用的 SDK 调用
 
-bundle 从 `/static/anna-apps/_sdk/0.1.0/index.js` 加载运行时 SDK（全局：
-`AnnaAppRuntime`），通过以下方式连接：
+bundle 的 `app.js` 以外部 ES module 方式加载
+（`<script src="app.js" type="module">`），并在其内部直接 `import`
+运行时 SDK——不用内联脚本，因为 bundle 的 CSP
+（`script-src 'self' <sdk-origin>`）会拦截内联脚本：
+
+```html
+<!-- index.html -->
+<script src="anna-tool-ids.js" defer></script>
+<script src="app.js" type="module"></script>
+```
 
 ```js
+// app.js
+import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
+
 const anna = await AnnaAppRuntime.connect();
 // ↑ 需要 URL 参数 `wid` 与 `t`，Anna 打开 iframe 时会自动注入。
 //   独立预览会抛错，bundle 回退到独立模式。

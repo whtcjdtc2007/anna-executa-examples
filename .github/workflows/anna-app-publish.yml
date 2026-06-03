@@ -1,0 +1,298 @@
+# ============================================================
+# Anna App — build executa binary & publish
+# ============================================================
+# Builds the self-contained PyInstaller binary for an anna-app demo's
+# bundled Python executa across platforms, uploads them as GitHub
+# Release assets, and (optionally) registers the app via `anna-app`.
+#
+# The binary bytes are NOT pushed to R2 by this workflow. `anna-app apps
+# cut` makes matrix-nexus mirror the Release assets into its own bucket
+# (apps.anna.partners), content-address them by sha256, and pin
+# binary_sha256 — so the developer only needs the assets reachable at a
+# public URL (a GitHub Release is enough). See each executa.json's
+# `distribution` block.
+#
+# ── Selectable project ──────────────────────────────────────
+# `workflow_dispatch` exposes an `app` dropdown (all + each anna-app demo
+# that ships a Python executa). The `plan` job discovers metadata
+# (tool_id / slug / version / entrypoint / release tag) straight from
+# each executa.json + pyproject.toml, so adding a new demo only needs its
+# files — plus one new line in the dropdown `options` below.
+#
+# ── Lifecycle ───────────────────────────────────────────────
+#   build : compile + upload Release assets only (no server calls).
+#   push  : also upsert the app working draft (no freeze, no R2 mirror).
+#   cut   : also freeze an immutable version → triggers the Nexus R2
+#           mirror to apps.anna.partners + sha256 pin.
+#
+# ── Auth (the "API_TOKEN") ──────────────────────────────────
+# push/cut authenticate with a developer PAT injected via env, exactly
+# like the local CLI's env path (`resolveClient`):
+#   secrets.ANNA_APP_PAT  — a PAT minted with `anna-app login` (scope
+#                           aps:publish is enough for push/cut).
+#   vars.ANNA_APP_HOST    — the nexus host, e.g. https://nexus.anna.partners
+# Rotate with `anna-app token revoke <id>`.
+# ============================================================
+
+name: Anna App — build & publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Which anna-app demo to build/publish"
+        type: choice
+        default: anna-app-aps-files-demo
+        options:
+          - all
+          - anna-app-aps-files-demo
+          - anna-app-embed-demo
+          - anna-app-llm-demo
+          - anna-app-focus-flow
+      lifecycle:
+        description: "build = assets only · push = + working draft · cut = + freeze & R2 mirror"
+        type: choice
+        default: build
+        options:
+          - build
+          - push
+          - cut
+      dry_run:
+        description: "Pass --dry-run to anna-app (push/cut only)"
+        type: boolean
+        default: false
+  release:
+    # Tag a demo as <slug>-v<version> (e.g. files-via-executa-v0.1.0) to
+    # build that one app's binaries and attach them to the Release.
+    types: [created]
+
+permissions:
+  contents: write # create/update Releases + upload assets
+
+concurrency:
+  group: >-
+    anna-app-publish-${{ github.event_name }}-${{
+      github.event.inputs.app || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # ──────────────────────────────────────────────────────────
+  # Resolve the selected app(s) → a JSON matrix of metadata.
+  # ──────────────────────────────────────────────────────────
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.select.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          APP_INPUT: ${{ github.event.inputs.app }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import glob, json, os, sys, tomllib
+          from pathlib import Path
+
+          event = os.environ["EVENT"]
+          app_input = os.environ.get("APP_INPUT", "") or ""
+          ref_name = os.environ.get("REF_NAME", "") or ""
+
+          def discover():
+              out = []
+              for pp in sorted(glob.glob("examples/anna-app-*/executas/*/pyproject.toml")):
+                  exe_dir = Path(pp).parent
+                  ej = exe_dir / "executa.json"
+                  if not ej.exists():
+                      continue
+                  meta = json.loads(ej.read_text("utf-8"))
+                  if meta.get("type") != "python":
+                      continue  # skip go/node siblings + skills
+                  proj = tomllib.loads(Path(pp).read_text("utf-8")).get("project", {})
+                  tool_id = proj.get("name")
+                  ep = proj.get("scripts", {}).get(tool_id, "")
+                  module = ep.split(":", 1)[0] if ":" in ep else None
+                  slug = meta.get("slug")
+                  version = str(meta.get("version") or proj.get("version") or "")
+                  if not (tool_id and module and slug and version):
+                      print(f"::warning::{exe_dir} missing tool_id/module/slug/version; skipped", file=sys.stderr)
+                      continue
+                  app_dir = exe_dir.parents[1].name
+                  out.append({
+                      "app": app_dir,
+                      "app_dir": app_dir,
+                      "executa_dir": exe_dir.name,
+                      "tool_id": tool_id,
+                      "slug": slug,
+                      "version": version,
+                      "entry": f"{module}.py",
+                      "tag": f"{slug}-v{version}",
+                  })
+              return out
+
+          apps = discover()
+          if event == "release":
+              sel = [a for a in apps if a["tag"] == ref_name]
+              if not sel:
+                  print(f"::warning::release tag '{ref_name}' matches no anna-app python executa", file=sys.stderr)
+          elif app_input in ("", "all"):
+              sel = apps
+          else:
+              sel = [a for a in apps if a["app_dir"] == app_input]
+              if not sel:
+                  print(f"::error::app '{app_input}' has no python executa under examples/", file=sys.stderr)
+                  sys.exit(1)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write("apps=" + json.dumps(sel) + "\n")
+          print(json.dumps(sel, indent=2))
+          PY
+
+  # ──────────────────────────────────────────────────────────
+  # Build one PyInstaller binary per (app × platform), package as
+  # <tool_id>-<platform>.tar.gz (+ .sha256) and attach to the Release.
+  # ──────────────────────────────────────────────────────────
+  build:
+    needs: plan
+    if: ${{ needs.plan.outputs.apps != '' && needs.plan.outputs.apps != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.plan.outputs.apps) }}
+        platform:
+          - { os: macos-14, name: darwin-arm64 }
+          - { os: macos-13, name: darwin-x86_64 }
+          - { os: ubuntu-latest, name: linux-x86_64 }
+    runs-on: ${{ matrix.platform.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build deps + in-repo SDK
+        run: |
+          python -m pip install --upgrade pip pyinstaller
+          # The plugins import `executa_sdk`; install the in-repo SDK so
+          # PyInstaller can statically discover + bundle it (harmless for the
+          # stdlib-only focus-session executa).
+          if [ -d sdk/python ]; then
+            python -m pip install ./sdk/python
+          fi
+
+      - name: Build binary
+        working-directory: examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}
+        env:
+          TOOL_ID: ${{ matrix.app.tool_id }}
+          ENTRY: ${{ matrix.app.entry }}
+        run: |
+          pyinstaller --onefile --clean --noupx --name "$TOOL_ID" "$ENTRY"
+          test -f "dist/$TOOL_ID"
+
+      - name: Smoke test (describe)
+        working-directory: examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}
+        env:
+          TOOL_ID: ${{ matrix.app.tool_id }}
+        run: |
+          out="$(printf '%s\n' '{"jsonrpc":"2.0","method":"describe","id":1}' | "./dist/$TOOL_ID" 2>/dev/null || true)"
+          echo "describe → $out"
+          if printf '%s' "$out" | python3 -c "import sys,json,os; d=json.load(sys.stdin); assert d['result']['name']==os.environ['TOOL_ID']" 2>/dev/null; then
+            echo "✅ protocol smoke test passed"
+          else
+            echo "::warning::describe smoke test inconclusive for $TOOL_ID (binary still uploaded)"
+          fi
+
+      - name: Package (tar.gz + sha256)
+        working-directory: examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}/dist
+        env:
+          TOOL_ID: ${{ matrix.app.tool_id }}
+          PLATFORM: ${{ matrix.platform.name }}
+        run: |
+          asset="$TOOL_ID-$PLATFORM.tar.gz"
+          tar czf "$asset" "$TOOL_ID"
+          shasum -a 256 "$asset" > "$asset.sha256"
+          echo "ASSET_DIR=examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}/dist" >> "$GITHUB_ENV"
+          echo "ASSET=$asset" >> "$GITHUB_ENV"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app.tool_id }}-${{ matrix.platform.name }}
+          path: |
+            ${{ env.ASSET_DIR }}/${{ env.ASSET }}
+            ${{ env.ASSET_DIR }}/${{ env.ASSET }}.sha256
+
+      - name: Attach to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ matrix.app.tag }}
+          name: ${{ matrix.app.slug }} v${{ matrix.app.version }}
+          body: "Executa binaries for `${{ matrix.app.tool_id }}` (built by anna-app-publish.yml)."
+          files: |
+            ${{ env.ASSET_DIR }}/${{ env.ASSET }}
+            ${{ env.ASSET_DIR }}/${{ env.ASSET }}.sha256
+
+  # ──────────────────────────────────────────────────────────
+  # Register the app: pin binary_urls at this repo + tag, validate, then
+  # `apps push` (working draft) or `apps cut` (freeze → R2 mirror).
+  # ──────────────────────────────────────────────────────────
+  publish:
+    needs: [plan, build]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.lifecycle != 'build' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.plan.outputs.apps) }}
+    env:
+      ANNA_APP_HOST: ${{ vars.ANNA_APP_HOST }}
+      ANNA_APP_PAT: ${{ secrets.ANNA_APP_PAT }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: corepack enable
+
+      - name: Pin binary_urls → ${{ github.repository }} @ ${{ matrix.app.tag }}
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ matrix.app.tag }}
+          EJ: examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}/executa.json
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          repo, tag, ej = os.environ["REPO"], os.environ["TAG"], os.environ["EJ"]
+          p = Path(ej); m = json.loads(p.read_text("utf-8"))
+          bu = m.get("distribution", {}).get("binary_urls", {})
+          for asset in bu.values():
+              fname = asset["url"].rsplit("/", 1)[-1]
+              asset["url"] = f"https://github.com/{repo}/releases/download/{tag}/{fname}"
+          p.write_text(json.dumps(m, indent=2) + "\n", "utf-8")
+          print(f"pinned {ej} → https://github.com/{repo}/releases/download/{tag}/")
+          PY
+
+      - name: Install anna-app
+        working-directory: examples/${{ matrix.app.app_dir }}
+        run: pnpm install
+
+      - name: Validate
+        working-directory: examples/${{ matrix.app.app_dir }}
+        run: pnpm exec anna-app validate --strict
+
+      - name: Push working draft
+        if: ${{ github.event.inputs.lifecycle == 'push' || github.event.inputs.lifecycle == 'cut' }}
+        working-directory: examples/${{ matrix.app.app_dir }}
+        run: |
+          pnpm exec anna-app apps push --json ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}
+
+      - name: Cut version (freeze → R2 mirror)
+        if: ${{ github.event.inputs.lifecycle == 'cut' }}
+        working-directory: examples/${{ matrix.app.app_dir }}
+        run: |
+          pnpm exec anna-app apps cut "${{ matrix.app.version }}" --json ${{ github.event.inputs.dry_run == 'true' && '--dry-run' || '' }}

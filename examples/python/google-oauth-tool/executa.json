@@ -1,0 +1,9 @@
+{
+  "slug": "gmail-tool",
+  "name": "gmail-tool",
+  "version": "1.0.0",
+  "executa_type": "tool",
+  "description": "Example Executa OAuth plugin — Gmail message query demonstrating Google OAuth2 access token consumption via platform authorization",
+  "tool_id": "tool-dev-gmail-tool",
+  "type": "python"
+}

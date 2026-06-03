@@ -361,11 +361,22 @@ class FilesClient(_BaseRpcClient):
         scope: str = "app",
         timeout: float = DEFAULT_TIMEOUT,
     ) -> dict:
-        """Returns ``{"url": "https://signed-download-url", "expires_at": "..."}``."""
+        """Returns ``{"url": "https://signed-download-url", "expires_at": "..."}``.
+
+        Hosts emit the presigned link under ``get_url`` (matching the
+        ``PresignedGet`` REST schema) and read the TTL from ``ttl_seconds``.
+        We send both ``expires_in`` (the documented param) and ``ttl_seconds``
+        so the requested lifetime is honoured, and surface the link as ``url``
+        regardless of which key the host used.
+        """
         params: Dict[str, Any] = {"path": path, "scope": scope}
         if expires_in is not None:
             params["expires_in"] = expires_in
-        return await self._call(METHOD_FILES_DOWNLOAD_URL, params, timeout)
+            params["ttl_seconds"] = expires_in
+        res = await self._call(METHOD_FILES_DOWNLOAD_URL, params, timeout)
+        if isinstance(res, dict) and "url" not in res and "get_url" in res:
+            res = {**res, "url": res["get_url"]}
+        return res
 
     async def list(
         self,

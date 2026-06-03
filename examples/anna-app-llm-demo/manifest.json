@@ -6,13 +6,13 @@
   ],
   "required_executas": [
     {
-      "tool_id": "tool-test-llm-via-executa-12345678",
+      "tool_id": "bundled:llm-via-executa",
       "min_version": "0.1.0",
       "version": "latest"
     }
   ],
   "optional_executas": [],
-  "system_prompt_addendum": "The user has the LLM Demo app open. It can run an LLM completion either directly (anna.llm.complete) or via the tool-test-llm-via-executa-12345678 Executa (which calls sampling/createMessage back to the host LLM). It also exercises anna.agent.session. You do not need to summon any windows.",
+  "system_prompt_addendum": "The user has the LLM Demo app open. It can run an LLM completion either directly (anna.llm.complete) or via the bundled llm-via-executa Executa (which calls sampling/createMessage back to the host LLM). It also exercises anna.agent.session. You do not need to summon any windows.",
   "tags": ["demo", "llm", "agent", "executa", "sampling"],
   "ui": {
     "bundle": {
@@ -35,9 +35,13 @@
     ],
     "host_api": {
       "llm": ["complete"],
-      "tools": ["required:tool-test-llm-via-executa-12345678"],
+      "tools": ["required:bundled:llm-via-executa"],
       "chat": ["write_message"],
-      "window": ["set_title"]
+      "window": ["set_title"],
+      "agent": {
+        "session": { "auto": true },
+        "tools": []
+      }
     },
     "csp_overrides": {
       "script-src": ["'self'"]

@@ -1,0 +1,14 @@
+{
+  "slug": "llm-demo",
+  "name": "LLM Demo",
+  "version": "0.1.0",
+  "tagline": "Run an LLM completion directly or through a bundled Executa.",
+  "description": "LLM Demo shows the two ways an Anna App can reach a language model. It can call `anna.llm.complete` directly from the window, or invoke a bundled Python Executa (`llm-via-executa`) that turns around and calls `sampling/createMessage` back to the host LLM via reverse-RPC. It also exercises `anna.agent.session`.\n\n**What's inside**\n\n- A static single-window UI (`static-spa`) with controls for the direct and Executa-backed paths.\n- `llm-via-executa` — Python stdio Executa that wraps host `sampling/createMessage`.\n\n**How to use**\n\nOpen the window and trigger a completion via either path; compare the direct `anna.llm.complete` result with the Executa round-trip.",
+  "category": "developer-tools",
+  "pricing_model": "free",
+
+  "_comment_bundled_executas": "Executas that ship inside this app. `anna-app apps publish` publishes each one first, then substitutes its server-minted tool_id into every `bundled:<handle>` reference in manifest.json (in memory — the file on disk is never mutated). The `llm-via-executa` handle maps to ./executas/llm-via-executa-python.",
+  "bundled_executas": {
+    "llm-via-executa": { "path": "./executas/llm-via-executa-python" }
+  }
+}

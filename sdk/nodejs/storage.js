@@ -222,13 +222,26 @@ class FilesClient extends _BaseRpcClient {
 
   /**
    * Returns `{ url, expires_at }`.
+   *
+   * Hosts emit the presigned link under `get_url` (matching the `PresignedGet`
+   * REST schema) and read the TTL from `ttl_seconds`. We send both `expires_in`
+   * (the documented param) and `ttl_seconds` so the requested lifetime is
+   * honoured, and surface the link as `url` regardless of which key the host
+   * used.
    * @param {{ path: string, expires_in?: number, scope?: string, timeoutMs?: number }} opts
    */
-  downloadUrl(opts) {
+  async downloadUrl(opts) {
     const { path, expires_in, scope = "app", timeoutMs = 30_000 } = opts;
     const params = { path, scope };
-    if (expires_in != null) params.expires_in = expires_in;
-    return this._call(METHOD_FILES_DOWNLOAD_URL, params, timeoutMs);
+    if (expires_in != null) {
+      params.expires_in = expires_in;
+      params.ttl_seconds = expires_in;
+    }
+    const res = await this._call(METHOD_FILES_DOWNLOAD_URL, params, timeoutMs);
+    if (res && typeof res === "object" && res.url == null && res.get_url != null) {
+      return { ...res, url: res.get_url };
+    }
+    return res;
   }
 
   list(opts = {}) {

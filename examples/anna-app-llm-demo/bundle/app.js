@@ -1,10 +1,11 @@
 // LLM Demo — exercises anna.llm.complete + anna.agent.session.* surfaces.
 //
-// The Anna App Runtime SDK (loaded via <script src="/static/anna-apps/_sdk/.../index.js">
-// in index.html) exposes `window.AnnaAppRuntime`. Call `.connect()` to do the
-// host handshake and obtain the `anna` instance that has .llm / .agent / etc.
+// This bundle is loaded as a native ES module (`<script src="app.js"
+// type="module">`), so it imports the Anna App Runtime SDK directly below.
+// Call `.connect()` to do the host handshake and obtain the `anna` instance
+// that has .llm / .agent / etc.
 
-"use strict";
+import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 
 // Must match the manifest's required_executas[].tool_id and the
 // Executa plugin's MANIFEST.name (see executas/llm-via-executa-python/).
@@ -31,12 +32,7 @@ let session = null;
 // Bootstrap the runtime. All click handlers await `annaReady` so they never
 // touch `window.anna` before the handshake completes.
 const annaReady = (async () => {
-  if (!window.AnnaAppRuntime) {
-    throw new Error(
-      "AnnaAppRuntime global missing — SDK script failed to load",
-    );
-  }
-  const anna = await window.AnnaAppRuntime.connect();
+  const anna = await AnnaAppRuntime.connect();
   window.anna = anna;
   return anna;
 })().catch((err) => {

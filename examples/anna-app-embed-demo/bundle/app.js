@@ -5,8 +5,11 @@
 //   2. executa → window.anna.tools.invoke({tool_id, method:"embed", args:{texts,model}})
 //                The Executa plugin (executas/embed-via-executa-python) then
 //                calls embeddings/create reverse-RPC back to the host.
+//
+// Loaded as a native ES module (`<script src="app.js" type="module">`), so it
+// imports the Anna App Runtime SDK directly below.
 
-"use strict";
+import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 
 // Must match manifest.required_executas[].tool_id and MANIFEST.name
 // in executas/embed-via-executa-python/embed_via_executa_plugin.py.
@@ -26,12 +29,7 @@ const modeSel = $("embed-mode");
 const modeHint = $("mode-hint");
 
 const annaReady = (async () => {
-  if (!window.AnnaAppRuntime) {
-    throw new Error(
-      "AnnaAppRuntime global missing — SDK script failed to load",
-    );
-  }
-  const anna = await window.AnnaAppRuntime.connect();
+  const anna = await AnnaAppRuntime.connect();
   window.anna = anna;
   return anna;
 })().catch((err) => {

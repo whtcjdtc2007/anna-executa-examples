@@ -1,0 +1,9 @@
+{
+  "slug": "storage-notebook",
+  "name": "storage-notebook",
+  "version": "0.1.1",
+  "executa_type": "tool",
+  "description": "Example Executa v2 plugin demonstrating Anna Persistent Storage reverse RPC (storage/* + files/*).",
+  "tool_id": "tool-dev-storage-notebook",
+  "type": "python"
+}

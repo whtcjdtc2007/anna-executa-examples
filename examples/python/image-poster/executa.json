@@ -1,0 +1,9 @@
+{
+  "slug": "image-poster",
+  "name": "image-poster",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Example Executa v2 image plugin — generates a poster image via reverse image/generate, optionally edits it via image/edit, and re-uploads the result via host/uploadFile.",
+  "tool_id": "tool-dev-image-poster",
+  "type": "python"
+}

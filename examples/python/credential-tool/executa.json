@@ -1,0 +1,9 @@
+{
+  "slug": "weather-tool",
+  "name": "weather-tool",
+  "version": "1.0.0",
+  "executa_type": "tool",
+  "description": "Example Executa credential plugin — weather query tool demonstrating API-Key credential declaration and platform-managed authorization",
+  "tool_id": "tool-dev-weather-tool",
+  "type": "python"
+}

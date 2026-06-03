@@ -1,0 +1,9 @@
+{
+  "slug": "focus-coach",
+  "name": "Focus Coach",
+  "version": "1.0.0",
+  "executa_type": "skill",
+  "description": "Conversational protocol (tone, reflection prompts, focus-session interaction rules) for the Focus Flow Anna App. Declarative skill defined in SKILL.md.",
+
+  "_comment": "Declarative skill (no runtime plugin). The skill body lives in SKILL.md. Publish metadata here is read by `anna-app apps publish` / `anna-app executa publish`; this dir is the `focus-coach` handle referenced by app.json#bundled_executas. `anna-app dev` ignores skills (nothing to run)."
+}

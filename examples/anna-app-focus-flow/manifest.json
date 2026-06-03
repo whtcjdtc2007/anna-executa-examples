@@ -9,12 +9,12 @@
   ],
   "required_executas": [
     {
-      "tool_id": "tool-test-focus-session-12345678",
+      "tool_id": "bundled:focus-session",
       "min_version": "1.0.0",
       "version": "latest"
     },
     {
-      "tool_id": "skill-CHANGEME-focus-coach-CHANGEME",
+      "tool_id": "bundled:focus-coach",
       "version": "latest"
     }
   ],
@@ -44,7 +44,7 @@
       }
     ],
     "host_api": {
-      "tools": ["required:tool-test-focus-session-12345678"],
+      "tools": ["required:bundled:focus-session"],
       "chat": ["write_message"],
       "artifact": [],
       "llm": [],

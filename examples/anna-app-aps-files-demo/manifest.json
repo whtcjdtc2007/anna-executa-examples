@@ -6,14 +6,14 @@
   ],
   "required_executas": [
     {
-      "tool_id": "bundled:embed-via-executa",
+      "tool_id": "bundled:files-via-executa",
       "min_version": "0.1.0",
       "version": "latest"
     }
   ],
   "optional_executas": [],
-  "system_prompt_addendum": "The user has the Embed Demo app open. It can compute embeddings either directly (anna.llm.embed) or via the bundled embed-via-executa Executa (which calls embeddings/create back to the host). You do not need to summon any windows.",
-  "tags": ["demo", "embed", "embeddings", "executa"],
+  "system_prompt_addendum": "The user has the APS Files Demo app open. It saves text notes to Anna object storage by invoking the bundled files-via-executa Executa (save_note / get_link / list_notes). The app itself has no upload grant — all object storage goes through the Executa's aps.files capability.",
+  "tags": ["demo", "storage", "files", "aps", "executa"],
   "ui": {
     "bundle": {
       "format": "static-spa",
@@ -23,7 +23,7 @@
     "views": [
       {
         "name": "main",
-        "title": "Embed Demo",
+        "title": "APS Files Demo",
         "default": true,
         "entry": "index.html",
         "min_size": { "w": 460, "h": 560 },
@@ -34,13 +34,14 @@
       }
     ],
     "host_api": {
-      "llm": ["embed"],
-      "tools": ["required:bundled:embed-via-executa"],
+      "tools": ["required:bundled:files-via-executa"],
+      "files": ["upload_init", "upload_finalize", "download_url", "list", "delete"],
       "chat": ["write_message"],
       "window": ["set_title"]
     },
     "csp_overrides": {
-      "script-src": ["'self'"]
+      "script-src": ["'self'"],
+      "connect-src": ["'self'", "https:"]
     },
     "state_merge": "last_writer_wins"
   },

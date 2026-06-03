@@ -1,6 +1,36 @@
 {
+  "slug": "llm-via-executa",
+  "name": "LLM via Executa",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Exposes a `complete` tool that wraps host sampling/createMessage via reverse-RPC, letting the LLM Demo app run completions through an Executa instead of calling anna.llm.complete directly.",
+
   "tool_id": "tool-test-llm-via-executa-12345678",
   "type": "python",
   "enabled": true,
-  "_comment": "Auto-discovered by `anna-app dev` when launched from the app root. Exposes a `complete` tool that wraps host sampling/createMessage. Disable here if you want to test the app without the Executa-LLM path."
+
+  "distribution": {
+    "type": "binary",
+    "executable_name": "tool-test-llm-via-executa-12345678",
+    "supports_protocol": true,
+    "binary_urls": {
+      "darwin-arm64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-darwin-arm64.tar.gz",
+        "entrypoint": "tool-test-llm-via-executa-12345678",
+        "format": "tar.gz"
+      },
+      "darwin-x86_64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-darwin-x86_64.tar.gz",
+        "entrypoint": "tool-test-llm-via-executa-12345678",
+        "format": "tar.gz"
+      },
+      "linux-x86_64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-linux-x86_64.tar.gz",
+        "entrypoint": "tool-test-llm-via-executa-12345678",
+        "format": "tar.gz"
+      }
+    }
+  },
+
+  "_comment": "Publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. The `distribution` block (type:binary + binary_urls) makes the Agent install a self-contained PyInstaller binary per platform from this repo's GitHub Release (tag `llm-via-executa-v<version>`), built by .github/workflows/anna-app-publish.yml; on `anna-app apps cut` matrix-nexus mirrors the bytes into apps.anna.partners R2 and pins sha256 (so no self-hosting / no sha256 needed here). This dir is the `llm-via-executa` handle referenced by app.json#bundled_executas. Disable here if you want to test the app without the Executa-LLM path."
 }

@@ -59,8 +59,10 @@
       <pre id="errors" class="out err">(none)</pre>
     </section>
 
-    <!-- Anna App Runtime SDK -->
-    <script src="/static/anna-apps/_sdk/0.2.0/index.js" defer></script>
-    <script src="app.js" defer></script>
+    <!-- app.js is a native ES module that imports the runtime SDK directly.
+         No inline script — the bundle CSP is `script-src 'self' <sdk-origin>`,
+         which blocks inline scripts but allows this external module and its
+         static import from the SDK origin. -->
+    <script src="app.js" type="module"></script>
   </body>
 </html>

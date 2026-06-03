@@ -1,0 +1,37 @@
+{
+  "slug": "files-via-executa",
+  "name": "Files via Executa",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Stores text attachments in Anna Persistent Storage (APS Files) on behalf of the calling app via the files/* reverse-RPC, so the app never needs its own host.files / host.upload grant.",
+
+  "tool_id": "tool-test-files-via-executa-12345678",
+  "type": "python",
+  "enabled": true,
+
+  "distribution": {
+    "type": "binary",
+    "executable_name": "tool-test-files-via-executa-12345678",
+    "supports_protocol": true,
+    "capabilities": ["save_note", "get_link", "list_notes"],
+    "binary_urls": {
+      "darwin-arm64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-darwin-arm64.tar.gz",
+        "entrypoint": "tool-test-files-via-executa-12345678",
+        "format": "tar.gz"
+      },
+      "darwin-x86_64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-darwin-x86_64.tar.gz",
+        "entrypoint": "tool-test-files-via-executa-12345678",
+        "format": "tar.gz"
+      },
+      "linux-x86_64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-linux-x86_64.tar.gz",
+        "entrypoint": "tool-test-files-via-executa-12345678",
+        "format": "tar.gz"
+      }
+    }
+  },
+
+  "_comment": "Publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. The `distribution` block is read by `anna-app executa publish` (invoked transitively by `apps push`/`apps publish`) and forwarded onto the server Executa row (distribution_type/executable_name/supports_protocol/capabilities/binary_urls) so the Agent can INSTALL this Executa — without it the tool is dev-only. `type:\"binary\"` + `binary_urls` ships a self-contained PyInstaller binary per platform; the URLs point at this repo's GitHub Release assets (tag `files-via-executa-v<version>`), built by .github/workflows/anna-app-publish.yml. On `anna-app apps cut`, matrix-nexus mirrors these bytes into its own R2 (apps.anna.partners), content-addresses them by sha256, and pins binary_sha256 — so you do NOT need to host on R2 yourself or declare sha256 here (the mirror computes it). This dir is the `files-via-executa` handle referenced by app.json#bundled_executas. APS Files needs `anna-app dev --storage aps` (plus developer credentials) to round-trip; without it the host returns a clean not_implemented (-32004)."
+}

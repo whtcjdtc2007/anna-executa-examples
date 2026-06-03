@@ -1,0 +1,9 @@
+{
+  "slug": "sampling-summarizer",
+  "name": "sampling-summarizer",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Example Executa v2 sampling plugin — summarizer that asks the host to perform an LLM completion via reverse sampling/createMessage",
+  "tool_id": "tool-dev-sampling-summarizer",
+  "type": "python"
+}

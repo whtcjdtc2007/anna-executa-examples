@@ -1,0 +1,14 @@
+{
+  "slug": "aps-files-demo",
+  "name": "APS Files Demo",
+  "version": "0.1.0",
+  "tagline": "Save and re-download attachments through a bundled Executa — no app upload grant required.",
+  "description": "APS Files Demo shows the best-practice way for an Anna App to put bytes into Anna Persistent Storage (object storage). Instead of asking the user for a `host.upload` / `host.files` grant on the app itself, the app delegates to a bundled Python Executa (`files-via-executa`) that owns the `aps.files` capability and performs the two-step presigned upload (`files/upload_begin` → HTTP PUT → `files/upload_complete`) over reverse-RPC.\n\n**What's inside**\n\n- A static single-window UI (`static-spa`) to type a note, save it, and fetch a fresh download link.\n- `files-via-executa` — Python stdio Executa that wraps the host `files/*` reverse-RPC.\n\n**How to use**\n\nRun with real object storage: `anna-app dev --storage aps`. Type a path + note, click Save, then Get link. Without `--storage aps` the in-memory harness has no object store, so saves return a clean `not_implemented` — that is expected.",
+  "category": "developer-tools",
+  "pricing_model": "free",
+
+  "_comment_bundled_executas": "Executas that ship inside this app. `anna-app apps publish` publishes each one first, then substitutes its server-minted tool_id into every `bundled:<handle>` reference in manifest.json (in memory — the file on disk is never mutated). The `files-via-executa` handle maps to ./executas/files-via-executa-python.",
+  "bundled_executas": {
+    "files-via-executa": { "path": "./executas/files-via-executa-python" }
+  }
+}

@@ -1,6 +1,36 @@
 {
+  "slug": "focus-session",
+  "name": "Focus Session",
+  "version": "1.0.0",
+  "executa_type": "tool",
+  "description": "Persists Pomodoro focus-session state for the Focus Flow app (start/get_state/finish), so Anna can read the timer as the source of truth.",
+
   "tool_id": "tool-test-focus-session-12345678",
   "type": "python",
   "enabled": true,
-  "_comment": "Run `anna-app dev` from the app root to launch this executa. To switch to the Node.js or Go flavour, set `enabled: false` here and `enabled: true` in the corresponding sibling executa.json (only one focus-session can be active per app)."
+
+  "distribution": {
+    "type": "binary",
+    "executable_name": "tool-test-focus-session-12345678",
+    "supports_protocol": true,
+    "binary_urls": {
+      "darwin-arm64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/focus-session-v1.0.0/tool-test-focus-session-12345678-darwin-arm64.tar.gz",
+        "entrypoint": "tool-test-focus-session-12345678",
+        "format": "tar.gz"
+      },
+      "darwin-x86_64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/focus-session-v1.0.0/tool-test-focus-session-12345678-darwin-x86_64.tar.gz",
+        "entrypoint": "tool-test-focus-session-12345678",
+        "format": "tar.gz"
+      },
+      "linux-x86_64": {
+        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/focus-session-v1.0.0/tool-test-focus-session-12345678-linux-x86_64.tar.gz",
+        "entrypoint": "tool-test-focus-session-12345678",
+        "format": "tar.gz"
+      }
+    }
+  },
+
+  "_comment": "The publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish` / `anna-app executa publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. The `distribution` block (type:binary + binary_urls) makes the Agent install a self-contained PyInstaller binary per platform from this repo's GitHub Release (tag `focus-session-v<version>`), built by .github/workflows/anna-app-publish.yml; on `anna-app apps cut` matrix-nexus mirrors the bytes into apps.anna.partners R2 and pins sha256 (so no self-hosting / no sha256 needed here). Run `anna-app dev` from the app root to launch this executa locally. To switch to the Node.js or Go flavour, set `enabled: false` here and `enabled: true` in the corresponding sibling executa.json (only one focus-session can be active per app). This dir is the `focus-session` handle referenced by app.json#bundled_executas."
 }

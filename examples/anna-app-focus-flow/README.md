@@ -213,11 +213,21 @@ Notes:
 
 ## SDK call shapes used by `bundle/app.js`
 
-The bundle loads the runtime SDK from
-`/static/anna-apps/_sdk/0.1.0/index.js` (global: `AnnaAppRuntime`) and
-connects with:
+The bundle's `app.js` is loaded as an external ES module
+(`<script src="app.js" type="module">`) and imports the runtime SDK
+directly — no inline script, because the bundle CSP
+(`script-src 'self' <sdk-origin>`) blocks inline scripts:
+
+```html
+<!-- index.html -->
+<script src="anna-tool-ids.js" defer></script>
+<script src="app.js" type="module"></script>
+```
 
 ```js
+// app.js
+import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
+
 const anna = await AnnaAppRuntime.connect();
 // ↑ requires `wid` and `t` URL params, which Anna injects when it opens
 //   the iframe. Standalone preview throws — bundle falls back to a stub.

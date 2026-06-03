@@ -2,10 +2,10 @@
  * Focus Flow — Anna App bundle controller
  *
  * Connects to Anna via the runtime SDK loaded from
- *   /static/anna-apps/_sdk/0.1.0/index.js   (global: AnnaAppRuntime)
+ *   /static/anna-apps/_sdk/latest/index.js   (global: AnnaAppRuntime)
  *
  * Verified against matrix-nexus:
- *   - SDK:        static/anna-apps/_sdk/0.1.0/index.js
+ *   - SDK:        static/anna-apps/_sdk/latest/index.js
  *   - Dispatcher: src/services/anna_app_rpc_dispatcher.py
  *   - ACL:        src/services/anna_app_runtime_service.py::host_api_allows
  *
@@ -22,14 +22,25 @@
  *
  * window.ready is auto-emitted by AnnaAppRuntime.connect(); no need to call it.
  *
- * NOTE: ``TOOL_ID`` is a placeholder. Mint your own ID at
- *   https://anna.partners/executa  → My Tools → Create Tool → 🪪 Mint
- * then paste the minted string here AND into manifest.json's required_executas
- * + ui.host_api.tools entries (they must match exactly).
+ * TOOL ID RESOLUTION (no more hand-editing placeholders):
+ *   `anna-app apps publish` publishes the bundled `focus-session` Executa,
+ *   then writes `bundle/anna-tool-ids.js` (loaded just before this file)
+ *   which sets `window.__ANNA_TOOL_IDS__ = { "focus-session": "<minted-id>" }`.
+ *   We read the id from there. The hardcoded fallback below is only used
+ *   for local `anna-app dev`, where the dev placeholder id is registered
+ *   live and no sidecar exists yet.
  */
 
-// Replace this with the actual ID minted on https://anna.partners/executa.
-const TOOL_ID = "tool-test-focus-session-12345678";
+import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
+
+// Local-dev fallback; overridden at publish time by window.__ANNA_TOOL_IDS__.
+const DEV_FALLBACK_TOOL_ID = "tool-test-focus-session-12345678";
+// Resolved tool_id for the bundled focus-session Executa.
+const TOOL_ID =
+  (typeof window !== "undefined"
+    && window.__ANNA_TOOL_IDS__
+    && window.__ANNA_TOOL_IDS__["focus-session"])
+  || DEV_FALLBACK_TOOL_ID;
 // Method on the running plugin (matches `tool` in the plugin's describe()).
 const TOOL_METHOD = "session";
 const STORAGE_KEY = "focus-flow:last-topic";
@@ -80,11 +91,8 @@ async function init() {
   honorSystemTheme();
   renderEmpty();
 
-  // Connect to Anna. Falls back to standalone preview when SDK / wid+t missing.
+  // Connect to Anna. Falls back to standalone preview when wid+t missing.
   try {
-    if (typeof AnnaAppRuntime === "undefined") {
-      throw new Error("AnnaAppRuntime SDK not loaded");
-    }
     anna = await AnnaAppRuntime.connect();
     setConn(true);
   } catch (e) {
