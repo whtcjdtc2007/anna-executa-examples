@@ -164,15 +164,19 @@ jobs:
       matrix:
         app: ${{ fromJson(needs.plan.outputs.apps) }}
         platform:
-          - { os: macos-14, name: darwin-arm64 }
-          - { os: macos-13, name: darwin-x86_64 }
-          - { os: ubuntu-latest, name: linux-x86_64 }
+          # macOS x86_64 builds on an Apple Silicon runner via Rosetta 2
+          # (x64 Python) — GitHub is retiring the Intel `macos-13` runner,
+          # which leaves jobs queued forever waiting for a runner.
+          - { os: macos-14, name: darwin-arm64, python_arch: "" }
+          - { os: macos-15, name: darwin-x86_64, python_arch: x64 }
+          - { os: ubuntu-latest, name: linux-x86_64, python_arch: "" }
     runs-on: ${{ matrix.platform.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          architecture: ${{ matrix.platform.python_arch || '' }}
 
       - name: Install build deps + in-repo SDK
         run: |
