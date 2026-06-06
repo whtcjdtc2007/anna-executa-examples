@@ -254,11 +254,14 @@ all be rejected by the dispatcher. (The `method` field above is a
 The plugin is a stdio Executa using JSON-RPC over `stdin`/`stdout`. The
 recommended distribution is `uv tool install` (also supported by Anna:
 `pipx`, `binary`, `local`). The minted Tool ID has to appear **identically**
-in four places — `pyproject.toml`'s `[project].name` and
-`[project.scripts]` key, the plugin's `MANIFEST["name"]`,
-`manifest.json` (`required_executas[].tool_id` + `ui.host_api.tools`), and
-`bundle/app.js`'s `TOOL_ID`. The repo ships with `*-CHANGEME-*`
-placeholders and a helper that flips all four atomically.
+in three places — `pyproject.toml`'s `[project].name` and
+`[project.scripts]` key, `manifest.json`
+(`required_executas[].tool_id` + `ui.host_api.tools`), and
+`bundle/app.js`'s `TOOL_ID`. (The plugin's runtime `MANIFEST` no longer
+declares a `name`: the host identifies the Executa by the on-disk shim
+name / server-assigned tool_id, not by a self-reported manifest name.)
+The repo ships with `*-CHANGEME-*`
+placeholders and a helper that flips all three atomically.
 
 ```bash
 cd executas/focus-session-python
@@ -299,9 +302,10 @@ Then register it as an Executa at <https://anna.partners/executa>:
        | tool-yourhandle-focus-session-abcd1234
    ```
 
-   `describe` must return `manifest.name == <minted tool_id>`; otherwise
-   the Agent shows a Stopped card and the bundle's `tools.invoke` cannot
-   route. (`set-tool-id.py` already updates `MANIFEST["name"]`.)
+   The installed shim must resolve on `PATH` under the minted tool_id;
+   otherwise the Agent shows a Stopped card and the bundle's
+   `tools.invoke` cannot route. (`set-tool-id.py` keeps `pyproject.toml`,
+   `manifest.json`, and `bundle/app.js` in sync.)
 
 5. Back on the form, fill in the *Distribution* section to match how you
    actually installed the plugin:

@@ -45,7 +45,6 @@ import (
 //   - https://www.googleapis.com/auth/drive.readonly (for list_files, get_file)
 
 var manifest = map[string]any{
-	"name":         "google-drive-tool",
 	"display_name": "Google Drive Tool",
 	"version":      "1.0.0",
 	"description":  "Google Drive file browser — demonstrates OAuth credential usage via platform authorization",

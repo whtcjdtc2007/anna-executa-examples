@@ -64,7 +64,7 @@ from executa_sdk.storage import (  # noqa: E402
 # ─── Manifest ─────────────────────────────────────────────────────────
 
 MANIFEST = {
-    "name": "storage-notebook",
+    "display_name": "Storage Notebook",
     "version": "0.1.1",
     "description": "Demo plugin showing Anna Persistent Storage reverse-RPC.",
     # Declare which host capabilities this plugin needs. The host (Matrix
@@ -255,7 +255,7 @@ def _handle_initialize(req_id: Any, params: dict) -> None:
         req_id,
         {
             "protocolVersion": PROTOCOL_VERSION_V2,
-            "serverInfo": {"name": MANIFEST["name"], "version": MANIFEST["version"]},
+            "serverInfo": {"name": MANIFEST["display_name"], "version": MANIFEST["version"]},
             # Declare we want to use APS reverse RPC.
             "capabilities": {"storage": {"kv": True, "files": True}},
         },

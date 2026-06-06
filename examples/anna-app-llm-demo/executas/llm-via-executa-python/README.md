@@ -46,12 +46,14 @@ This executa is auto-discovered by `anna-app dev` because it lives at
 
 ## Replacing the placeholder tool_id
 
-`MANIFEST.name` and `executa.json.tool_id` are both set to
+The host keys this Executa by the **server-assigned tool_id** (resolved
+from the on-disk shim name / nexus `executable_name or tool_id`), not by
+any name the plugin self-declares — so `MANIFEST` no longer carries a
+`name` field. `executa.json.tool_id` is set to the placeholder
 `tool-test-llm-via-executa-12345678`. For real distribution mint a real
 ID at <https://anna.partners/executa> and update **three** places:
 
-1. `llm_via_executa_plugin.py` → `MANIFEST["name"]`
-2. `executa.json` → `tool_id`
-3. The app's `../../manifest.json` → `required_executas[]` and
+1. `executa.json` → `tool_id`
+2. The app's `../../manifest.json` → `required_executas[]` and
    `host_api.tools` (both must match exactly)
-4. The bundle's `../../bundle/app.js` → `EXECUTA_TOOL_ID` constant
+3. The bundle's `../../bundle/app.js` → `EXECUTA_TOOL_ID` constant

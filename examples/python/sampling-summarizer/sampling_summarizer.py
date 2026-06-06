@@ -57,7 +57,6 @@ from executa_sdk import (  # noqa: E402
 # ─── Manifest ────────────────────────────────────────────────────────
 
 MANIFEST = {
-    "name": "sampling-summarizer",
     "display_name": "Sampling Summarizer",
     "version": "0.1.0",
     "description": "Summarizes a passage of text by asking the host to sample an LLM.",
@@ -166,7 +165,7 @@ def _handle_initialize(req_id, params: dict) -> dict:
         result={
             "protocolVersion": proto if proto in ("1.1", "2.0") else "2.0",
             "serverInfo": {
-                "name": MANIFEST["name"],
+                "name": MANIFEST["display_name"],
                 "version": MANIFEST["version"],
             },
             # Mirror MCP shape: advertise that we WILL use sampling.

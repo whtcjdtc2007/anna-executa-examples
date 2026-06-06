@@ -13,11 +13,14 @@
  * Methods : describe, invoke, health
  *
  * IMPORTANT — tool_id minting:
- *   Both `MANIFEST.name` and the matching entry in package.json `bin` MUST
- *   equal the tool_id minted at https://anna.partners/executa. The shared
- *   sibling script `../../scripts/set-tool-id.py` (used by the Python flavour)
- *   only rewrites the Python files; for this Node flavour you must update
- *   MANIFEST.name + package.json `bin` + executa.json `tool_id` by hand.
+ *   The manifest no longer declares a top-level `name`. Identity comes from
+ *   the server-assigned tool_id (resolved from the on-disk shim name /
+ *   `executable_name or tool_id`). The matching entry in package.json `bin`
+ *   and executa.json `tool_id` MUST equal the tool_id minted at
+ *   https://anna.partners/executa. The shared sibling script
+ *   `../../scripts/set-tool-id.py` (used by the Python flavour) only rewrites
+ *   the Python files; for this Node flavour you must update package.json `bin`
+ *   + executa.json `tool_id` by hand.
  */
 
 "use strict";
@@ -32,7 +35,6 @@ const { randomUUID } = require("node:crypto");
 // Plugin manifest — Anna calls `describe` and uses this dict verbatim.
 // ---------------------------------------------------------------------------
 const MANIFEST = {
-  name: "tool-test-focus-session-12345678",
   display_name: "Focus Session",
   version: "1.0.0",
   description:

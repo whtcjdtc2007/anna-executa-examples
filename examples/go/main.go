@@ -47,7 +47,6 @@ const maxStdioMessageBytes = 512 * 1024
 
 // Manifest defines the plugin's self-describing manifest
 var manifest = map[string]any{
-	"name":         "example-go-tool",
 	"display_name": "Example Go Tool",
 	"version":      "1.0.0",
 	"description":  "A Go example tool demonstrating system info queries and hash computation",

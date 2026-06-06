@@ -39,10 +39,11 @@ from typing import Any
 # Plugin manifest — Anna calls ``describe`` and uses this dict verbatim.
 # ---------------------------------------------------------------------------
 MANIFEST: dict[str, Any] = {
-    # MUST equal the minted tool_id from https://anna.partners/executa.
-    # Use ``scripts/set-tool-id.py apply --tool <minted>`` to fill this in
-    # together with pyproject.toml, manifest.json, and bundle/app.js.
-    "name": "tool-test-focus-session-12345678",
+    # The manifest no longer declares a `name`: the host identifies this
+    # Executa by the server-assigned tool_id (resolved from the on-disk
+    # shim name / `executable_name or tool_id`). The minted tool_id is
+    # synced into pyproject.toml, manifest.json, and bundle/app.js via
+    # ``scripts/set-tool-id.py apply --tool <minted>``.
     "display_name": "Focus Session",
     "version": "1.0.0",
     "description": (

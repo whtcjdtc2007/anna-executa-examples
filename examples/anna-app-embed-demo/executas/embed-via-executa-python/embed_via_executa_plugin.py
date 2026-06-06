@@ -48,7 +48,6 @@ from executa_sdk import (  # noqa: E402
 # ─── Manifest ────────────────────────────────────────────────────────
 
 MANIFEST = {
-    "name": "tool-test-embed-via-executa-12345678",
     "display_name": "Embed via Executa",
     "version": "0.1.0",
     "description": (
@@ -164,7 +163,7 @@ def _handle_initialize(req_id, params: dict) -> dict:
         req_id,
         result={
             "protocolVersion": proto if proto in ("1.1", "2.0") else "2.0",
-            "serverInfo": {"name": MANIFEST["name"], "version": MANIFEST["version"]},
+            "serverInfo": {"name": MANIFEST["display_name"], "version": MANIFEST["version"]},
             "client_capabilities": {"embeddings": {}} if proto == PROTOCOL_VERSION_V2 else {},
             "capabilities": {},
         },

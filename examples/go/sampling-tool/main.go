@@ -26,7 +26,6 @@ import (
 // ─── Manifest ────────────────────────────────────────────────────────
 
 var manifest = map[string]any{
-	"name":         "sampling-summarizer-go",
 	"display_name": "Sampling Summarizer (Go)",
 	"version":      "0.1.0",
 	"description":  "Summarizes text by asking the host to sample an LLM.",
@@ -154,7 +153,7 @@ func handleInitialize(reqID any, params map[string]any) map[string]any {
 	}
 	return makeResponse(reqID, map[string]any{
 		"protocolVersion":     negotiated,
-		"serverInfo":          map[string]any{"name": manifest["name"], "version": manifest["version"]},
+		"serverInfo":          map[string]any{"name": manifest["display_name"], "version": manifest["version"]},
 		"client_capabilities": clientCaps,
 		"capabilities":        map[string]any{},
 	}, nil)

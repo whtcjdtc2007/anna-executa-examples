@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Apply / reset minted Executa IDs across this example.
 
-The Focus Flow example needs the *same* Tool ID written into four files:
+The Focus Flow example needs the *same* Tool ID written into three files:
 
     - executas/focus-session-python/pyproject.toml      ([project].name + [project.scripts])
-    - executas/focus-session-python/focus_session_plugin.py   (MANIFEST["name"])
     - manifest.json                              (required_executas + ui.host_api.tools)
     - bundle/app.js                              (TOOL_ID constant)
+
+(The runtime ``MANIFEST`` in focus_session_plugin.py no longer declares a
+``name``: the host identifies the Executa by the server-assigned tool_id,
+not by a self-reported manifest name.)
 
 …and the Skill ID into one:
 
@@ -79,23 +82,17 @@ class Anchor:
 TOOL_ANCHORS: list[Anchor] = [
     # pyproject.toml: name = "<id>"
     Anchor(
-        path=ROOT / "executas" / "focus-session" / "pyproject.toml",
+        path=ROOT / "executas" / "focus-session-python" / "pyproject.toml",
         pattern=re.compile(rf'(?m)^name\s*=\s*"({ID_PART_TOOL})"\s*$'),
         description="pyproject.toml [project].name",
     ),
     # pyproject.toml: [project.scripts] "<id>" = "focus_session_plugin:main"
     Anchor(
-        path=ROOT / "executas" / "focus-session" / "pyproject.toml",
+        path=ROOT / "executas" / "focus-session-python" / "pyproject.toml",
         pattern=re.compile(
             rf'(?m)^"({ID_PART_TOOL})"\s*=\s*"focus_session_plugin:main"\s*$'
         ),
         description="pyproject.toml [project.scripts] entry",
-    ),
-    # focus_session_plugin.py: MANIFEST {"name": "<id>", ...}
-    Anchor(
-        path=ROOT / "executas" / "focus-session" / "focus_session_plugin.py",
-        pattern=re.compile(rf'(?m)^\s*"name":\s*"({ID_PART_TOOL})",\s*$'),
-        description="focus_session_plugin.py MANIFEST['name']",
     ),
     # manifest.json: every "tool_id": "tool-..."
     Anchor(

@@ -35,7 +35,6 @@
     ],
     "host_api": {
       "llm": ["complete"],
-      "tools": ["required:bundled:llm-via-executa"],
       "chat": ["write_message"],
       "window": ["set_title"],
       "agent": {

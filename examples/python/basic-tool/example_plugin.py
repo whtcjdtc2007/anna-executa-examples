@@ -44,7 +44,6 @@ MAX_STDIO_MESSAGE_BYTES = 512 * 1024
 # tools:        List of tools, each containing name, description, and parameters
 
 MANIFEST = {
-    "name": "example-text-tool",
     "display_name": "Example Text Tool",
     "version": "1.0.0",
     "description": "An example text processing tool demonstrating the full Executa plugin protocol implementation",

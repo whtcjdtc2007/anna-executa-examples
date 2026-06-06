@@ -66,7 +66,6 @@ from executa_sdk import (  # noqa: E402
 # ─── Manifest ─────────────────────────────────────────────────────────
 
 MANIFEST = {
-    "name": "tool-test-files-via-executa-12345678",
     "display_name": "Files via Executa",
     "version": "0.1.0",
     "description": (
@@ -253,7 +252,7 @@ def _handle_initialize(req_id: Any, params: dict) -> None:
         req_id,
         {
             "protocolVersion": proto if proto in ("1.1", "2.0") else "2.0",
-            "serverInfo": {"name": MANIFEST["name"], "version": MANIFEST["version"]},
+            "serverInfo": {"name": MANIFEST["display_name"], "version": MANIFEST["version"]},
             # Declare we want APS Files reverse-RPC.
             "capabilities": {"storage": {"files": True}},
         },

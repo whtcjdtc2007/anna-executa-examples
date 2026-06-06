@@ -242,11 +242,13 @@ JSON-RPC envelope 的 key。）
 
 插件是基于 stdio 的 Executa，使用 JSON-RPC 通信。推荐通过 `uv tool install`
 分发（Anna 同时支持 `pipx` / `binary` / `local`）。Mint 出的 Tool ID
-必须**完全一致地**出现在 4 个位置：`pyproject.toml` 的 `[project].name`
-与 `[project.scripts]` key、插件的 `MANIFEST["name"]`、`manifest.json`
+必须**完全一致地**出现在 3 个位置：`pyproject.toml` 的 `[project].name`
+与 `[project.scripts]` key、`manifest.json`
 （`required_executas[].tool_id` + `ui.host_api.tools`）、以及
-`bundle/app.js` 的 `TOOL_ID`。仓库里默认是 `*-CHANGEME-*` 占位符，并附带
-一个脚本一次性同步这 4 处。
+`bundle/app.js` 的 `TOOL_ID`。（插件运行时的 `MANIFEST` 不再声明
+`name`：宿主通过磁盘上的 shim 名 / 服务端分配的 tool_id 识别
+该 Executa，与插件自报的 manifest name 无关。）仓库里默认是
+`*-CHANGEME-*` 占位符，并附带一个脚本一次性同步这 3 处。
 
 ```bash
 cd executas/focus-session-python
@@ -285,9 +287,10 @@ uv tool uninstall tool-CHANGEME-focus-session-CHANGEME    # 清理
        | tool-yourhandle-focus-session-abcd1234
    ```
 
-   `describe` 返回的 `manifest.name` 必须等于 Mint 出的 `tool_id`，
+   安装后的 shim 必须能在 `PATH` 上以 Mint 出的 `tool_id` 被解析，
    否则 Agent 会显示 Stopped 卡片，bundle 的 `tools.invoke` 也无法路由。
-   （`set-tool-id.py` 已经替你改了 `MANIFEST["name"]`。）
+   （`set-tool-id.py` 会同步 `pyproject.toml`、`manifest.json` 和
+   `bundle/app.js`。）
 
 5. 回到表单，*Distribution* 区按你**实际使用的安装方式**填：
 

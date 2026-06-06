@@ -65,7 +65,6 @@ from executa_sdk import (  # noqa: E402
 # ─── Manifest ────────────────────────────────────────────────────────
 
 MANIFEST = {
-    "name": "image-poster",
     "display_name": "Image Poster",
     "version": "0.1.0",
     "description": "Generate (and optionally edit + re-upload) a poster image via host LLM image services.",
@@ -225,7 +224,7 @@ def _handle_initialize(req_id, params: dict) -> dict:
         req_id,
         result={
             "protocolVersion": proto if proto in ("1.1", "2.0") else "2.0",
-            "serverInfo": {"name": MANIFEST["name"], "version": MANIFEST["version"]},
+            "serverInfo": {"name": MANIFEST["display_name"], "version": MANIFEST["version"]},
             "client_capabilities": (
                 {"image": {}, "image.edit": {}, "upload": {}}
                 if proto == PROTOCOL_VERSION_V2

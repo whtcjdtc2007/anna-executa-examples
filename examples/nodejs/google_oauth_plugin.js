@@ -48,7 +48,6 @@ const readline = require("readline");
 //   - https://www.googleapis.com/auth/calendar.events     (for create_event)
 
 const MANIFEST = {
-  name: "google-calendar-tool",
   display_name: "Google Calendar Tool",
   version: "1.0.0",
   description:

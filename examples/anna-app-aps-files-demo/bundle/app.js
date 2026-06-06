@@ -26,8 +26,8 @@ import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 // `bundle/anna-tool-ids.js` as `window.__ANNA_TOOL_IDS__["files-via-executa"]`.
 // `anna-app dev` does the same with the local dev tool_id. We therefore read
 // the resolved id from the sidecar and only fall back to the hard-coded dev id
-// (which must match executas/files-via-executa-python/executa.json "tool_id"
-// and MANIFEST.name in files_via_executa_plugin.py) when the sidecar is absent.
+// (which must match executas/files-via-executa-python/executa.json "tool_id")
+// when the sidecar is absent.
 const DEV_FALLBACK_TOOL_ID = "tool-test-files-via-executa-12345678";
 const EXECUTA_TOOL_ID =
   (typeof window !== "undefined"

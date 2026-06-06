@@ -11,8 +11,8 @@
 
 import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 
-// Must match manifest.required_executas[].tool_id and MANIFEST.name
-// in executas/embed-via-executa-python/embed_via_executa_plugin.py.
+// Must match manifest.required_executas[].tool_id and the
+// executa.json "tool_id" in executas/embed-via-executa-python/.
 const EXECUTA_TOOL_ID = "tool-test-embed-via-executa-12345678";
 const EXECUTA_METHOD = "embed";
 

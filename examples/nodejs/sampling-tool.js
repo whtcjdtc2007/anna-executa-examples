@@ -32,7 +32,6 @@ const {
 // ─── Manifest ────────────────────────────────────────────────────────
 
 const MANIFEST = {
-  name: "sampling-summarizer-node",
   display_name: "Sampling Summarizer (Node.js)",
   version: "0.1.0",
   description: "Summarizes text by asking the host to sample an LLM.",
@@ -78,7 +77,7 @@ function handleInitialize(reqId, params) {
   return makeResponse(reqId, {
     result: {
       protocolVersion: proto === PROTOCOL_VERSION_V2 ? "2.0" : "1.1",
-      serverInfo: { name: MANIFEST.name, version: MANIFEST.version },
+      serverInfo: { name: MANIFEST.display_name, version: MANIFEST.version },
       client_capabilities: proto === PROTOCOL_VERSION_V2 ? { sampling: {} } : {},
       capabilities: {},
     },

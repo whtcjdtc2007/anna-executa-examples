@@ -35,11 +35,12 @@ const MAX_STDIO_MESSAGE_BYTES = 512 * 1024;
 
 // ─── Manifest (Self-describing manifest) ────────────────────────────
 //
-// name:         Unique tool identifier, corresponds to tool_id in Anna Admin
+// The manifest no longer declares a top-level `name`. Identity comes from the
+// server-assigned tool_id (resolved from the on-disk shim name /
+// `executable_name or tool_id`), not from this self-describe dict.
 // display_name: Human-readable name, corresponds to name in Anna Admin
 
 const MANIFEST = {
-  name: "example-node-tool",
   display_name: "Example Node.js Tool",
   version: "1.0.0",
   description: "A Node.js example tool demonstrating the Executa plugin protocol",

@@ -43,7 +43,6 @@ const readline = require("readline");
 // sensitive=true 的凭据会在 UI 中以密码框显示，不回显明文。
 
 const MANIFEST = {
-  name: "github-tool",
   display_name: "GitHub Tool",
   version: "1.0.0",
   description: "GitHub 仓库查询工具，演示凭据（API Token）的声明与使用",

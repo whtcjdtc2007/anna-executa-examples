@@ -55,7 +55,6 @@ from datetime import datetime, timezone
 #   All resolve to the same OAuth access_token.
 
 MANIFEST = {
-    "name": "gmail-tool",
     "display_name": "Gmail Tool",
     "version": "1.0.0",
     "description": "Gmail message reader — demonstrates Google OAuth credential usage via platform authorization",

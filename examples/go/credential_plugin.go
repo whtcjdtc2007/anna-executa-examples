@@ -45,7 +45,6 @@ import (
 // sensitive=true 的凭据会在 UI 中以密码框显示，不回显明文。
 
 var manifest = map[string]any{
-	"name":         "notion-tool",
 	"display_name": "Notion Tool",
 	"version":      "1.0.0",
 	"description":  "Notion 页面查询工具，演示凭据（API Token）的声明与使用",

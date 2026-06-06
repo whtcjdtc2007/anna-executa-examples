@@ -10,25 +10,35 @@
   "enabled": true,
 
   "distribution": {
-    "type": "binary",
-    "executable_name": "tool-test-files-via-executa-12345678",
-    "supports_protocol": true,
-    "capabilities": ["save_note", "get_link", "list_notes"],
-    "binary_urls": {
-      "darwin-arm64": {
-        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-darwin-arm64.tar.gz",
-        "entrypoint": "tool-test-files-via-executa-12345678",
-        "format": "tar.gz"
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true,
+        "capabilities": ["save_note", "get_link", "list_notes"]
       },
-      "darwin-x86_64": {
-        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-darwin-x86_64.tar.gz",
-        "entrypoint": "tool-test-files-via-executa-12345678",
-        "format": "tar.gz"
-      },
-      "linux-x86_64": {
-        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-linux-x86_64.tar.gz",
-        "entrypoint": "tool-test-files-via-executa-12345678",
-        "format": "tar.gz"
+      "binary": {
+        "type": "binary",
+        "executable_name": "tool-test-files-via-executa-12345678",
+        "supports_protocol": true,
+        "capabilities": ["save_note", "get_link", "list_notes"],
+        "binary_urls": {
+          "darwin-arm64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-darwin-arm64.tar.gz",
+            "entrypoint": "tool-test-files-via-executa-12345678",
+            "format": "tar.gz"
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-darwin-x86_64.tar.gz",
+            "entrypoint": "tool-test-files-via-executa-12345678",
+            "format": "tar.gz"
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/files-via-executa-v0.1.0/tool-test-files-via-executa-12345678-linux-x86_64.tar.gz",
+            "entrypoint": "tool-test-files-via-executa-12345678",
+            "format": "tar.gz"
+          }
+        }
       }
     }
   },

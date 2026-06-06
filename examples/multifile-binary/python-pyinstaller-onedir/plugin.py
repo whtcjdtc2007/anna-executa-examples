@@ -46,7 +46,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MANIFEST = {
-    "name": "example-multifile-tool",
     "display_name": "Multi-file Binary Example",
     "version": "1.0.0",
     "description": "Example plugin shipping with sibling bundled resources (lib/ + data/)",

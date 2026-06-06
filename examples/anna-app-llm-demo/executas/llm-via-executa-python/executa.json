@@ -10,27 +10,36 @@
   "enabled": true,
 
   "distribution": {
-    "type": "binary",
-    "executable_name": "tool-test-llm-via-executa-12345678",
-    "supports_protocol": true,
-    "binary_urls": {
-      "darwin-arm64": {
-        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-darwin-arm64.tar.gz",
-        "entrypoint": "tool-test-llm-via-executa-12345678",
-        "format": "tar.gz"
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true
       },
-      "darwin-x86_64": {
-        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-darwin-x86_64.tar.gz",
-        "entrypoint": "tool-test-llm-via-executa-12345678",
-        "format": "tar.gz"
-      },
-      "linux-x86_64": {
-        "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-linux-x86_64.tar.gz",
-        "entrypoint": "tool-test-llm-via-executa-12345678",
-        "format": "tar.gz"
+      "binary": {
+        "type": "binary",
+        "executable_name": "tool-test-llm-via-executa-12345678",
+        "supports_protocol": true,
+        "binary_urls": {
+          "darwin-arm64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-darwin-arm64.tar.gz",
+            "entrypoint": "tool-test-llm-via-executa-12345678",
+            "format": "tar.gz"
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-darwin-x86_64.tar.gz",
+            "entrypoint": "tool-test-llm-via-executa-12345678",
+            "format": "tar.gz"
+          },
+          "linux-x86_64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/llm-via-executa-v0.1.0/tool-test-llm-via-executa-12345678-linux-x86_64.tar.gz",
+            "entrypoint": "tool-test-llm-via-executa-12345678",
+            "format": "tar.gz"
+          }
+        }
       }
     }
   },
 
-  "_comment": "Publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. The `distribution` block (type:binary + binary_urls) makes the Agent install a self-contained PyInstaller binary per platform from this repo's GitHub Release (tag `llm-via-executa-v<version>`), built by .github/workflows/anna-app-publish.yml; on `anna-app apps cut` matrix-nexus mirrors the bytes into apps.anna.partners R2 and pins sha256 (so no self-hosting / no sha256 needed here). This dir is the `llm-via-executa` handle referenced by app.json#bundled_executas. Disable here if you want to test the app without the Executa-LLM path."
+  "_comment": "Publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. The `distribution` block now uses the switchable multi-profile form: `profiles` declares `local` and `binary` side by side, and `active` selects which one `anna-app apps/executa publish` forwards to the server. Flip `active` to `local` to publish the dev-path locator, or back to `binary` to ship the self-contained PyInstaller binary per platform from this repo's GitHub Release (tag `llm-via-executa-v<version>`), built by .github/workflows/anna-app-publish.yml; on `anna-app apps cut` matrix-nexus mirrors the bytes into apps.anna.partners R2 and pins sha256 (so no self-hosting / no sha256 needed here). The flat single-mode form (`distribution.type` + sibling fields) is still accepted. This dir is the `llm-via-executa` handle referenced by app.json#bundled_executas. Disable here if you want to test the app without the Executa-LLM path."
 }

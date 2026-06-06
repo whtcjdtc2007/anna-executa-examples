@@ -10,10 +10,12 @@
 //
 // IMPORTANT — tool_id minting:
 //
-//	`manifestName` below + executa.json `tool_id` MUST equal the tool_id
-//	minted at https://anna.partners/executa. The shared
+//	The manifest no longer declares a top-level `name`. Identity comes from
+//	the server-assigned tool_id (resolved from the on-disk shim name /
+//	`executable_name or tool_id`). The executa.json `tool_id` MUST equal the
+//	tool_id minted at https://anna.partners/executa. The shared
 //	../../scripts/set-tool-id.py helper only rewrites Python files; for
-//	this Go flavour update the constant + executa.json by hand.
+//	this Go flavour update executa.json by hand.
 package main
 
 import (
@@ -37,14 +39,12 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	manifestName    = "tool-test-focus-session-12345678"
 	manifestVersion = "1.0.0"
 	maxHistory      = 200
 )
 
 func manifest() map[string]any {
 	return map[string]any{
-		"name":         manifestName,
 		"display_name": "Focus Session",
 		"version":      manifestVersion,
 		"description": "Pomodoro / deep-work session timer. State persists to " +

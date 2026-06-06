@@ -62,7 +62,6 @@ from executa_sdk import (  # noqa: E402
 # ─── Manifest ────────────────────────────────────────────────────────
 
 MANIFEST = {
-    "name": "executa-agent-demo",
     "display_name": "Executa Agent Demo",
     "version": "0.1.0",
     "description": "Demonstrates plugin/app parity for the Anna agent surface via agent.session.*",
@@ -199,7 +198,7 @@ def _handle_initialize(req_id, params: dict) -> dict:
         req_id,
         result={
             "protocolVersion": proto if proto in ("1.1", "2.0") else "2.0",
-            "serverInfo": {"name": MANIFEST["name"], "version": MANIFEST["version"]},
+            "serverInfo": {"name": MANIFEST["display_name"], "version": MANIFEST["version"]},
             "client_capabilities": (
                 {"sampling": {}, "agent": {"submodes": ["auto"]}}
                 if proto == PROTOCOL_VERSION_V2

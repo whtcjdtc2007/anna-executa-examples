@@ -23,8 +23,8 @@
 # Auto-discovery rules (per subdirectory):
 #   Scans all *.py in the directory, skipping __*.py / setup.py /
 #   conftest.py / test_*.py.
-#   Extracts MANIFEST["name"] from each .py as the binary name (falls
-#   back to filename if not found).
+#   Slugifies MANIFEST["display_name"] from each .py as the binary name
+#   (falls back to filename if not found).
 #
 # Output:
 #   <subdir>/dist/<plugin-name>        # One single-file executable per plugin
@@ -164,10 +164,10 @@ fi
 # ── Extract MANIFEST name from .py file (used as binary name) ─
 extract_plugin_name() {
     local py_file="$1"
-    # Try to extract MANIFEST["name"] from Python source
+    # Try to slugify MANIFEST["display_name"] from Python source
     local name
     name=$(python3 -c "
-import ast, sys
+import ast, re, sys
 try:
     tree = ast.parse(open('$py_file').read())
     for node in ast.walk(tree):
@@ -176,9 +176,10 @@ try:
                 if isinstance(target, ast.Name) and target.id == 'MANIFEST':
                     if isinstance(node.value, ast.Dict):
                         for k, v in zip(node.value.keys, node.value.values):
-                            if isinstance(k, ast.Constant) and k.value == 'name':
+                            if isinstance(k, ast.Constant) and k.value == 'display_name':
                                 if isinstance(v, ast.Constant):
-                                    print(v.value)
+                                    slug = re.sub(r'[^a-z0-9]+', '-', str(v.value).lower()).strip('-')
+                                    print(slug)
                                     sys.exit(0)
 except Exception:
     pass

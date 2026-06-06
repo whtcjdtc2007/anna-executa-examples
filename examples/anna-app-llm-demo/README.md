@@ -62,15 +62,24 @@ completion**. Then in section 2:
 ```json
 "permissions": ["chat.write_message", "tools.invoke"],
 "required_executas": [
-  { "tool_id": "tool-test-llm-via-executa-12345678", "min_version": "0.1.0", "version": "latest" }
+  { "tool_id": "bundled:llm-via-executa", "min_version": "0.1.0", "version": "latest" }
 ],
 "host_api": {
   "llm":    ["complete"],
-  "tools":  ["required:tool-test-llm-via-executa-12345678"],
   "chat":   ["write_message"],
   "window": ["set_title"]
 }
 ```
+
+> **`host_api.tools` is optional.** When omitted (or `[]`) the window may
+> invoke **any** tool_id declared in `required_executas` / `optional_executas`.
+> List explicit refs only to *narrow* a window to a subset; prefer
+> `["required:*"]` over a concrete id, since `bundled:` handles are rewritten
+> to the server-minted tool_id at `dev`/`publish` time and a pinned id drifts.
+>
+> The bundle resolves the concrete id at runtime from
+> `window.__ANNA_TOOL_IDS__["llm-via-executa"]` (set by the generated
+> `anna-tool-ids.js`), so it never hardcodes the minted id.
 
 > **Note on `agent.session`**: the canonical full ACL also includes
 > `"agent": { "session": { "auto": true, "fixed": null }, "tools": [] }`,

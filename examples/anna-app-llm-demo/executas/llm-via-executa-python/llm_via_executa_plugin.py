@@ -48,13 +48,15 @@ from executa_sdk import (  # noqa: E402
 )
 
 # ─── Manifest ────────────────────────────────────────────────────────
-# MANIFEST.name MUST match the minted tool_id used by the host and by
-# the calling app's manifest.json (required_executas + host_api.tools).
-# For local dev we use a stable placeholder; mint a real ID at
-# https://anna.partners/executa for distribution.
+# The host keys this plugin by the *server-assigned tool_id* (the
+# registration key it resolves from the on-disk shim name / nexus
+# ``executable_name or tool_id``), NOT by any name declared here. A
+# self-declared ``name`` is therefore optional and purely diagnostic;
+# we omit it so there is no placeholder to keep in sync with the minted
+# tool_id. The app's manifest.json (required_executas + host_api.tools)
+# and the on-disk shim name are what bind this Executa to its tool_id.
 
 MANIFEST = {
-    "name": "tool-test-llm-via-executa-12345678",
     "display_name": "LLM via Executa",
     "version": "0.1.0",
     "description": (
@@ -172,7 +174,7 @@ def _handle_initialize(req_id, params: dict) -> dict:
         req_id,
         result={
             "protocolVersion": proto if proto in ("1.1", "2.0") else "2.0",
-            "serverInfo": {"name": MANIFEST["name"], "version": MANIFEST["version"]},
+            "serverInfo": {"name": MANIFEST["display_name"], "version": MANIFEST["version"]},
             "client_capabilities": {"sampling": {}} if proto == PROTOCOL_VERSION_V2 else {},
             "capabilities": {},
         },
