@@ -62,3 +62,42 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   min-width: 0;
 }
 .mode-hint { margin: 0.1rem 0 0.4rem; font-size: 0.8rem; }
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.3rem 0;
+}
+.btn-row button { margin: 0; }
+
+.uuid-input {
+  font: inherit;
+  flex: 1;
+  min-width: 12rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid #8884;
+  background: transparent;
+  box-sizing: border-box;
+}
+.uuid-input::placeholder { color: #999; }
+
+.session-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.3rem 0;
+}
+.session-list button {
+  margin: 0;
+  font-size: 0.78rem;
+  padding: 0.3rem 0.55rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.session-list button.active {
+  border-color: #4682b4;
+  background: #4682b433;
+}
+.session-list:empty { display: none; }

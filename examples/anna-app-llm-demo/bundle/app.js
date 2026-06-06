@@ -30,11 +30,32 @@ const $ = (id) => document.getElementById(id);
 const out = $("complete-out");
 const runOut = $("run-out");
 const errBox = $("errors");
-const sessionUuidEl = $("session-uuid");
+const uuidInput = $("session-uuid-input");
+const sessionStatus = $("session-uuid-status");
+const sessionListEl = $("session-list");
 const modeSel = $("llm-mode");
 const modeHint = $("mode-hint");
+const transportSel = $("session-transport");
+const transportHint = $("transport-hint");
 
-let session = null;
+const TRANSPORT_HINTS = {
+  host: "Calls the host session API directly from the iframe (anna.agent.session.*). 'list' uses the account/app-scoped anna.agent.session.list(); run/cancel/history/delete act on whatever app_session_uuid is in the box — anna.agent.session.attach(uuid) re-binds an existing session (e.g. one picked from list()) without minting a new one.",
+  executa:
+    "Drives sessions through the bundled Executa: anna.tools.invoke → agent_session(op) → reverse-RPC agent/session.*. Requires --real LLM bridge for run; mock fixtures do not serve reverse sampling.",
+};
+
+// Unified session state across both transports.
+//   handle  — the AgentSession object (HOST API path only); may be a freshly
+//             created one or one returned by anna.agent.session.attach(uuid).
+//   runId   — last seen run_id (for cancel)
+// The app_session_uuid itself lives in the editable #session-uuid-input box,
+// which is the single source of truth so the user can act on ANY session
+// (typed in, or picked from a list() result), not just the one just created.
+const sess = { handle: null, runId: null };
+
+function currentUuid() {
+  return (uuidInput.value || "").trim();
+}
 
 // Bootstrap the runtime. All click handlers await `annaReady` so they never
 // touch `window.anna` before the handshake completes.
@@ -100,18 +121,111 @@ $("complete-btn").addEventListener("click", async () => {
 });
 
 // ──────────────────────────────────────────────────────────
-// 2. agent.session (auto)
+// 2. agent.session — full method coverage over two transports.
+//
+//    HOST API   : anna.agent.session({...}) → AgentSession handle, plus
+//                 the account/app-scoped anna.agent.session.list().
+//    Reverse RPC: anna.tools.invoke({ method: "agent_session", args: {op} })
+//                 against the bundled llm-via-executa plugin, which issues
+//                 agent/session.* reverse-RPCs back to the host.
+
+transportSel?.addEventListener("change", () => {
+  transportHint.textContent = TRANSPORT_HINTS[transportSel.value] || "";
+  // Switching transport invalidates any live session handle and the
+  // selected uuid (host vs executa sessions are scoped differently).
+  resetSession();
+});
+
+function transport() {
+  return transportSel?.value || "host";
+}
+
+// Enable the per-session actions whenever there's a uuid to act on — whether
+// it came from create(), was typed in, or was picked from a list() result.
+function syncSessionButtons() {
+  const active = currentUuid().length > 0;
+  $("run-btn").disabled = !active;
+  $("cancel-btn").disabled = !active;
+  $("history-btn").disabled = !active;
+  $("delete-btn").disabled = !active;
+  if (active) {
+    sessionStatus.textContent = `session: ${currentUuid()}`;
+    sessionStatus.classList.remove("muted");
+  } else {
+    sessionStatus.textContent = "no session";
+    sessionStatus.classList.add("muted");
+  }
+  highlightActiveListItem();
+}
+
+// Keep the highlighted list entry in sync with the input.
+function highlightActiveListItem() {
+  const uuid = currentUuid();
+  for (const b of sessionListEl.querySelectorAll("button")) {
+    b.classList.toggle("active", b.dataset.uuid === uuid);
+  }
+}
+
+// The uuid box is the source of truth; typing re-evaluates button state and
+// drops any stale handle that no longer matches.
+uuidInput?.addEventListener("input", () => {
+  if (sess.handle && sess.handle.app_session_uuid !== currentUuid()) {
+    sess.handle = null;
+    sess.runId = null;
+  }
+  syncSessionButtons();
+});
+
+function setUuid(uuid) {
+  uuidInput.value = uuid || "";
+  syncSessionButtons();
+}
+
+function resetSession() {
+  sess.handle = null;
+  sess.runId = null;
+  uuidInput.value = "";
+  sessionListEl.replaceChildren();
+  syncSessionButtons();
+}
+
+// HOST API: resolve an AgentSession handle for the uuid currently in the box.
+// Reuses the freshly-created handle when it matches; otherwise re-binds an
+// existing session via the SDK's client-side attach() (no RPC, no new session).
+async function hostHandle() {
+  const anna = await annaReady;
+  const uuid = currentUuid();
+  if (sess.handle && sess.handle.app_session_uuid === uuid) return sess.handle;
+  sess.handle = anna.agent.session.attach(uuid);
+  return sess.handle;
+}
+
+// Reverse RPC helper: invoke the bundled plugin's agent_session tool.
+async function executaSession(op, args = {}) {
+  const anna = await annaReady;
+  const reply = await anna.tools.invoke({
+    tool_id: EXECUTA_TOOL_ID,
+    method: "agent_session",
+    args: { op, ...args },
+  });
+  // tools.invoke unwraps to the tool's `data` payload.
+  return reply;
+}
 
 $("session-create-btn").addEventListener("click", async () => {
   clearError();
   try {
     const anna = await annaReady;
-    session = await anna.agent.session({ submode: "auto" });
-    sessionUuidEl.textContent = session.appSessionUuid || "(no uuid?)";
-    sessionUuidEl.classList.remove("muted");
-    $("run-btn").disabled = false;
-    $("history-btn").disabled = false;
-    $("delete-btn").disabled = false;
+    let uuid;
+    if (transport() === "host") {
+      sess.handle = await anna.agent.session({ submode: "auto" });
+      uuid = sess.handle.app_session_uuid || null;
+    } else {
+      const r = await executaSession("create", { submode: "auto" });
+      sess.handle = null;
+      uuid = r.app_session_uuid || null;
+    }
+    setUuid(uuid || "");
   } catch (err) {
     showError("agent.session.create", err);
   }
@@ -119,29 +233,75 @@ $("session-create-btn").addEventListener("click", async () => {
 
 $("run-btn").addEventListener("click", async () => {
   clearError();
-  if (!session) return;
+  const uuid = currentUuid();
+  if (!uuid) return;
+  const content = $("run-input").value || "hello";
   runOut.textContent = "(streaming…)\n";
   try {
-    const stream = session.run({ content: $("run-input").value || "hello" });
-    for await (const frame of stream) {
-      // frame.event ∈ "token" | "tool_call" | "tool_result" | "complete"
-      if (frame.event === "token" && frame.text) {
-        runOut.textContent += frame.text;
-      } else {
-        runOut.textContent += `\n[${frame.event}] ${JSON.stringify(frame)}\n`;
+    if (transport() === "host") {
+      // attach() (or the fresh create handle) gives a streaming .run() for
+      // ANY existing uuid — e.g. one picked from a list() result after reload.
+      const handle = await hostHandle();
+      const stream = handle.run({ content });
+      for await (const frame of stream) {
+        if (frame.run_id) sess.runId = frame.run_id;
+        if (frame.event === "token" && frame.text) {
+          runOut.textContent += frame.text;
+        } else {
+          runOut.textContent += `\n[${frame.event}] ${JSON.stringify(frame)}\n`;
+        }
       }
+      // The stream carries the host-assigned run_id (used by cancel).
+      if (stream.runId) sess.runId = stream.runId;
+      runOut.textContent += "\n(done)";
+    } else {
+      const r = await executaSession("run", {
+        app_session_uuid: uuid,
+        prompt: content,
+      });
+      for (const frame of r.frames || []) {
+        if (frame.run_id) sess.runId = frame.run_id;
+      }
+      runOut.textContent = r.text || JSON.stringify(r, null, 2);
     }
-    runOut.textContent += "\n(done)";
   } catch (err) {
     showError("agent.session.run", err);
   }
 });
 
+$("cancel-btn").addEventListener("click", async () => {
+  clearError();
+  const uuid = currentUuid();
+  if (!uuid) return;
+  try {
+    let res;
+    if (transport() === "host") {
+      const handle = await hostHandle();
+      res = await handle.cancel(sess.runId || undefined);
+    } else {
+      res = await executaSession("cancel", {
+        app_session_uuid: uuid,
+        run_id: sess.runId || "",
+      });
+    }
+    runOut.textContent = JSON.stringify(res, null, 2);
+  } catch (err) {
+    showError("agent.session.cancel", err);
+  }
+});
+
 $("history-btn").addEventListener("click", async () => {
   clearError();
-  if (!session) return;
+  const uuid = currentUuid();
+  if (!uuid) return;
   try {
-    const h = await session.history();
+    let h;
+    if (transport() === "host") {
+      const handle = await hostHandle();
+      h = await handle.history();
+    } else {
+      h = await executaSession("history", { app_session_uuid: uuid });
+    }
     runOut.textContent = JSON.stringify(h, null, 2);
   } catch (err) {
     showError("agent.session.history", err);
@@ -150,17 +310,71 @@ $("history-btn").addEventListener("click", async () => {
 
 $("delete-btn").addEventListener("click", async () => {
   clearError();
-  if (!session) return;
+  const uuid = currentUuid();
+  if (!uuid) return;
   try {
-    await session.delete();
+    if (transport() === "host") {
+      const handle = await hostHandle();
+      await handle.delete();
+    } else {
+      await executaSession("delete", { app_session_uuid: uuid });
+    }
+    resetSession();
     runOut.textContent = "(session deleted)";
-    sessionUuidEl.textContent = "no session";
-    sessionUuidEl.classList.add("muted");
-    session = null;
-    $("run-btn").disabled = true;
-    $("history-btn").disabled = true;
-    $("delete-btn").disabled = true;
   } catch (err) {
     showError("agent.session.delete", err);
   }
 });
+
+// Render list() results as clickable chips that load the uuid into the box.
+function renderSessionList(sessions) {
+  sessionListEl.replaceChildren();
+  for (const s of sessions) {
+    const uuid = s.app_session_uuid || s.uuid;
+    if (!uuid) continue;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.dataset.uuid = uuid;
+    const tail = uuid.length > 14 ? `…${uuid.slice(-10)}` : uuid;
+    btn.textContent = s.label ? `${s.label} (${tail})` : tail;
+    btn.title = uuid;
+    btn.addEventListener("click", () => {
+      // Picking an existing session drops any stale handle; host actions
+      // will attach() to this uuid on demand.
+      sess.handle = null;
+      sess.runId = null;
+      setUuid(uuid);
+    });
+    sessionListEl.appendChild(btn);
+  }
+  highlightActiveListItem();
+}
+
+$("list-btn").addEventListener("click", async () => {
+  clearError();
+  runOut.textContent = "(listing…)";
+  try {
+    const anna = await annaReady;
+    let sessions;
+    if (transport() === "host") {
+      // Account/app-scoped raw RPC — lives on the namespace, not a handle.
+      const r = await anna.agent.session.list({ include_expired: false, limit: 50 });
+      sessions = (r && r.sessions) || r || [];
+    } else {
+      const r = await executaSession("list", { include_expired: false, limit: 50 });
+      sessions = r.sessions || [];
+    }
+    renderSessionList(sessions);
+    runOut.textContent = JSON.stringify(sessions, null, 2);
+  } catch (err) {
+    showError("agent.session.list", err);
+  }
+});
+
+// ──────────────────────────────────────────────────────────
+// Init hint text to match the default selections.
+if (modeHint) modeHint.textContent = MODE_HINTS[modeSel?.value || "direct"] || "";
+if (transportHint)
+  transportHint.textContent = TRANSPORT_HINTS[transportSel?.value || "host"] || "";
+// Reflect the (empty) uuid box into button/disabled state on load.
+syncSessionButtons();

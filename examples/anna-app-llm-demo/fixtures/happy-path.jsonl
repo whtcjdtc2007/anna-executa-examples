@@ -3,4 +3,6 @@
 {"ns":"agent","method":"session.create","result":{"app_session_uuid":"aps_demo_mock_0001","expires_in":600,"submode":"auto","granted_tools":[]}}
 {"ns":"agent","method":"session.run","events":[{"payload":{"event":"token","text":"12 "}},{"payload":{"event":"token","text":"× "}},{"payload":{"event":"token","text":"13 "}},{"payload":{"event":"token","text":"= "}},{"payload":{"event":"token","text":"156"}},{"payload":{"event":"complete"}}]}
 {"ns":"agent","method":"session.history","result":{"messages":[{"role":"user","content":"What is 12 × 13?"},{"role":"assistant","content":"12 × 13 = 156"}]}}
+{"ns":"agent","method":"session.cancel","result":{"cancelled":true,"run_id":"mock-run"}}
+{"ns":"agent","method":"session.list","result":{"sessions":[{"app_session_uuid":"aps_demo_mock_0001","kind":"agent","submode":"auto","fixed_client_id":null,"label":"llm-demo (mock)","created_at":"2024-01-01T00:00:00Z","last_active_at":"2024-01-01T00:01:00Z","expires_at":"2024-01-01T00:10:00Z"}]}}
 {"ns":"agent","method":"session.delete","result":{"deleted":true}}

@@ -46,6 +46,7 @@ METHOD_AGENT_SESSION_RUN = "agent/session.run"
 METHOD_AGENT_SESSION_CANCEL = "agent/session.cancel"
 METHOD_AGENT_SESSION_HISTORY = "agent/session.history"
 METHOD_AGENT_SESSION_DELETE = "agent/session.delete"
+METHOD_AGENT_SESSION_LIST = "agent/session.list"
 METHOD_AGENT_COMPLETE = "agent/complete"
 
 # Mirror matrix/src/executa/protocol.py AGENT_ERR_*
@@ -290,6 +291,34 @@ class AgentSessionClient:
         sess._client = self
         return sess
 
+    async def list(
+        self,
+        *,
+        include_expired: bool = False,
+        limit: int = 50,
+        timeout: float = 15.0,
+    ) -> List[dict]:
+        """Enumerate this plugin's active sessions for the current user.
+
+        Account/executa-scoped (NOT per-session): authenticates with the
+        invoke ``sampling_token`` host-side, so it works even after a
+        process restart wiped the in-memory token cache — the canonical
+        way to recover and clean up orphaned sessions.
+
+        Returns a list of summary dicts::
+
+            [{"app_session_uuid": "aps_...", "kind": "agent",
+              "submode": "auto", "fixed_client_id": None, "label": "...",
+              "created_at": "...", "last_active_at": "...",
+              "expires_at": "..."}, ...]
+        """
+        result = await self._call(
+            METHOD_AGENT_SESSION_LIST,
+            {"include_expired": include_expired, "limit": limit},
+            timeout=timeout,
+        )
+        return list(result.get("sessions") or [])
+
     async def complete(
         self,
         *,
@@ -332,6 +361,7 @@ __all__ = [
     "METHOD_AGENT_SESSION_CANCEL",
     "METHOD_AGENT_SESSION_HISTORY",
     "METHOD_AGENT_SESSION_DELETE",
+    "METHOD_AGENT_SESSION_LIST",
     "METHOD_AGENT_COMPLETE",
     "AGENT_ERR_NOT_GRANTED",
     "AGENT_ERR_SESSION_NOT_FOUND",

@@ -43,6 +43,9 @@ except ModuleNotFoundError:
 
 from executa_sdk import (  # noqa: E402
     PROTOCOL_VERSION_V2,
+    AgentSession,
+    AgentSessionClient,
+    AgentError,
     SamplingClient,
     SamplingError,
 )
@@ -66,7 +69,11 @@ MANIFEST = {
     "author": "Anna Developer",
     # Required for v2 reverse sampling. Without this, the host will
     # refuse sampling requests with error -32008 (NOT_NEGOTIATED).
-    "host_capabilities": ["llm.sample"],
+    # ``llm.agent.auto`` is needed for the ``agent_session`` tool, which
+    # drives ``agent/session.*`` reverse-RPC: the host checks
+    # ``UserExecuta.custom_config.llm_grant.agent.auto`` (granted via the
+    # executa Permissions modal) and rejects with -32001 if absent.
+    "host_capabilities": ["llm.sample", "llm.agent.auto"],
     "tools": [
         {
             "name": "complete",
@@ -96,7 +103,79 @@ MANIFEST = {
                     "default": 256,
                 },
             ],
-        }
+        },
+        {
+            "name": "agent_session",
+            "description": (
+                "Drive an Anna App Session over the Reverse RPC path: the "
+                "plugin issues agent/session.* reverse-RPCs to the host. "
+                "The 'op' argument selects the operation "
+                "(create|run|cancel|history|delete|list). This mirrors the "
+                "iframe HOST API anna.agent.session.* surface so the demo "
+                "can compare both transports."
+            ),
+            "parameters": [
+                {
+                    "name": "op",
+                    "type": "string",
+                    "description": "Session operation to perform.",
+                    "required": True,
+                    "enum": [
+                        "create",
+                        "run",
+                        "cancel",
+                        "history",
+                        "delete",
+                        "list",
+                    ],
+                },
+                {
+                    "name": "app_session_uuid",
+                    "type": "string",
+                    "description": (
+                        "Target session uuid. Required for "
+                        "run/cancel/history/delete; ignored for create/list."
+                    ),
+                    "required": False,
+                    "default": "",
+                },
+                {
+                    "name": "prompt",
+                    "type": "string",
+                    "description": "User turn content for op=run.",
+                    "required": False,
+                    "default": "",
+                },
+                {
+                    "name": "submode",
+                    "type": "string",
+                    "description": "Agent submode for op=create (auto|fixed).",
+                    "required": False,
+                    "default": "auto",
+                },
+                {
+                    "name": "run_id",
+                    "type": "string",
+                    "description": "Run id to cancel for op=cancel.",
+                    "required": False,
+                    "default": "",
+                },
+                {
+                    "name": "include_expired",
+                    "type": "boolean",
+                    "description": "Include expired sessions for op=list.",
+                    "required": False,
+                    "default": False,
+                },
+                {
+                    "name": "limit",
+                    "type": "integer",
+                    "description": "Max sessions to return for op=list (1-100).",
+                    "required": False,
+                    "default": 50,
+                },
+            ],
+        },
     ],
     "runtime": {"type": "uv", "min_version": "0.1.0"},
 }
@@ -115,6 +194,9 @@ def _write_frame(msg: dict) -> None:
 
 
 sampling = SamplingClient(write_frame=_write_frame)
+# Reverse-RPC client for agent/session.* — shares the same stdout writer
+# as SamplingClient so both multiplex over the single stdio channel.
+agent_client = AgentSessionClient(write_frame=_write_frame)
 
 
 # ─── Tool implementation ─────────────────────────────────────────────
@@ -149,6 +231,89 @@ async def _complete(prompt: str, system_prompt: str = "", max_tokens: int = 256,
         "usage": result.get("usage"),
         "stopReason": result.get("stopReason"),
     }
+
+
+async def _agent_session(
+    op: str,
+    *,
+    app_session_uuid: str = "",
+    prompt: str = "",
+    submode: str = "auto",
+    run_id: str = "",
+    include_expired: bool = False,
+    limit: int = 50,
+    invoke_id: str,
+) -> dict:
+    """Drive agent/session.* over the Reverse RPC path.
+
+    Sessions live host-side in nexus; this plugin holds only the uuid
+    that the caller threads back across invokes. ``list`` needs no uuid
+    — it enumerates by sampling_token, the robust way to recover
+    sessions after a plugin restart.
+    """
+    op = (op or "").strip().lower()
+
+    if op == "create":
+        sess = await agent_client.create(
+            agent_submode=submode or "auto",
+            label="llm-demo (reverse-rpc)",
+        )
+        return {
+            "op": op,
+            "app_session_uuid": sess.uuid,
+            "kind": sess.kind,
+            "submode": sess.agent_submode,
+            "granted_tools": sess.granted_tools,
+            "expires_in": sess.expires_in,
+        }
+
+    if op == "list":
+        sessions = await agent_client.list(
+            include_expired=bool(include_expired),
+            limit=int(limit),
+        )
+        return {"op": op, "count": len(sessions), "sessions": sessions}
+
+    # The remaining ops act on an existing session handle.
+    if not app_session_uuid:
+        raise ValueError(f"op={op!r} requires 'app_session_uuid'")
+    handle = AgentSession(
+        uuid=app_session_uuid,
+        expires_in=0,
+        kind="agent",
+        agent_submode=submode or "auto",
+        fixed_client_id=None,
+        granted_tools=[],
+    )
+    handle._client = agent_client
+
+    if op == "run":
+        frames: list[dict] = []
+        text_chunks: list[str] = []
+        async for frame in handle.run(prompt or "hello", recursion_limit=8):
+            frames.append(frame)
+            if frame.get("event") == "token" and frame.get("text"):
+                text_chunks.append(frame["text"])
+        return {
+            "op": op,
+            "app_session_uuid": app_session_uuid,
+            "text": "".join(text_chunks),
+            "frames": frames,
+        }
+
+    if op == "cancel":
+        res = await handle.cancel(run_id or "")
+        return {"op": op, "app_session_uuid": app_session_uuid, **(res or {})}
+
+    if op == "history":
+        res = await handle.history()
+        return {"op": op, "app_session_uuid": app_session_uuid, **(res or {})}
+
+    if op == "delete":
+        res = await handle.delete()
+        return {"op": op, "app_session_uuid": app_session_uuid, **(res or {})}
+
+    raise ValueError(f"unknown op={op!r}")
 
 
 # ─── JSON-RPC dispatch ───────────────────────────────────────────────
@@ -206,21 +371,33 @@ def _handle_invoke(req_id, params: dict) -> dict:
     args = params.get("arguments") or {}
     invoke_id = params.get("invoke_id") or ""
 
-    if tool != "complete":
+    if tool == "complete":
+        coro = _complete(invoke_id=invoke_id, **args)
+    elif tool == "agent_session":
+        coro = _agent_session(invoke_id=invoke_id, **args)
+    else:
         return _make_response(
             req_id,
             error={"code": -32601, "message": f"Unknown tool: {tool}"},
         )
 
-    fut = asyncio.run_coroutine_threadsafe(
-        _complete(invoke_id=invoke_id, **args), _loop
-    )
+    fut = asyncio.run_coroutine_threadsafe(coro, _loop)
     try:
-        data = fut.result(timeout=120.0)
+        data = fut.result(timeout=320.0)
     except SamplingError as e:
         return _make_response(
             req_id,
             error={"code": e.code, "message": e.message, "data": e.data},
+        )
+    except AgentError as e:
+        return _make_response(
+            req_id,
+            error={"code": e.code, "message": e.message, "data": e.data},
+        )
+    except (TypeError, ValueError) as e:
+        return _make_response(
+            req_id,
+            error={"code": -32602, "message": f"Invalid params: {e}"},
         )
     except Exception as e:  # noqa: BLE001
         return _make_response(
@@ -239,8 +416,11 @@ def _handle_message(line: str) -> None:
 
     # Reverse-RPC reply from host → resolve a pending sampling future.
     if "method" not in msg:
-        if not sampling.dispatch_response(msg):
-            print(f"⚠️  unmatched response id={msg.get('id')!r}", file=sys.stderr)
+        if sampling.dispatch_response(msg):
+            return
+        if agent_client.dispatch_response(msg):
+            return
+        print(f"⚠️  unmatched response id={msg.get('id')!r}", file=sys.stderr)
         return
 
     method = msg.get("method")

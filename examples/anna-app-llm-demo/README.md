@@ -9,8 +9,16 @@ to reach an LLM:
   bundled Executa (`executas/llm-via-executa-python/`) which in turn
   issues a reverse `sampling/createMessage` to the host. This lets you
   observe / shape the prompt server-side before it reaches the model.
-- `anna.agent.session({ submode: "auto" })` — create a session,
-  stream `run()` frames, fetch `history()`, then `delete()`.
+
+and the **full `agent.session` surface** — create / run / cancel /
+history / delete / **list** — over **two switchable transports**:
+
+- **HOST API** — the iframe calls `anna.agent.session(...)` /
+  `anna.agent.session.list(...)` directly (postMessage → host).
+- **Reverse RPC** — the iframe calls `anna.tools.invoke({ method:
+  "agent_session", args: { op } })` against the bundled Executa, which
+  issues the matching `agent/session.*` reverse-RPC back to the host.
+  Same operations, different transport — useful to compare the two.
 
 Used as a smoke test for the **anna server**'s
 `docs/design/app-llm-and-agent-access.md` Phase 6 deliverables and the
@@ -48,12 +56,47 @@ pnpm dev:off
 
 The harness opens the bundle in a Chromium iframe. In section 1 use the
 **LLM source** selector to switch paths before clicking **Run
-completion**. Then in section 2:
+completion**. Then in section 2 pick a **Transport** (HOST API vs
+Reverse RPC) and drive the session:
 
-1. **Create session** — mints an agent session (`submode: "auto"`).
-2. **session.run** — streams tokens into the output area.
-3. **session.history** — fetches the recorded transcript.
-4. **session.delete** — tears down the session.
+1. **create** — mints an agent session (`submode: "auto"`) and drops its
+   `app_session_uuid` into the editable uuid box.
+2. **run** — streams tokens into the output area.
+3. **cancel** — cancels the most recent run (`run_id` tracked from the
+   stream).
+4. **history** — fetches the recorded transcript.
+5. **delete** — tears down the session.
+6. **list** — enumerates this app's active sessions. Account/app-scoped,
+   so it works without an active handle (the robust way to recover
+   sessions after a reload/restart). Each result is rendered as a
+   clickable chip that loads its uuid into the box.
+
+The **`app_session_uuid` box is the source of truth** for run / cancel /
+history / delete: type a uuid in, or click a chip from **list**, and the
+actions target *that* session — not just the one you happened to
+**create** in this page load. On the HOST API transport this works via
+`anna.agent.session.attach(uuid)`, a client-side helper (SDK ≥ 0.7.0)
+that re-binds an existing session as an `AgentSession` handle **without**
+minting a new one (no RPC), giving you the same streaming `.run()` /
+`.cancel()` / `.history()` / `.delete()` sugar. This is exactly how a
+real app re-attaches to a session after an iframe reload, a crash, or
+from another tab:
+
+```js
+const { sessions } = await anna.agent.session.list({ limit: 50 });
+const handle = anna.agent.session.attach(sessions[0]); // uuid string or list() row
+for await (const ev of handle.run({ content: "continue" })) { /* … */ }
+```
+
+Switching the transport selector clears the uuid box and current handle
+(host vs executa sessions are scoped differently), so create or pick a
+fresh session after toggling.
+
+> In **mock** mode the `agent.session.*` operations are served from
+> `fixtures/happy-path.jsonl` for *both* transports (the Reverse RPC
+> path routes the Executa's `agent/session.*` reverse-RPC through the
+> same bridge). `list` returns the fixture's canned session array; in
+> **real** mode it returns this run's live sessions.
 
 ---
 
@@ -97,11 +140,11 @@ completion**. Then in section 2:
 | Path | What |
 |---|---|
 | `manifest.json` | `schema: 2` manifest with `host_api.llm` + `host_api.tools` + `host_api.agent.session.auto` |
-| `bundle/index.html` | Tiny single-page UI with mode selector |
-| `bundle/app.js` | Pure DOM + `window.anna.*` calls, routes by selected mode |
+| `bundle/index.html` | Single-page UI: LLM source selector + session transport selector |
+| `bundle/app.js` | Pure DOM + `window.anna.*` calls; routes by selected mode + transport |
 | `bundle/style.css` | Light styling |
-| `fixtures/happy-path.jsonl` | Mock fixtures consumed by `--mock-llm` (covers both LLM paths) |
-| `executas/llm-via-executa-python/` | Sibling Executa exposing `complete` that wraps host sampling |
+| `fixtures/happy-path.jsonl` | Mock fixtures consumed by `--mock-llm` (both LLM paths + all `agent.session.*` ops incl. `list`) |
+| `executas/llm-via-executa-python/` | Sibling Executa exposing `complete` (sampling) + `agent_session` (reverse-RPC `agent/session.*`) |
 
 ---
 

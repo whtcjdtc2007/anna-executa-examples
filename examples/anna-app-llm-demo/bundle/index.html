@@ -12,8 +12,9 @@
       <p class="muted">
         Exercises <code>anna.llm.complete</code> (direct),
         <code>anna.tools.invoke</code> against an Executa that calls
-        <code>sampling/createMessage</code>, and
-        <code>anna.agent.session({ submode: "auto" })</code>.
+        <code>sampling/createMessage</code>, and the full
+        <code>agent.session</code> surface (create/run/cancel/history/delete/list)
+        over <strong>both</strong> the HOST API and the Reverse RPC transports.
       </p>
     </header>
 
@@ -35,13 +36,38 @@
     </section>
 
     <section>
-      <h2>2. Agent session (auto submode)</h2>
-      <button id="session-create-btn">Create session</button>
-      <span id="session-uuid" class="muted">no session</span>
+      <h2>2. Agent session (all methods)</h2>
+      <div class="mode-row">
+        <label for="session-transport">Transport:</label>
+        <select id="session-transport">
+          <option value="host" selected>HOST API — anna.agent.session.*</option>
+          <option value="executa">Reverse RPC — via Executa agent_session tool</option>
+        </select>
+      </div>
+      <p class="muted mode-hint" id="transport-hint">
+        Calls the host session API directly from the iframe.
+      </p>
+      <div class="btn-row">
+        <button id="session-create-btn">create</button>
+        <input
+          id="session-uuid-input"
+          type="text"
+          class="uuid-input"
+          placeholder="app_session_uuid — create, type, or pick from list()"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <p class="muted" id="session-uuid-status">no session</p>
       <textarea id="run-input" rows="2">What is 12 × 13?</textarea>
-      <button id="run-btn" disabled>session.run (streamed)</button>
-      <button id="history-btn" disabled>session.history</button>
-      <button id="delete-btn" disabled>session.delete</button>
+      <div class="btn-row">
+        <button id="run-btn" disabled>run (streamed)</button>
+        <button id="cancel-btn" disabled>cancel</button>
+        <button id="history-btn" disabled>history</button>
+        <button id="delete-btn" disabled>delete</button>
+        <button id="list-btn">list</button>
+      </div>
+      <div id="session-list" class="session-list"></div>
       <pre id="run-out" class="out">(no output yet)</pre>
     </section>
 
