@@ -24,13 +24,44 @@ iframe ── anna.tools.invoke({tool_id, method:"complete", args:{prompt}}) ─
           └──────────────────────────────┘
 ```
 
-## Tool
+## Tools
+
+This Executa exposes **two** tools:
+
+### `complete`
 
 | name     | parameters                                                   |
 |----------|--------------------------------------------------------------|
 | complete | `prompt` (required string), `system_prompt`, `max_tokens=256`|
 
-Returns `{ "text": "...", "model": "...", "usage": {...}, "stopReason": "..." }`.
+Issues a reverse `sampling/createMessage` and returns
+`{ "text": "...", "model": "...", "usage": {...}, "stopReason": "..." }`.
+
+### `agent_session`
+
+Drives the host's **agent session** surface over reverse-RPC
+(`agent/session.*`), the same operations the app can reach directly via
+`anna.agent.session.*`. Pick the **Reverse RPC** transport in the demo UI
+to route through this tool.
+
+| parameter           | notes                                                        |
+|---------------------|--------------------------------------------------------------|
+| `op` (required)     | `create` \| `run` \| `cancel` \| `history` \| `refresh` \| `delete` \| `list` |
+| `app_session_uuid`  | required for `run` / `cancel` / `history` / `refresh` / `delete` |
+| `prompt`            | used by `run`                                                |
+| `ttl_seconds`       | optional; used by `refresh` (default host-side)              |
+
+`refresh` issues an `agent/session.refresh` reverse-RPC: the host
+re-mints the short-lived, per-executa **sampling-scoped** capability
+token and slides the session's idle deadline, returning the fresh
+lifecycle (`expires_at`, `max_lifetime_at`, `idle_ttl_seconds`). The
+plugin re-caches the returned token so subsequent ops keep working
+without a re-`create`. Each op returns `{ "op": op, ... }`.
+
+> The `agent_session` tool requires the manifest's
+> `llm.agent.auto` grant (see `MANIFEST` in the plugin), which the host
+> exchanges for the per-call sampling token.
+
 
 ## Local dev
 

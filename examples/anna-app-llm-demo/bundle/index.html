@@ -13,8 +13,11 @@
         Exercises <code>anna.llm.complete</code> (direct),
         <code>anna.tools.invoke</code> against an Executa that calls
         <code>sampling/createMessage</code>, and the full
-        <code>agent.session</code> surface (create/run/cancel/history/delete/list)
-        over <strong>both</strong> the HOST API and the Reverse RPC transports.
+        <code>agent.session</code> surface
+        (create/run/cancel/history/refresh/delete/list)
+        over <strong>both</strong> the HOST API and the Reverse RPC transports,
+        including the <strong>session lifecycle</strong> (sliding idle window,
+        token-free release, resume-by-uuid after reload).
       </p>
     </header>
 
@@ -59,11 +62,13 @@
         />
       </div>
       <p class="muted" id="session-uuid-status">no session</p>
+      <p class="muted lifecycle" id="session-lifecycle">lifecycle: (none)</p>
       <textarea id="run-input" rows="2">What is 12 × 13?</textarea>
       <div class="btn-row">
         <button id="run-btn" disabled>run (streamed)</button>
         <button id="cancel-btn" disabled>cancel</button>
         <button id="history-btn" disabled>history</button>
+        <button id="refresh-btn" disabled>refresh</button>
         <button id="delete-btn" disabled>delete</button>
         <button id="list-btn">list</button>
       </div>
