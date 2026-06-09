@@ -32,6 +32,7 @@ const runOut = $("run-out");
 const errBox = $("errors");
 const uuidInput = $("session-uuid-input");
 const sessionStatus = $("session-uuid-status");
+const lifecycleEl = $("session-lifecycle");
 const sessionListEl = $("session-list");
 const modeSel = $("llm-mode");
 const modeHint = $("mode-hint");
@@ -70,13 +71,42 @@ const annaReady = (async () => {
 
 function showError(label, err) {
   const code = (err && (err.code || err.error?.code)) || "unknown";
+  const name = (err && (err.name || err.error?.name)) || "";
   const msg = (err && (err.message || err.error?.message)) || String(err);
-  errBox.textContent = `[${label}] ${code}: ${msg}`;
+  // Distinguish a dead session (must recreate) from a lapsed token (the SDK
+  // self-heals via refresh, so a retry usually succeeds). Branch on the stable
+  // `error.name` string, not the numeric code.
+  let hint = "";
+  if (name === "APP_SESSION_EXPIRED" || name === "APP_SESSION_REVOKED") {
+    hint = " — session is gone; create a new one (delete by uuid still works to free quota).";
+  } else if (name === "APP_SESSION_TOKEN_EXPIRED") {
+    hint = " — token lapsed; click refresh (or just retry — run/cancel self-heal the token).";
+  }
+  errBox.textContent = `[${label}] ${name || code}: ${msg}${hint}`;
   errBox.classList.add("err");
 }
 
 function clearError() {
   errBox.textContent = "(none)";
+}
+
+// Render the session lifecycle metadata (sliding idle deadline + absolute cap)
+// returned by create / refresh / list. Accepts a handle OR a plain info object.
+function renderLifecycle(info) {
+  if (!lifecycleEl) return;
+  const i = info || {};
+  const exp = i.expires_at || null;
+  const max = i.max_lifetime_at || null;
+  const idle = i.idle_ttl_seconds ?? null;
+  if (!exp && !max && idle == null) {
+    lifecycleEl.textContent = "lifecycle: (none)";
+    return;
+  }
+  const parts = [];
+  if (exp) parts.push(`idle-expires ${exp}`);
+  if (max) parts.push(`hard-cap ${max}`);
+  if (idle != null) parts.push(`idle-ttl ${idle}s`);
+  lifecycleEl.textContent = `lifecycle: ${parts.join("  ·  ")}`;
 }
 
 // ──────────────────────────────────────────────────────────
@@ -147,6 +177,7 @@ function syncSessionButtons() {
   $("run-btn").disabled = !active;
   $("cancel-btn").disabled = !active;
   $("history-btn").disabled = !active;
+  $("refresh-btn").disabled = !active;
   $("delete-btn").disabled = !active;
   if (active) {
     sessionStatus.textContent = `session: ${currentUuid()}`;
@@ -186,6 +217,7 @@ function resetSession() {
   sess.runId = null;
   uuidInput.value = "";
   sessionListEl.replaceChildren();
+  renderLifecycle(null);
   syncSessionButtons();
 }
 
@@ -220,10 +252,14 @@ $("session-create-btn").addEventListener("click", async () => {
     if (transport() === "host") {
       sess.handle = await anna.agent.session({ submode: "auto" });
       uuid = sess.handle.app_session_uuid || null;
+      // The handle carries lifecycle metadata (expires_at / max_lifetime_at /
+      // idle_ttl_seconds) straight off the create response.
+      renderLifecycle(sess.handle);
     } else {
       const r = await executaSession("create", { submode: "auto" });
       sess.handle = null;
       uuid = r.app_session_uuid || null;
+      renderLifecycle(r);
     }
     setUuid(uuid || "");
   } catch (err) {
@@ -308,6 +344,33 @@ $("history-btn").addEventListener("click", async () => {
   }
 });
 
+// refresh: re-mint the short-lived token AND slide the idle window for an
+// EXISTING session, identified only by its app_session_uuid. This is how a
+// session survives long idle gaps, an iframe reload, or a host restart — no
+// live token required. Works on any uuid in the box (created, typed, or
+// picked from list()). The HOST handle's .refresh() also updates its
+// in-memory lifecycle fields; both transports echo fresh deadlines.
+$("refresh-btn").addEventListener("click", async () => {
+  clearError();
+  const uuid = currentUuid();
+  if (!uuid) return;
+  try {
+    let r;
+    if (transport() === "host") {
+      const handle = await hostHandle();
+      r = await handle.refresh();
+      // handle.refresh() copies the new deadlines onto the handle in place.
+      renderLifecycle(handle);
+    } else {
+      r = await executaSession("refresh", { app_session_uuid: uuid });
+      renderLifecycle(r);
+    }
+    runOut.textContent = JSON.stringify(r, null, 2);
+  } catch (err) {
+    showError("agent.session.refresh", err);
+  }
+});
+
 $("delete-btn").addEventListener("click", async () => {
   clearError();
   const uuid = currentUuid();
@@ -340,10 +403,12 @@ function renderSessionList(sessions) {
     btn.title = uuid;
     btn.addEventListener("click", () => {
       // Picking an existing session drops any stale handle; host actions
-      // will attach() to this uuid on demand.
+      // will attach() to this uuid on demand. Show the row's lifecycle so the
+      // user can see how close it is to its idle/hard deadline before acting.
       sess.handle = null;
       sess.runId = null;
       setUuid(uuid);
+      renderLifecycle(s);
     });
     sessionListEl.appendChild(btn);
   }

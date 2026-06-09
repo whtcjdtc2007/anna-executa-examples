@@ -274,6 +274,16 @@ async def _agent_session(
         )
         return {"op": op, "count": len(sessions), "sessions": sessions}
 
+    if op == "refresh":
+        # Re-mint the token + slide the idle window for an EXISTING session by
+        # uuid. Identity-scoped on the sampling_token host-side, so it works
+        # even if this process restarted and lost its token cache — the
+        # robust "resume after losing handles" path, paired with ``list``.
+        if not app_session_uuid:
+            raise ValueError("op='refresh' requires 'app_session_uuid'")
+        res = await agent_client.refresh(app_session_uuid)
+        return {"op": op, **(res or {})}
+
     # The remaining ops act on an existing session handle.
     if not app_session_uuid:
         raise ValueError(f"op={op!r} requires 'app_session_uuid'")

@@ -6,6 +6,7 @@ Brings stdio plugins to **parity** with anna-app iframes for LLM access:
 - ``AgentSession.run(content, ...)``    →  ``agent/session.run`` (buffered stream)
 - ``AgentSession.cancel(run_id)``       →  ``agent/session.cancel``
 - ``AgentSession.history()``            →  ``agent/session.history``
+- ``AgentSession.refresh(...)``         →  ``agent/session.refresh`` (re-mint token + slide idle window)
 - ``AgentSession.delete()``             →  ``agent/session.delete``
 - ``AgentSessionClient.complete(...)``  →  ``agent/complete`` (L1 stateless)
 
@@ -47,6 +48,7 @@ METHOD_AGENT_SESSION_CANCEL = "agent/session.cancel"
 METHOD_AGENT_SESSION_HISTORY = "agent/session.history"
 METHOD_AGENT_SESSION_DELETE = "agent/session.delete"
 METHOD_AGENT_SESSION_LIST = "agent/session.list"
+METHOD_AGENT_SESSION_REFRESH = "agent/session.refresh"
 METHOD_AGENT_COMPLETE = "agent/complete"
 
 # Mirror matrix/src/executa/protocol.py AGENT_ERR_*
@@ -141,6 +143,25 @@ class AgentSession:
             METHOD_AGENT_SESSION_DELETE,
             {"app_session_uuid": self.uuid},
         )
+
+    async def refresh(self, *, ttl_seconds: int = 600) -> dict:
+        """Re-mint this session's token and slide its idle window.
+
+        Identity-scoped on the invoke ``sampling_token`` host-side, so it
+        recovers a session even after the host's in-memory token cache
+        lapsed (process restart / long idle). Updates ``self.expires_in``
+        from the response and returns the fresh lifecycle metadata
+        (``expires_at`` / ``max_lifetime_at`` / ``idle_ttl_seconds`` / ...).
+        """
+        res = await self._client.refresh(
+            self.uuid, ttl_seconds=ttl_seconds
+        )
+        if isinstance(res, dict) and res.get("expires_in") is not None:
+            try:
+                self.expires_in = int(res["expires_in"])
+            except (TypeError, ValueError):
+                pass
+        return res
 
 
 # ─── Client (multiplexes pending reverse RPCs) ────────────────────────
@@ -319,6 +340,38 @@ class AgentSessionClient:
         )
         return list(result.get("sessions") or [])
 
+    async def refresh(
+        self,
+        app_session_uuid: str,
+        *,
+        ttl_seconds: int = 600,
+        timeout: float = 15.0,
+    ) -> dict:
+        """Re-mint an existing session's token and slide its idle window.
+
+        Identity/executa-scoped (NOT dependent on a cached token): the host
+        authenticates with the invoke ``sampling_token``, so this recovers a
+        session by ``app_session_uuid`` even after a process restart or long
+        idle wiped the in-memory token cache — the companion to :meth:`list`
+        for the "resume after losing handles" flow.
+
+        Returns the fresh lifecycle metadata::
+
+            {"app_session_uuid": "aps_...", "expires_in": 600,
+             "kind": "agent", "agent_submode": "auto",
+             "fixed_client_id": None, "expires_at": "...",
+             "max_lifetime_at": "...", "idle_ttl_seconds": 1800,
+             "session_expires_in": 1800}
+
+        (The underlying ``app_session_token`` is held host-side and is
+        deliberately never returned to the plugin.)
+        """
+        return await self._call(
+            METHOD_AGENT_SESSION_REFRESH,
+            {"app_session_uuid": app_session_uuid, "ttl_seconds": ttl_seconds},
+            timeout=timeout,
+        )
+
     async def complete(
         self,
         *,
@@ -362,6 +415,7 @@ __all__ = [
     "METHOD_AGENT_SESSION_HISTORY",
     "METHOD_AGENT_SESSION_DELETE",
     "METHOD_AGENT_SESSION_LIST",
+    "METHOD_AGENT_SESSION_REFRESH",
     "METHOD_AGENT_COMPLETE",
     "AGENT_ERR_NOT_GRANTED",
     "AGENT_ERR_SESSION_NOT_FOUND",
