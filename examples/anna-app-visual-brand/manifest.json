@@ -1,0 +1,76 @@
+{
+  "schema": 2,
+  "permissions": [
+    "tools.invoke",
+    "chat.write_message",
+    "storage.read",
+    "storage.write",
+    "ui.svg",
+    "llm.image",
+    "llm.image.edit",
+    "host.upload"
+  ],
+  "host_capabilities": [
+    "aps.kv",
+    "aps.scope.user.read",
+    "aps.scope.user.write",
+    "llm.image",
+    "llm.image.edit",
+    "host.upload"
+  ],
+  "required_executas": [],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Visual Brand app open. Treat the host-mediated image services (anna.image.generate / anna.image.edit) and the host upload services (anna.upload.inline / anna.upload.negotiate / anna.upload.confirm) as the source of truth for any image the user is iterating on inside this window. Do not invent image URLs; only reference URLs that were actually returned by one of those RPCs. When the user asks for variations, prefer anna.image.edit on the most recent generation to preserve composition.",
+  "user_message_prefix_template": "[Visual Brand] {user_message}",
+  "tags": ["design", "image", "brand", "upload", "anna-app"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Visual Brand",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 560, "h": 480 },
+        "default_size": { "w": 960, "h": 680 },
+        "max_size": { "w": 1600, "h": 1200 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "icon": "icon.svg"
+      }
+    ],
+    "host_api": {
+      "tools": [],
+      "chat": ["write_message"],
+      "artifact": [],
+      "llm": ["complete"],
+      "fs": [],
+      "storage": ["get", "set", "list", "delete"],
+      "prefs": [],
+      "window": ["set_title"],
+      "image": ["generate", "edit"],
+      "upload": ["inline", "negotiate", "confirm"]
+    },
+    "csp_overrides": {
+      "img-src": ["'self'", "data:", "blob:", "https:"],
+      "font-src": ["'self'", "data:"],
+      "style-src": ["'self'", "'unsafe-inline'"],
+      "script-src": ["'self'"],
+      "connect-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "fixtures": ["fixtures/*.jsonl"],
+    "seed_storage": {
+      "visual-brand:last-prompt": "",
+      "visual-brand:last-style": "art-deco"
+    },
+    "user_id": 1
+  }
+}

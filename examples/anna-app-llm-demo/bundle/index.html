@@ -40,6 +40,60 @@
         Calls the host LLM directly from the iframe.
       </p>
       <textarea id="complete-input" rows="2">Say hello in three short sentences.</textarea>
+
+      <details class="params" open>
+        <summary>Parameters (shared by both LLM sources)</summary>
+        <p class="muted">
+          Empty fields are omitted from the request so the host applies its own
+          defaults. These map onto the <code>sampling/createMessage</code>
+          attribute surface: the direct path passes them as
+          <code>anna.llm.complete</code> args; the Executa path forwards them as
+          the <code>complete</code> tool's args.
+        </p>
+
+        <label for="cmp-system">System prompt (optional):</label>
+        <textarea
+          id="cmp-system"
+          rows="2"
+          placeholder="e.g. You are a terse assistant. Answer in one line."
+        ></textarea>
+
+        <div class="mode-row">
+          <label for="cmp-maxtokens">Max tokens:</label>
+          <input id="cmp-maxtokens" type="number" min="1" max="4096" value="256" class="num-input" />
+          <label for="cmp-temperature">Temperature:</label>
+          <input
+            id="cmp-temperature"
+            type="number"
+            min="0"
+            max="2"
+            step="0.1"
+            placeholder="0.7"
+            class="num-input"
+          />
+        </div>
+
+        <label for="cmp-stop">Stop sequences (comma-separated, optional):</label>
+        <input id="cmp-stop" type="text" class="text-input" placeholder="e.g. END, ###" />
+
+        <p class="muted params-group-label">
+          Model preferences (MCP <code>modelPreferences</code> — host may
+          substitute an equivalent model):
+        </p>
+        <div class="mode-row">
+          <label for="cmp-hint">Model hint:</label>
+          <input id="cmp-hint" type="text" class="text-input" placeholder="e.g. gpt-4o" />
+        </div>
+        <div class="mode-row">
+          <label for="cmp-cost">Cost priority:</label>
+          <input id="cmp-cost" type="number" min="0" max="1" step="0.1" placeholder="—" class="num-input" />
+          <label for="cmp-speed">Speed priority:</label>
+          <input id="cmp-speed" type="number" min="0" max="1" step="0.1" placeholder="—" class="num-input" />
+          <label for="cmp-intel">Intelligence priority:</label>
+          <input id="cmp-intel" type="number" min="0" max="1" step="0.1" placeholder="—" class="num-input" />
+        </div>
+      </details>
+
       <button id="complete-btn">Run completion</button>
       <pre id="complete-out" class="out">(no output yet)</pre>
     </section>

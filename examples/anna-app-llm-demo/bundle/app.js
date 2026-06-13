@@ -194,20 +194,76 @@ modeSel?.addEventListener("change", () => {
   modeHint.textContent = MODE_HINTS[modeSel.value] || "";
 });
 
+// Collect the editable completion parameters shared by both LLM sources.
+// Blank fields return `undefined` and are omitted from the request so the host
+// applies its own defaults (e.g. temperature 0.7, the user's saved model).
+function readCompletionParams() {
+  const num = (id) => {
+    const raw = ($(id).value || "").trim();
+    if (raw === "") return undefined;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : undefined;
+  };
+  const str = (id) => ($(id).value || "").trim() || undefined;
+  const stopRaw = str("cmp-stop");
+  const stop = stopRaw
+    ? stopRaw.split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+  return {
+    systemPrompt: str("cmp-system"),
+    maxTokens: num("cmp-maxtokens") ?? 256,
+    temperature: num("cmp-temperature"),
+    stop: stop && stop.length ? stop : undefined,
+    modelHint: str("cmp-hint"),
+    costPriority: num("cmp-cost"),
+    speedPriority: num("cmp-speed"),
+    intelligencePriority: num("cmp-intel"),
+  };
+}
+
+// Build an MCP modelPreferences object from the params, or undefined if the
+// user left every preference field blank.
+function buildModelPreferences(p) {
+  const mp = {};
+  if (p.modelHint) mp.hints = [{ name: p.modelHint }];
+  if (p.costPriority !== undefined) mp.costPriority = p.costPriority;
+  if (p.speedPriority !== undefined) mp.speedPriority = p.speedPriority;
+  if (p.intelligencePriority !== undefined)
+    mp.intelligencePriority = p.intelligencePriority;
+  return Object.keys(mp).length ? mp : undefined;
+}
+
 async function runDirect(prompt) {
   const anna = await annaReady;
-  return anna.llm.complete({
+  const p = readCompletionParams();
+  const req = {
     messages: [{ role: "user", content: { type: "text", text: prompt } }],
-    maxTokens: 256,
-  });
+    maxTokens: p.maxTokens,
+  };
+  if (p.systemPrompt) req.systemPrompt = p.systemPrompt;
+  if (p.temperature !== undefined) req.temperature = p.temperature;
+  if (p.stop) req.stopSequences = p.stop;
+  const modelPreferences = buildModelPreferences(p);
+  if (modelPreferences) req.modelPreferences = modelPreferences;
+  return anna.llm.complete(req);
 }
 
 async function runViaExecuta(prompt) {
   const anna = await annaReady;
+  const p = readCompletionParams();
+  const args = { prompt, max_tokens: p.maxTokens };
+  if (p.systemPrompt) args.system_prompt = p.systemPrompt;
+  if (p.temperature !== undefined) args.temperature = p.temperature;
+  if (p.stop) args.stop = p.stop;
+  if (p.modelHint) args.model_hint = p.modelHint;
+  if (p.costPriority !== undefined) args.cost_priority = p.costPriority;
+  if (p.speedPriority !== undefined) args.speed_priority = p.speedPriority;
+  if (p.intelligencePriority !== undefined)
+    args.intelligence_priority = p.intelligencePriority;
   return anna.tools.invoke({
     tool_id: EXECUTA_TOOL_ID,
     method: EXECUTA_METHOD,
-    args: { prompt, max_tokens: 256 },
+    args,
   });
 }
 

@@ -39,6 +39,7 @@ anna-executa-examples/
 │                                        #     The tool plugin ships in three flavours:
 │                                        #     focus-session-{python,node,go}; pick one via
 │                                        #     `executa.json` or `--executa` CLI flag.
+│   └── anna-app-visual-brand/           # ⭐ Anna App — host LLM image generate/edit + APS persistence
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

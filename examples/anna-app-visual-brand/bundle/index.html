@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Visual Brand</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-theme="light">
+    <main class="shell">
+      <aside class="sidebar">
+        <header class="sidebar__head">
+          <img src="icon.svg" alt="" width="28" height="28" />
+          <span class="brand__name">Visual Brand</span>
+        </header>
+
+        <section class="panel">
+          <label class="lbl" for="prompt">Prompt</label>
+          <textarea id="prompt" rows="4" placeholder="A bold poster about the planet Mars"></textarea>
+
+          <label class="lbl" for="style">Style</label>
+          <select id="style">
+            <option value="art-deco">Art Deco</option>
+            <option value="cyberpunk">Cyberpunk</option>
+            <option value="minimalist">Minimalist</option>
+            <option value="watercolor">Watercolor</option>
+            <option value="vintage-print">Vintage Print</option>
+          </select>
+
+          <label class="lbl" for="size">Size</label>
+          <select id="size">
+            <option value="1024x1024">1024 × 1024</option>
+            <option value="1024x1536">1024 × 1536 (portrait)</option>
+            <option value="1536x1024">1536 × 1024 (landscape)</option>
+          </select>
+
+          <button id="generate-btn" class="btn btn--primary" type="button">Generate</button>
+          <button id="restyle-btn" class="btn" type="button" disabled>Restyle current</button>
+          <button id="upload-btn" class="btn" type="button" disabled>Persist to host storage</button>
+
+          <div id="status" class="status" aria-live="polite">Not connected.</div>
+        </section>
+      </aside>
+
+      <section class="canvas">
+        <div id="preview" class="preview preview--empty">
+          <span class="preview__hint">Your generated image will appear here.</span>
+        </div>
+        <div class="meta">
+          <span id="meta-model">model: —</span>
+          <span id="meta-quota">quota: —</span>
+          <span id="meta-r2">r2: —</span>
+        </div>
+        <div class="history" id="history" aria-label="Recent generations"></div>
+      </section>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

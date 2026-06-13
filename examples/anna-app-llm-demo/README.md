@@ -85,8 +85,14 @@ pnpm dev:off
 
 The harness opens the bundle in a Chromium iframe. In section 1 use the
 **LLM source** selector to switch paths before clicking **Run
-completion**. Then in section 2 pick a **Transport** (HOST API vs
-Reverse RPC) and drive the session:
+completion**. Expand **Parameters** to edit the shared completion knobs —
+system prompt, max tokens, temperature, stop sequences, and the MCP
+`modelPreferences` (model hint + cost / speed / intelligence priority).
+Blank fields are omitted from the request, so the host applies its own
+defaults; whatever you set is forwarded on both paths (direct
+`anna.llm.complete` args and the Executa `complete` tool args). Then in
+section 2 pick a **Transport** (HOST API vs Reverse RPC) and drive the
+session:
 
 1. **create** — mints an agent session (`submode: "auto"`) and drops its
    `app_session_uuid` into the editable uuid box.

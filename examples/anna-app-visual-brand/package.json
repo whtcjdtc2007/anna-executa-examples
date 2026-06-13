@@ -1,0 +1,16 @@
+{
+  "name": "anna-app-visual-brand",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Visual Brand — generate, edit and persist branded poster images via Anna's host LLM image services.",
+  "scripts": {
+    "dev": "anna-app dev",
+    "validate": "anna-app validate --strict",
+    "fixture:verify": "anna-app fixture verify fixtures/*.jsonl",
+    "fixture:summarize": "anna-app fixture summarize fixtures/happy-path.jsonl",
+    "test": "echo '(no JS tests for visual-brand yet)'"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.14"
+  }
+}

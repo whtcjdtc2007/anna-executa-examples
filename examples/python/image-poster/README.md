@@ -193,4 +193,4 @@ reverse-RPCs with `NOT_NEGOTIATED` (`-32107` / `-32210`).
 
 - SDK reference: `anna-executa-examples/sdk/python/executa_sdk/image.py`
 - Host RFC: `matrix-nexus/docs/design/executa-llm-image-generation.md`
-- App-side companion: `anna-apps/apps/visual-brand/` (browser-side HTTP).
+- App-side companion: `anna-executa-examples/examples/anna-app-visual-brand/` (browser-side HTTP).

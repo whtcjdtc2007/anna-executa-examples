@@ -1,0 +1,15 @@
+{
+  "slug": "visual-brand",
+  "version": "0.0.3",
+  "name": "Visual Brand",
+  "tagline": "Generate, edit, and persist branded poster images via Anna's host LLM image services.",
+  "description": "Visual Brand is a focused canvas for iterating on a single brand image — generate a hero shot from a prompt, restyle it in-place (image/edit), and persist the final cut to host storage so you can attach it to a chat message or hand it off to another Anna App. The host (Nexus) owns provider selection, billing, quota, and storage; the app holds zero credentials and runs fully offline in `anna-app dev`.\n\n**What's inside**\n\n- A three-panel canvas: prompt + style on the left, the current image preview center, history strip below. Every generation is etag-checkpointed into APS so you can scrub back without re-billing.\n- Direct HTTP calls to `/api/v1/copilot/app/image/generate`, `/image/edit`, and `/upload` — using the app session token already issued to the iframe by the AnnaApp runtime.\n- Full grant-aware error surfacing: `IMAGE_NOT_GRANTED (-32101)` / `QUOTA_EXCEEDED (-32102)` / `MIME_REJECTED (-32205)` are rendered inline with a one-click 'open admin' deep-link.",
+  "category": "design",
+  "logo_url": "https://anna.partners/apps/visual-brand/logo.png",
+  "cover_url": "https://anna.partners/apps/visual-brand/cover.png",
+  "screenshots": [],
+  "homepage_url": "https://anna.partners/apps/visual-brand",
+  "support_url": "https://anna.partners/apps/visual-brand/support",
+  "privacy_url": "https://anna.partners/apps/visual-brand/privacy",
+  "pricing_model": "free"
+}
