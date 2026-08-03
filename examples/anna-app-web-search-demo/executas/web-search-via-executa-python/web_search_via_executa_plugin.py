@@ -171,7 +171,7 @@ MANIFEST = {
                 {
                     "name": "max_results",
                     "type": "integer",
-                    "description": "Max results, 1-10 (default 6).",
+                    "description": "Max results, 1-50 (default 6).",
                     "required": False,
                     "default": 6,
                 },
@@ -296,16 +296,22 @@ async def _web_image_search(query: str, max_results: int, aspect: str) -> dict:
         raise ValueError("query must be non-empty")
     result = await _web.image_search(
         query=query,
-        max_results=max(1, min(10, int(max_results or 6))),
+        max_results=max(1, min(50, int(max_results or 6))),
         aspect=aspect if aspect in ("any", "wide", "tall", "square") else None,
     )
-    return {
+    out = {
         "ok": True,
         "channel": "reverse-rpc",
         "results": result.get("results", []),
         "quota_consumed": result.get("quota_consumed"),
         "cached": result.get("cached", False),
     }
+    # Diagnostic passthrough (forum #193): `_meta.provider` says which
+    # provider actually served this call — serper (Google Images) or the
+    # ddgs/tavily fallbacks. Optional; never depend on its value.
+    if result.get("_meta") is not None:
+        out["_meta"] = result["_meta"]
+    return out
 
 
 async def _web_image_grab(url: str, purpose: str) -> dict:

@@ -1,0 +1,24 @@
+{
+  "slug": "long-task-engine",
+  "name": "Long Task Engine",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Demo Executa for the anna.tools.invokeAsync job channel: a configurable multi-step long task (run_steps) that reports live progress via executa/progress notifications.",
+
+  "tool_id": "tool-test-long-task-engine-12345678",
+  "type": "python",
+  "enabled": true,
+
+  "distribution": {
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true,
+        "capabilities": ["run_steps"]
+      }
+    }
+  },
+
+  "_comment": "Publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. This dir is the `long-task-engine` handle referenced by app.json#bundled_executas. The plugin has no reverse-RPC capabilities — progress notifications ride the base invoke channel, so no grants are needed. To ship an installable binary, add a `binary` profile with binary_urls (see anna-app-aps-files-demo for the full pattern)."
+}

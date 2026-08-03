@@ -54,7 +54,7 @@ channel is a billing back door.
 | ------------------ | -------------------------------------------------------------------------------------- | ------- |
 | `web_search`       | One reverse `web/search` round-trip.                                                   | `{ ok, channel, results, provider_tier, quota_consumed }` |
 | `web_research`     | Minimal research pipeline: `web/search`, then `web/fetch` the top N pages (Markdown).  | `{ ok, channel, query, results, pages, quota_consumed }` |
-| `web_image_search` | Image search (Phase 2) — safe-search force-enabled host-side.                          | `{ ok, channel, results, quota_consumed, cached }` |
+| `web_image_search` | Image search (Phase 2) — safe-search force-enabled host-side.                          | `{ ok, channel, results, quota_consumed, cached, _meta? }` |
 | `web_image_grab`   | Image download (Phase 2) → APS files artifact; returns a reference, **never bytes**.   | `{ ok, channel, path, get_url, mime_type, bytes_size, sha256, … }` |
 
 The Executa declares `host_capabilities: ["web.search", "web.fetch",

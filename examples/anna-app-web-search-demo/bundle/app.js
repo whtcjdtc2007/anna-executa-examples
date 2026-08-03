@@ -297,9 +297,14 @@ async function rpcResearch() {
 function renderImageResults(payload, channelLabel) {
   const grid = $("image-results");
   const results = payload.results || [];
+  // `_meta.provider` is a diagnostic field (which provider actually served
+  // the call — e.g. serper vs the ddgs/tavily fallbacks). Optional; render
+  // it when present but never depend on its value.
+  const provider = payload._meta && payload._meta.provider;
   $("image-meta").textContent =
     `[${channelLabel}] ${results.length} results · ` +
     `quota=${payload.quota_consumed ?? 0} CU` +
+    (provider ? ` · provider=${provider}` : "") +
     (payload.cached ? " · cached (floor-CU billed)" : "");
   grid.innerHTML = "";
   for (const r of results) {
@@ -348,7 +353,14 @@ function imageSearchParams() {
     showStatus("input", "image query must be non-empty", true);
     return null;
   }
-  const params = { query, max_results: 6 };
+  // max_results: platform hard cap is 50 (values above the cap are
+  // REJECTED host-side, never silently truncated — so validate here).
+  const rawMax = parseInt($("image-max-input").value, 10);
+  if (!Number.isInteger(rawMax) || rawMax < 1 || rawMax > 50) {
+    showStatus("input", "max results must be an integer in 1..50", true);
+    return null;
+  }
+  const params = { query, max_results: rawMax };
   const aspect = $("aspect-select").value;
   if (aspect && aspect !== "any") params.aspect = aspect;
   return params;

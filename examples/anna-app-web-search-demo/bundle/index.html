@@ -159,6 +159,16 @@
           <option value="tall">tall</option>
           <option value="square">square</option>
         </select>
+        <label class="muted" for="image-max-input">Max</label>
+        <input
+          id="image-max-input"
+          type="number"
+          min="1"
+          max="50"
+          step="1"
+          value="6"
+          title="max_results (1-50; platform hard cap 50, rejected above the cap)"
+        />
         <button id="host-image-search-btn">Search via HOST API</button>
         <button id="rpc-image-search-btn" class="secondary">
           Search via Reverse RPC (Executa)

@@ -69,6 +69,10 @@ from .context import (  # noqa: F401
     bind_invoke,
     get_current_invoke_id,
 )
+from .progress import (  # noqa: F401
+    METHOD_EXECUTA_PROGRESS,
+    emit_progress,
+)
 
 __all__ = [
     "SamplingClient",
@@ -94,6 +98,8 @@ __all__ = [
     "bind_invoke",
     "get_current_invoke_id",
     "attach_invoke_context",
+    "emit_progress",
+    "METHOD_EXECUTA_PROGRESS",
     "PROTOCOL_VERSION_V1",
     "PROTOCOL_VERSION_V2",
     "METHOD_INITIALIZE",

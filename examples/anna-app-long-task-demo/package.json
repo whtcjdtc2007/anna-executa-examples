@@ -1,0 +1,15 @@
+{
+  "name": "anna-app-long-task-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Anna app demonstrating the anna.tools.invokeAsync job channel: live progress, cancel, reload recovery, and the sync 90s-ceiling contrast.",
+  "scripts": {
+    "dev": "anna-app dev",
+    "dev:mock": "anna-app dev --mock-llm fixtures/happy-path.jsonl",
+    "validate": "anna-app validate",
+    "test": "anna-app test"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.43"
+  }
+}

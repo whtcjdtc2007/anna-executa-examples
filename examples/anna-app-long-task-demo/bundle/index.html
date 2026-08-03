@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Long Task Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>anna-app Long Task Demo</h1>
+      <p class="muted">
+        Best practices for tools that outlive the <strong>90-second
+        synchronous ceiling</strong>: start them with
+        <code>anna.tools.invokeAsync</code> (returns a <code>jobId</code>
+        immediately — no long-held HTTP request), render live progress via
+        <code>invokeAsyncAwait(&hellip;, { onProgress })</code>, cancel with an
+        <code>AbortSignal</code>, and <strong>re-adopt the job after a page
+        reload</strong> with <code>listJobs({ clientTag })</code> +
+        <code>getJob({ sinceSeq })</code>.
+      </p>
+    </header>
+
+    <section>
+      <h2>1. Run a long task (async job + live progress)</h2>
+      <div class="row">
+        <label>steps <input id="steps" type="number" value="12" min="1" max="1000" /></label>
+        <label>step_seconds <input id="step-seconds" type="number" value="5" min="0" max="60" step="0.5" /></label>
+        <label class="chk"><input id="fail-mid" type="checkbox" /> fail at step 5</label>
+      </div>
+      <div class="row">
+        <button id="run-async">Run async (invokeAsyncAwait)</button>
+        <button id="cancel" disabled>Cancel (AbortSignal → cancelJob)</button>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar"><div id="bar" style="width:0%"></div></div>
+        <span id="bar-label" class="muted">idle</span>
+      </div>
+      <pre id="job-log" class="log"></pre>
+    </section>
+
+    <section>
+      <h2>2. Reload recovery</h2>
+      <p class="muted">
+        Start a run above, then reload this window. On boot the app calls
+        <code>listJobs({ clientTag: "long-task-demo", state: ["queued","running"] })</code>
+        and re-attaches to any in-flight job — the progress bar continues
+        from the job's <code>lastSeq</code>. This works because job state
+        lives on the host, not in this iframe.
+      </p>
+      <pre id="recover-log" class="log"></pre>
+    </section>
+
+    <section>
+      <h2>3. Why not sync? (the 90s ceiling, demonstrated)</h2>
+      <p class="muted">
+        The same tool called through plain <code>tools.invoke</code> with a
+        150s budget: the platform clamps the wait to 90s and returns a
+        structured <code>tool_timeout</code> whose <code>details</code> carry
+        <code>requested_timeout_ms</code> / <code>max_timeout_ms</code>. The
+        plugin may even finish later — but past the public edge's held-request
+        tolerance the result physically cannot reach the browser. That is why
+        the async channel exists.
+      </p>
+      <button id="run-sync">Run 150s via sync tools.invoke (expected: tool_timeout)</button>
+      <pre id="sync-log" class="log"></pre>
+    </section>
+
+    <footer class="muted">
+      Decision table: &lt;90s → <code>tools.invoke</code> · &ge;90s or
+      "don't block my UI" → <code>tools.invokeAsync</code>. Progress events
+      are best-effort (50/s per job, latest 500 kept); the authoritative
+      state is always <code>getJob</code>.
+    </footer>
+
+    <!-- publish-generated handle → minted tool_id map; must load before app.js -->
+    <script src="anna-tool-ids.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
