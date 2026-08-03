@@ -1,0 +1,1 @@
+{"ns":"tools","method":"invoke","match":{"tool_id":"tool-test-long-task-engine-12345678","method":"run_steps"},"result":{"success":true,"tool":"run_steps","data":{"ok":true,"steps":3,"elapsed_s":0.31,"_note":"(mock executa) fixture fast path — run `anna-app dev` without --mock to exercise the real plugin, live progress and the async job table."}}}

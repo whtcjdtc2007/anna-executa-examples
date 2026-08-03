@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "permissions": ["tools.invoke"],
+  "required_executas": [
+    {
+      "tool_id": "bundled:long-task-engine",
+      "min_version": "0.1.0",
+      "version": "latest"
+    }
+  ],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Long Task Demo app open. It demonstrates the anna.tools.invokeAsync job channel: starting a multi-step long tool with live progress, cancelling it, recovering the job after a page reload via listJobs/getJob, and the contrast with the synchronous tools.invoke 90-second ceiling (structured tool_timeout). The bundled long-task-engine Executa exposes run_steps(steps, step_seconds, fail_at_step?).",
+  "tags": ["demo", "tools", "invokeAsync", "jobs", "progress", "executa"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Long Task Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 480, "h": 620 },
+        "default_size": { "w": 640, "h": 800 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      }
+    ],
+    "host_api": {
+      "window": ["set_title"]
+    },
+    "csp_overrides": {
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "fixtures": ["fixtures/*.jsonl"],
+    "user_id": 1
+  }
+}
