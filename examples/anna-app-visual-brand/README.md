@@ -114,7 +114,10 @@ panel for this app:
 - `image_grant.generate = true`           → enables **Generate**
 - `image_grant.edit = true`               → enables **Restyle**
 - `upload_grant.enabled = true`           → enables **Persist**
-- `upload_grant.allowed_mime_types ⊃ image/png` (default)
+
+There is no per-grant MIME whitelist — uploads only need to clear the
+host's hard denylist (executables, `image/svg+xml`); `image/png` always
+passes.
 
 Without the grant, the host returns HTTP 403 with body
 `{"code":-32101,"message":"image_not_granted"}` (or `-32201`); the app

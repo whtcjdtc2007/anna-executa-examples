@@ -46,14 +46,14 @@
         Run with <code>anna-app dev</code> while <strong>signed in</strong>
         (mints an <code>app_session_token</code>) &mdash; Host Upload does
         <strong>not</strong> require <code>--storage aps</code>. The host
-        enforces the user's <code>upload_grant</code>: a MIME whitelist (the dev
-        grant allows <code>image/*</code>, <code>application/pdf</code>,
-        <code>text/plain</code>, <code>application/json</code> &mdash; samples
-        upload as <code>application/pdf</code>) and a per-file size cap
-        (<strong>25&nbsp;MiB</strong> in dev). Over the cap &rarr;
-        <code>UPLOAD_TOO_LARGE</code> (-32204); a non-whitelisted MIME &rarr;
-        <code>UPLOAD_MIME_REJECTED</code> (-32210) &mdash; both before any R2
-        round-trip.
+        enforces the user's <code>upload_grant</code>: a per-file size cap
+        (<strong>25&nbsp;MiB</strong> in dev; over the cap &rarr;
+        <code>UPLOAD_TOO_LARGE</code> (-32204)) and a MIME
+        <em>hard denylist only</em> &mdash; there is no whitelist, any type
+        except executables / <code>image/svg+xml</code> is accepted
+        (&rarr; <code>UPLOAD_MIME_REJECTED</code> (-32210) otherwise), both
+        checked before any R2 round-trip. Samples upload as
+        <code>application/pdf</code>.
       </p>
     </header>
 

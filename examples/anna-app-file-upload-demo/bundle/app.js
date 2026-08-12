@@ -36,14 +36,16 @@ const EXECUTA_TOOL_ID =
 
 const MIB = 1024 * 1024;
 
-// The host validates the upload MIME against the user's upload_grant
-// allowedMimeTypes whitelist. The dev grant whitelists image/*, text/plain,
-// text/markdown, application/json and application/pdf — but NOT
-// application/octet-stream. Synthetic samples are therefore labelled as a
-// whitelisted type (the host checks the MIME string, not the bytes).
+// The host validates the upload MIME against a hard denylist only
+// (executables, image/svg+xml) — the per-grant allowedMimeTypes whitelist
+// was removed (forum #218): any non-blocked type is accepted. We still label
+// synthetic samples with their real type so downstream readers (and the
+// browser's Content-Disposition) behave sensibly — the host checks the MIME
+// string, not the bytes.
 const SAMPLE_MIME = "application/pdf";
 
-// Extension → whitelisted MIME for the upload-by-path field.
+// Extension → MIME for the upload-by-path field (declare the real type;
+// non-media types are served with Content-Disposition: attachment).
 const MIME_BY_EXT = {
   png: "image/png",
   jpg: "image/jpeg",
