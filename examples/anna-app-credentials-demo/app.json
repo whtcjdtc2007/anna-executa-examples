@@ -5,7 +5,6 @@
   "tagline": "Multi-account platform credentials over HOST API and Reverse RPC.",
   "description": "Credentials Demo shows the two ways an Anna App can work with the user's platform-authorized accounts (multi-account unified authorizations). The window can call `anna.credentials.list_accounts` / `anna.credentials.get_token` directly (HOST API), or invoke a bundled Python Executa (`credentials-via-executa`) that turns around and calls `credentials/listAccounts` + `credentials/getToken` back to the host via Reverse RPC.\n\n**What's inside**\n\n- A static single-window UI (`static-spa`) with controls for both paths.\n- `credentials-via-executa` — Python stdio Executa that wraps the host `credentials/*` reverse-RPCs, including a `multi_account: true` tool that accepts the platform-injected `account` argument.\n\n**Prerequisites**\n\n- Authorize at least one Google account on Settings → Authorizations (two accounts make the demo interesting).\n- Enable the app's `Connected accounts` permission in Installed Apps → Permissions (dev installs grant it automatically).",
   "category": "developer-tools",
-  "pricing_model": "free",
 
   "_comment_bundled_executas": "Executas that ship inside this app. `anna-app apps publish` publishes each one first, then substitutes its server-minted tool_id into every `bundled:<handle>` reference in manifest.json. The `credentials-via-executa` handle maps to ./executas/credentials-via-executa-python.",
   "bundled_executas": {

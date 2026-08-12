@@ -14,7 +14,6 @@
   "homepage_url": "https://github.com/openclaw/anna-executa-examples/tree/main/examples/anna-app-focus-flow",
   "support_url": "https://github.com/openclaw/anna-executa-examples/issues",
   "privacy_url": "https://github.com/openclaw/anna-executa-examples/tree/main/examples/anna-app-focus-flow#privacy",
-  "pricing_model": "free",
 
   "_comment_bundled_executas": "Executas that ship inside this app. `anna-app apps publish` publishes each one first, then substitutes its server-minted tool_id into every `bundled:<handle>` reference in manifest.json (in memory — the file on disk is never mutated) and writes bundle/anna-tool-ids.js so the UI bundle can read the same ids. No more hand-editing tool_id placeholders.",
   "bundled_executas": {
