@@ -61,19 +61,22 @@ The Executa declares `host_capabilities: ["host.upload"]`. Without it the host
 refuses `host/uploadFile` with `UPLOAD_NOT_GRANTED` (-32201). The user must
 also have `upload_grant` enabled on their `UserExecuta`.
 
-## Quotas & MIME whitelist (`upload_grant`)
+## Quotas & MIME policy (`upload_grant`)
 
 The host enforces the user's grant before any R2 round-trip:
 
 - **Per-file size cap** — `25 MiB` under `anna-app dev` (the doc-default is
   `20 MiB`). Over the cap &rarr; `UPLOAD_TOO_LARGE` (-32204). The **30 MiB**
   preset deliberately trips it.
-- **MIME whitelist** — the dev grant allows `image/png`, `image/jpeg`,
-  `image/webp`, `image/gif`, `text/plain`, `text/markdown`,
-  `application/json`, `application/pdf`. A type outside the list (e.g.
-  `application/octet-stream`) &rarr; `UPLOAD_MIME_REJECTED` (-32210). The
-  synthetic samples upload as `application/pdf`; the upload-by-path field
-  infers the MIME from the file extension.
+- **MIME hard denylist only** — there is **no whitelist**: any type is
+  accepted unless it is on the host's hard denylist (executables,
+  `image/svg+xml`) &rarr; `UPLOAD_MIME_REJECTED` (-32210). Office documents,
+  custom binary formats etc. all upload fine. Declare the file's real MIME:
+  non-media types are served with `Content-Disposition: attachment` (signed
+  into the download URL), while `image/*` / `audio/*` / `video/*` /
+  `application/pdf` render inline. The synthetic samples upload as
+  `application/pdf`; the upload-by-path field infers the MIME from the file
+  extension.
 
 This demo does not change the quota.
 
