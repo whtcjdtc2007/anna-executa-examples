@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mobile Bridge Demo</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Mobile Bridge <span class="badge">MOBILE ENTRY</span></h1>
+      <p class="muted">Capture a photo, open the detail sub-view, share it.</p>
+    </header>
+
+    <section class="card">
+      <h2>1 · Capture</h2>
+      <div class="row">
+        <button id="btn-capture">📷 Take photo</button>
+        <button id="btn-capture-front" class="secondary">🤳 Front camera</button>
+      </div>
+      <div id="capture-status" class="status muted"></div>
+      <img id="preview" class="preview" hidden alt="capture preview" />
+      <div id="capture-meta" class="muted"></div>
+    </section>
+
+    <section class="card">
+      <h2>2 · Detail sub-view</h2>
+      <p class="muted">
+        Opens via <code>window.open_view</code> — the child window must load
+        the <em>mobile</em> detail entry (mobile_entry inheritance anchor).
+      </p>
+      <button id="btn-detail" class="secondary" disabled>Open capture detail</button>
+      <div id="detail-status" class="status muted"></div>
+    </section>
+
+    <section class="card">
+      <h2>3 · Share</h2>
+      <div class="row">
+        <button id="btn-share-img" disabled>Share photo</button>
+        <button id="btn-share-text" class="secondary">Share text</button>
+      </div>
+      <div id="share-status" class="status muted"></div>
+    </section>
+
+    <section class="card">
+      <h2>Haptics lab</h2>
+      <div class="row" id="haptics-row">
+        <button class="secondary" data-h="impact:light">light</button>
+        <button class="secondary" data-h="impact:medium">medium</button>
+        <button class="secondary" data-h="impact:heavy">heavy</button>
+        <button class="secondary" data-h="notification:success">success</button>
+        <button class="secondary" data-h="notification:warning">warning</button>
+        <button class="secondary" data-h="notification:error">error</button>
+        <button class="secondary" data-h="selection:">selection</button>
+      </div>
+    </section>
+
+    <script type="module" src="mobile.js"></script>
+  </body>
+</html>

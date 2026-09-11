@@ -127,7 +127,8 @@ function handleRunMeta(frame, outEl) {
   const tools = frame.inherit_host_tools
     ? "* (host tools)"
     : (frame.granted_tools || []).join(", ") || "NONE";
-  outEl.textContent += `[run_meta] run=${frame.run_id || "?"} submode=${frame.submode || "?"} tools=${tools}\n`;
+  const model = frame.model ? ` model=${frame.model}` : "";
+  outEl.textContent += `[run_meta] run=${frame.run_id || "?"} submode=${frame.submode || "?"} tools=${tools}${model}\n`;
   for (const w of frame.warnings || []) {
     outEl.textContent += `⚠️ ${w.code}: ${w.message}\n`;
   }
@@ -347,7 +348,8 @@ async function runAndCollect(prompt, outEl) {
         });
       } else if (delta?.task_complete) {
         const u = delta.task_complete.token_usage;
-        if (u) outEl.textContent += `\n[usage] tokens=${u.total_tokens ?? "?"}`;
+        const m = delta.task_complete.model ? ` model=${delta.task_complete.model}` : "";
+        if (u) outEl.textContent += `\n[usage] tokens=${u.total_tokens ?? "?"}${m}`;
       }
     } else if (frame.event === "error") {
       throw new RunError(frame.message || "run error", { code: frame.code });

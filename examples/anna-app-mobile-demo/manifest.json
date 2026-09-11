@@ -1,0 +1,64 @@
+{
+  "schema": 2,
+  "permissions": [],
+  "required_executas": [],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Mobile Bridge Demo app open. It demonstrates the anna.mobile.* native bridge (share / haptics / camera_capture) inside the anna-mobile shell, dual desktop/mobile entries via mobile_entry, and clean desktop degradation on unsupported_container. You do not need to summon any windows.",
+  "tags": ["demo", "mobile", "native-bridge", "share", "haptics", "camera", "best-practices"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Mobile Bridge Demo",
+        "default": true,
+        "entry": "index.html",
+        "mobile_entry": "mobile.html",
+        "min_size": { "w": 420, "h": 560 },
+        "default_size": { "w": 560, "h": 760 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      },
+      {
+        "name": "capture-detail",
+        "title": "Capture Detail",
+        "default": false,
+        "entry": "detail.html",
+        "mobile_entry": "detail-mobile.html",
+        "min_size": { "w": 360, "h": 420 },
+        "default_size": { "w": 480, "h": 600 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": false
+      }
+    ],
+    "host_api": {
+      "window": ["set_title", "open_view"],
+      "mobile": ["share", "haptics", "camera_capture"]
+    },
+    "csp_overrides": {
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins",
+    "form_factors": ["desktop", "mobile"]
+  },
+  "dev": {
+    "mocks": {
+      "mobile.share": { "shared": true },
+      "mobile.haptics": { "ok": true },
+      "mobile.camera_capture": {
+        "data_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJElEQVR4nGP8//8/AzGAiShVowoZGRkZ/zMwMDD+Z2AgTiEAg74HAxDsBJIAAAAASUVORK5CYII=",
+        "mime": "image/png",
+        "width": 8,
+        "height": 8,
+        "byte_size": 133
+      }
+    },
+    "user_id": 1
+  }
+}

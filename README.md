@@ -42,6 +42,8 @@ anna-executa-examples/
 │   └── anna-app-visual-brand/           # ⭐ Anna App — host LLM image generate/edit + APS persistence
 │   └── anna-app-session-demo/           # ⭐ Anna App — agent.session workspace best practices
 │                                        #     (fixed-client affinity, absolute paths, nonce-verified writes)
+│   └── anna-app-mobile-demo/            # ⭐ Anna App — anna.mobile.* native bridge (share/haptics/camera),
+│                                        #     dual mobile_entry + desktop degradation + dev.mocks
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

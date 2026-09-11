@@ -103,7 +103,7 @@ handles each one distinctly (forum `/t/191`):
 | Frame | Meaning | App reaction |
 | --- | --- | --- |
 | `{event:"sse", choices:[{delta:{content}}]}` | streamed text | collect |
-| `{event:"sse", choices:[{delta:{task_complete:{token_usage}}}]}` | success marker | show usage — proof real work was billed |
+| `{event:"sse", choices:[{delta:{task_complete:{model, token_usage}}}]}` | success marker | show usage + the actually-routed `model` (forum `/t/270`) — proof real work was billed |
 | `{event:"sse", error, error_type:"empty_completion", is_retryable:true}` | model returned **nothing** (no text, no tool call) | **retry once / switch model** — infrastructure, not a business failure |
 | `{event:"sse", error, error_type:…}` | quota / recursion / provider error | surface with type |
 | `{event:"error", code}` | gate error (`queue_timeout`, `session_revoked`, …) | surface with code |

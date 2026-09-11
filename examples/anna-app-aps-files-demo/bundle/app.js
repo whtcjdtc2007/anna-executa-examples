@@ -1,18 +1,20 @@
-// APS Files Demo — two ways to reach Anna object storage, switchable at
-// runtime via the header mode toggle:
+// APS Files Demo — every APS scope, reachable two ways, switchable at
+// runtime via the header toggles:
 //
 //   Tool invoke (default): app ── anna.tools.invoke ──▶ Executa ── files/* ──▶ host
 //     The app declares ONLY `ui.host_api.tools: ["required:bundled:files-via-executa"]`
 //     and has no files grant — object storage is reached through the Executa's
-//     own `aps.files` capability. Objects land in `scope=user`.
+//     own `aps.files` capability. Objects land in `scope=user` (user-wide,
+//     default) or `scope=tool` (plugin-private) — the Executa scope selector
+//     picks which. Plugin storage_tokens never cover `scope=app`.
 //
 //   HOST API: app ── anna.files.upload_init ──▶ host ── presigned R2 PUT ──▶ R2
 //     The app holds `ui.host_api.files` and drives the two-step upload itself
 //     (init → browser PUT → finalize), plus download_url / list. Objects land
 //     in the app's own `scope=app` space.
 //
-// Because the two modes target different scopes, a note saved in one mode is
-// not listed by the other — this is faithful to production.
+// Every scope is an isolated bucket, so a note saved under one scope is not
+// listed by another — this is faithful to production.
 //
 // Loaded as a native ES module, so it imports the Anna App Runtime SDK below.
 // The SDK (@anna-ai/app-runtime >= 0.5.0) is a named ESM export.
@@ -80,34 +82,63 @@ function currentMode() {
   return checked ? checked.value : "tool";
 }
 
+// Which APS scope the Executa should write to (tool-invoke mode only):
+// "user" (user-wide, default) or "tool" (plugin-private).
+function currentToolScope() {
+  const checked = document.querySelector('input[name="tool-scope"]:checked');
+  return checked ? checked.value : "user";
+}
+
+function activeScope() {
+  return currentMode() === "host" ? "app" : currentToolScope();
+}
+
 // ---- Tool invoke mode (anna.tools.invoke → bundled Executa) ----------------
 
 const toolMode = {
   async save(path, text) {
-    const reply = await invoke("save_note", { path, text });
+    const reply = await invoke("save_note", { path, text, scope: currentToolScope() });
     rawBox.textContent = JSON.stringify(reply, null, 2);
-    return unwrap(reply); // { path, size_bytes, etag }
+    return unwrap(reply); // { path, scope, size_bytes, etag }
   },
   async link(path) {
-    const reply = await invoke("get_link", { path });
+    const reply = await invoke("get_link", { path, scope: currentToolScope() });
     rawBox.textContent = JSON.stringify(reply, null, 2);
     const data = unwrap(reply);
     return data.url || data.get_url || null;
   },
   async list(prefix) {
-    const reply = await invoke("list_notes", { prefix });
+    const reply = await invoke("list_notes", { prefix, scope: currentToolScope() });
     rawBox.textContent = JSON.stringify(reply, null, 2);
     return unwrap(reply).items || [];
   },
   async download(path) {
     // "Executa generated a file — how does the app download it?" — the
-    // canonical answer. Tool-invoke notes live in scope=user (written under
-    // the Executa's own storage_token). The app reaches them with the
-    // CROSS-SCOPE form of the host-mediated download: `scope: "user"`.
-    // Gating is two-layer: `ui.host_api.files: ["download"]` (dispatcher
-    // ACL) + `host_capabilities: ["aps.scope.user.read"]` (scope gate —
-    // download is a read, so .read suffices). APS rows are always filtered
-    // by user_id, so this only ever reads the CURRENT user's own space.
+    // canonical answer depends on the scope the note was saved in:
+    //
+    //   scope=user — the app reaches it with the CROSS-SCOPE form of the
+    //     host-mediated download: `scope: "user"`. Gating is two-layer:
+    //     `ui.host_api.files: ["download"]` (dispatcher ACL) +
+    //     `host_capabilities: ["aps.scope.user.read"]` (scope gate —
+    //     download is a read, so .read suffices). APS rows are always
+    //     filtered by user_id, so this only ever reads the CURRENT user's
+    //     own space.
+    //
+    //   scope=tool — plugin-private: the app-side `files.download` is not
+    //     exposed for tool scope, so the app asks the EXECUTA for a
+    //     presigned link (`get_link`) and renders that instead. The Executa
+    //     owns the bucket, so this is the intended delegation path. (No
+    //     window.open — a sandboxed iframe can't reliably trigger saves,
+    //     which is the whole reason host-mediated download exists.)
+    if (currentToolScope() === "tool") {
+      const url = await this.link(path);
+      if (!url) throw new Error("executa returned no url for tool-scope note");
+      return {
+        ok: true,
+        filename: path.split("/").pop() || "note.txt",
+        executa_link: url,
+      };
+    }
     const anna = await annaReady;
     const res = await anna.files.download({
       path,
@@ -194,7 +225,9 @@ function activeImpl() {
 }
 
 function modeLabel() {
-  return currentMode() === "host" ? "host-api" : "tool-invoke";
+  return currentMode() === "host"
+    ? "host-api · scope=app"
+    : `tool-invoke · scope=${currentToolScope()}`;
 }
 
 $("save-btn").addEventListener("click", async () => {
@@ -248,6 +281,22 @@ $("dl-btn").addEventListener("click", async () => {
   showStatus(`download · ${modeLabel()}`, "requesting host-mediated save…", false);
   try {
     const res = await activeImpl().download(path);
+    if (res.executa_link) {
+      // tool-scope note: plugin-private — the Executa minted the link.
+      $("link-out").innerHTML = "";
+      const a = document.createElement("a");
+      a.href = res.executa_link;
+      a.textContent = res.executa_link;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      $("link-out").append(
+        "scope=tool is plugin-private — app-side files.download is not\n"
+          + "available; the Executa minted this presigned link instead:\n",
+        a,
+      );
+      showStatus(`download · ${modeLabel()}`, "executa link ready ✓", false);
+      return;
+    }
     // The browser save dialog was opened by the HOST page — the result that
     // reaches this iframe deliberately contains no URL.
     $("link-out").textContent =
@@ -282,11 +331,21 @@ $("list-btn").addEventListener("click", async () => {
   }
 });
 
-// Surface the active scope whenever the mode changes so the user understands
-// why notes saved in one mode don't appear in the other.
-for (const radio of document.querySelectorAll('input[name="mode"]')) {
-  radio.addEventListener("change", () => {
-    const scope = currentMode() === "host" ? "app" : "user";
-    showStatus(`mode · ${modeLabel()}`, `active scope = ${scope}`, false);
-  });
+// Surface the active scope whenever a toggle changes so the user understands
+// why notes saved under one scope don't appear under another; the Executa
+// scope selector only applies to tool-invoke mode, so grey it out otherwise.
+function refreshScopeUI() {
+  const isTool = currentMode() === "tool";
+  const row = $("tool-scope-row");
+  if (row) row.style.opacity = isTool ? "" : "0.4";
+  for (const radio of document.querySelectorAll('input[name="tool-scope"]')) {
+    radio.disabled = !isTool;
+  }
+  showStatus(`mode · ${modeLabel()}`, `active scope = ${activeScope()}`, false);
+}
+
+for (const radio of document.querySelectorAll(
+  'input[name="mode"], input[name="tool-scope"]',
+)) {
+  radio.addEventListener("change", refreshScopeUI);
 }

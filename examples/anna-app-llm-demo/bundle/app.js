@@ -206,14 +206,17 @@ function renderToolSurface(info) {
 }
 
 // First frame of every app agent run (host ≥ 1.1.0-beta.45). Carries the
-// run's authoritative tool surface + structured warnings. Unknown to older
-// hosts — simply absent there, so this is fully backward-compatible.
+// run's authoritative tool surface + structured warnings, and — host ≥
+// 1.1.0-beta.155 (forum #270) — the model/provider the server ACTUALLY
+// routed to (after modelPreferences resolution + any fallback). Unknown to
+// older hosts — simply absent there, so this is fully backward-compatible.
 function handleRunMeta(frame) {
   renderToolSurface(frame);
   const tools = frame.inherit_host_tools
     ? "* (host tools)"
     : (frame.granted_tools || []).join(", ") || "NONE";
-  runOut.textContent += `[run_meta] run=${frame.run_id || "?"} submode=${frame.submode || "?"} tools=${tools}\n`;
+  const model = frame.model ? ` model=${frame.model}` : "";
+  runOut.textContent += `[run_meta] run=${frame.run_id || "?"} submode=${frame.submode || "?"} tools=${tools}${model}\n`;
   for (const w of frame.warnings || []) {
     showToolsWarning(`${w.code}: ${w.message}`);
     runOut.textContent += `⚠️ ${w.code}: ${w.message}\n`;

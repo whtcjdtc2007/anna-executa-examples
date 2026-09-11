@@ -49,6 +49,13 @@ for `NO_TOOLS_AVAILABLE` and shows a banner telling the user to enable
 this **before** trusting any side effects an agent run claims to have
 made.
 
+Since host `1.1.0-beta.155` (forum `/t/270`) the `run_meta` frame also
+carries `model` / `provider` — the model the server **actually** routed
+the run to. `modelPreferences` is a soft preference (hints that don't
+resolve fall back silently), so this is the only way to verify the
+final route; the `task_complete` delta echoes the same fields for
+usage/cost attribution. The demo prints it on the `[run_meta]` line.
+
 Used as a smoke test for the **anna server**'s
 `docs/design/app-llm-and-agent-access.md` Phase 6 deliverables and the
 Executa v2 sampling surface.
