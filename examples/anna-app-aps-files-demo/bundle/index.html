@@ -19,7 +19,9 @@
           <code>anna.tools.invoke</code> against a bundled Executa that owns the
           <code>aps.files</code> capability and does the <code>files/*</code>
           reverse-RPC. The app needs <strong>no</strong> files grant. Writes to
-          <code>scope=user</code>. (Recommended best practice.)
+          <code>scope=user</code> (user-wide, default) or
+          <code>scope=tool</code> (plugin-private) &mdash; pick below.
+          (Recommended best practice.)
         </li>
         <li>
           <strong>HOST API</strong> &mdash; the app calls
@@ -35,13 +37,19 @@
         <label><input type="radio" name="mode" value="tool" checked /> Tool invoke</label>
         <label><input type="radio" name="mode" value="host" /> HOST API</label>
       </div>
+      <div class="row mode-toggle" id="tool-scope-row" role="radiogroup" aria-label="Executa storage scope">
+        <span class="muted">Executa scope:</span>
+        <label><input type="radio" name="tool-scope" value="user" checked /> <code>user</code> (user-wide)</label>
+        <label><input type="radio" name="tool-scope" value="tool" /> <code>tool</code> (plugin-private)</label>
+      </div>
       <p class="muted note">
         Run with <code>anna-app dev --storage aps</code> (real account). Without
         it, saves return a clean <code>not_implemented</code> (-32004).
-        <strong>Note:</strong> the two modes use different scopes
-        (<code>user</code> vs <code>app</code>), so a note saved in one mode is
-        not listed by the other. HOST API uploads also require the storage
-        bucket to allow CORS from this origin (configured in production).
+        <strong>Note:</strong> each scope is an isolated bucket
+        (<code>user</code> / <code>tool</code> / <code>app</code>), so a note
+        saved under one scope is not listed by another. HOST API uploads also
+        require the storage bucket to allow CORS from this origin (configured
+        in production).
       </p>
     </header>
 
@@ -71,11 +79,13 @@
         <code>Content-Disposition: attachment</code>, triggers the browser save
         dialog from the <em>top-level page</em>, and strips the URL before this
         iframe sees the result. The bearer URL never enters app DOM. In
-        <strong>Tool invoke</strong> mode the note was written by the Executa
-        into <code>scope=user</code>, so the app passes
-        <code>scope: "user"</code> &mdash; gated by the manifest capability
-        <code>aps.scope.user.read</code>. In <strong>HOST API</strong> mode it
-        reads the app's own <code>scope=app</code> object.
+        <strong>Tool invoke</strong> mode with <code>scope=user</code> the app
+        passes <code>scope: "user"</code> &mdash; gated by the manifest
+        capability <code>aps.scope.user.read</code>. With
+        <code>scope=tool</code> the object is plugin-private, so the app-side
+        <code>files.download</code> is not available &mdash; the demo asks the
+        Executa for a presigned link instead. In <strong>HOST API</strong> mode
+        it reads the app's own <code>scope=app</code> object.
       </p>
       <div class="row">
         <button id="link-btn">Get link</button>

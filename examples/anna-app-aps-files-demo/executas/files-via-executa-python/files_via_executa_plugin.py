@@ -67,7 +67,7 @@ from executa_sdk import (  # noqa: E402
 
 MANIFEST = {
     "display_name": "Files via Executa",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": (
         "Stores text attachments in Anna Persistent Storage (APS Files) "
         "on behalf of the calling app via the files/* reverse-RPC."
@@ -100,6 +100,13 @@ MANIFEST = {
                     "description": "UTF-8 text payload to store.",
                     "required": True,
                 },
+                {
+                    "name": "scope",
+                    "type": "string",
+                    "description": "Storage scope: 'user' (user-wide, default) or 'tool' (plugin-private).",
+                    "required": False,
+                    "default": "user",
+                },
             ],
         },
         {
@@ -111,7 +118,14 @@ MANIFEST = {
                     "type": "string",
                     "description": "Object path previously saved via save_note.",
                     "required": True,
-                }
+                },
+                {
+                    "name": "scope",
+                    "type": "string",
+                    "description": "Storage scope the note was saved in: 'user' (default) or 'tool'.",
+                    "required": False,
+                    "default": "user",
+                },
             ],
         },
         {
@@ -124,7 +138,14 @@ MANIFEST = {
                     "description": "Optional path prefix to filter by, e.g. 'notes/'.",
                     "required": False,
                     "default": "",
-                }
+                },
+                {
+                    "name": "scope",
+                    "type": "string",
+                    "description": "Storage scope to list: 'user' (default) or 'tool'.",
+                    "required": False,
+                    "default": "user",
+                },
             ],
         },
     ],
@@ -146,22 +167,36 @@ def _write_frame(msg: dict) -> None:
 _files = FilesClient(write_frame=_write_frame)
 _route_response = make_response_router(_files)
 
-# This Executa is bundled inside an Anna App but APS Files objects live in
-# the *user's* namespace (so the user can find them again from the Anna
-# chat UI). Pin scope to "user" rather than the SDK default "app".
-_SCOPE = "user"
+# This Executa is bundled inside an Anna App. Notes default to the *user's*
+# namespace (so the user can find them again from the Anna chat UI), but every
+# tool also accepts scope="tool" for plugin-private storage. The plugin's
+# storage_token carries allowed_scopes ["user", "tool"] — scope="app" belongs
+# to the App-side Host API and is never available to plugins.
+_DEFAULT_SCOPE = "user"
+_PLUGIN_SCOPES = ("user", "tool")
+
+
+def _resolve_scope(raw: Any) -> str:
+    scope = str(raw or _DEFAULT_SCOPE)
+    if scope not in _PLUGIN_SCOPES:
+        raise ValueError(
+            f"scope must be one of {_PLUGIN_SCOPES} — plugin storage_tokens "
+            "never cover scope='app' (that scope belongs to the App-side "
+            "Host API)"
+        )
+    return scope
 
 
 # ─── Tool implementations ─────────────────────────────────────────────
 
 
-async def _save_note(path: str, text: str) -> dict:
+async def _save_note(path: str, text: str, scope: str = _DEFAULT_SCOPE) -> dict:
     payload = text.encode("utf-8")
     info = await _files.upload_begin(
         path=path,
         size_bytes=len(payload),
         content_type="text/plain; charset=utf-8",
-        scope=_SCOPE,
+        scope=scope,
     )
     # PUT the bytes straight to the host-issued presigned URL. The Executa
     # never proxies the body through the host — it goes object-store direct.
@@ -177,25 +212,35 @@ async def _save_note(path: str, text: str) -> dict:
     if status not in (200, 201):
         raise RuntimeError(f"object upload PUT failed: HTTP {status}")
     res = await _files.upload_complete(
-        path=path, etag=etag, size_bytes=len(payload), scope=_SCOPE
+        path=path, etag=etag, size_bytes=len(payload), scope=scope
     )
     return {
         "ok": True,
         "path": path,
+        "scope": scope,
         "size_bytes": len(payload),
         "etag": etag,
         "complete": res,
     }
 
 
-async def _get_link(path: str) -> dict:
-    res = await _files.download_url(path=path, expires_in=600, scope=_SCOPE)
-    return {"path": path, "url": res.get("url"), "expires_at": res.get("expires_at")}
+async def _get_link(path: str, scope: str = _DEFAULT_SCOPE) -> dict:
+    res = await _files.download_url(path=path, expires_in=600, scope=scope)
+    return {
+        "path": path,
+        "scope": scope,
+        "url": res.get("url"),
+        "expires_at": res.get("expires_at"),
+    }
 
 
-async def _list_notes(prefix: str = "") -> dict:
-    res = await _files.list(prefix=prefix or None, scope=_SCOPE)
-    return {"items": res.get("items") or [], "next_cursor": res.get("next_cursor")}
+async def _list_notes(prefix: str = "", scope: str = _DEFAULT_SCOPE) -> dict:
+    res = await _files.list(prefix=prefix or None, scope=scope)
+    return {
+        "scope": scope,
+        "items": res.get("items") or [],
+        "next_cursor": res.get("next_cursor"),
+    }
 
 
 # ─── JSON-RPC dispatch ────────────────────────────────────────────────
@@ -220,12 +265,17 @@ _loop_thread.start()
 def _handle_invoke(req_id: Any, params: dict) -> None:
     tool = params.get("tool")
     args = params.get("arguments") or {}
+    try:
+        scope = _resolve_scope(args.get("scope"))
+    except ValueError as e:
+        _err(req_id, -32602, str(e))
+        return
     if tool == "save_note":
-        coro = _save_note(str(args.get("path")), str(args.get("text", "")))
+        coro = _save_note(str(args.get("path")), str(args.get("text", "")), scope)
     elif tool == "get_link":
-        coro = _get_link(str(args.get("path")))
+        coro = _get_link(str(args.get("path")), scope)
     elif tool == "list_notes":
-        coro = _list_notes(str(args.get("prefix", "")))
+        coro = _list_notes(str(args.get("prefix", "")), scope)
     else:
         _err(req_id, -32601, f"Unknown tool: {tool}")
         return

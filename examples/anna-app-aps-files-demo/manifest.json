@@ -9,12 +9,12 @@
   "required_executas": [
     {
       "tool_id": "bundled:files-via-executa",
-      "min_version": "0.1.0",
+      "min_version": "0.2.0",
       "version": "latest"
     }
   ],
   "optional_executas": [],
-  "system_prompt_addendum": "The user has the APS Files Demo app open. It saves text notes to Anna object storage by invoking the bundled files-via-executa Executa (save_note / get_link / list_notes). Both modes also demonstrate anna.files.download — the host-mediated browser save where the presigned URL never enters the app iframe (tool mode reads the Executa's scope=user notes via the aps.scope.user.read capability). The app itself has no upload grant — all object storage goes through the Executa's aps.files capability.",
+  "system_prompt_addendum": "The user has the APS Files Demo app open. It saves text notes to Anna object storage by invoking the bundled files-via-executa Executa (save_note / get_link / list_notes, each accepting scope='user' or scope='tool'). A scope selector demonstrates every APS scope: Executa-side user (user-wide) and tool (plugin-private), plus Host-API-side app. Both modes also demonstrate anna.files.download — the host-mediated browser save where the presigned URL never enters the app iframe (tool mode reads the Executa's scope=user notes via the aps.scope.user.read capability; tool-scope notes are fetched via the Executa's get_link instead). The app itself has no upload grant — all object storage goes through the Executa's aps.files capability.",
   "tags": ["demo", "storage", "files", "aps", "executa"],
   "ui": {
     "bundle": {

@@ -118,7 +118,8 @@ pnpm dev:off
 The harness opens the bundle in a Chromium iframe:
 
 1. Pick a mode with the **Access mode** radios at the top — **Tool
-   invoke** (default, `scope=user`) or **HOST API** (`scope=app`).
+   invoke** (default) or **HOST API** (`scope=app`). In Tool invoke mode,
+   the **Executa scope** selector picks `user` (default) or `tool`.
 2. Type an object **path** and **note text**, click **Save to APS
    Files**. The active path uploads the bytes and reports size + ETag.
 3. Click **Get link** for a short-lived presigned `download_url`, or
@@ -127,13 +128,16 @@ The harness opens the bundle in a Chromium iframe:
    (`anna.files.download`) — the save dialog is opened by the harness
    dashboard (top-level page), and the result shown in the iframe
    deliberately contains **no URL**. This answers “the Executa generated
-   a file — how does the app download it?”: in **Tool invoke** mode the
-   note lives in `scope=user` (written by the Executa), so the app calls
+   a file — how does the app download it?”: in **Tool invoke** mode with
+   `scope=user` the app calls
    `anna.files.download({ path, scope: "user" })`, gated by the manifest
-   `host_capabilities: ["aps.scope.user.read"]`; in **HOST API** mode it
-   reads the app's own `scope=app` object with no extra capability.
-   Requires `@anna-ai/cli` ≥ 0.1.39 (harness) or Anna host ≥
-   1.1.0-beta.97 (production).
+   `host_capabilities: ["aps.scope.user.read"]`; with `scope=tool` the
+   object is plugin-private (app-side `files.download` is not exposed for
+   tool scope), so the demo asks the **Executa** for a presigned link via
+   `get_link` and opens that — the intended delegation path; in
+   **HOST API** mode it reads the app's own `scope=app` object with no
+   extra capability. Requires `@anna-ai/cli` ≥ 0.1.39 (harness) or Anna
+   host ≥ 1.1.0-beta.97 (production).
 
 > **HOST API uploads `PUT` straight from the browser** to the
 > host-issued presigned R2 URL, so the R2 bucket needs CORS allowing the
@@ -146,18 +150,19 @@ The harness opens the bundle in a Chromium iframe:
 
 ## Tools exposed by the Executa
 
-| Tool         | Maps to                                   | Returns                          |
-| ------------ | ----------------------------------------- | -------------------------------- |
-| `save_note`  | `upload_begin` → PUT → `upload_complete`  | `{ path, size_bytes, etag }`     |
-| `get_link`   | `download_url`                            | `{ path, url, expires_at }`      |
-| `list_notes` | `list`                                    | `{ items[], next_cursor }`       |
+| Tool         | Maps to                                   | Returns                              |
+| ------------ | ----------------------------------------- | ------------------------------------ |
+| `save_note`  | `upload_begin` → PUT → `upload_complete`  | `{ path, scope, size_bytes, etag }`  |
+| `get_link`   | `download_url`                            | `{ path, scope, url, expires_at }`   |
+| `list_notes` | `list`                                    | `{ scope, items[], next_cursor }`    |
 
-All objects in **Tool invoke** mode are written under **`scope: "user"`**
-so the user can find them again from the Anna chat UI. Switch the
-Executa's `_SCOPE` to `"app"` (per-app private) or `"tool"` (per-install
-private) if you want a narrower namespace. **HOST API** mode always
-writes under **`scope: "app"`** (host-forced), so its objects live in the
-app's own space — separate from the Tool-invoke `user` objects.
+Every tool accepts an optional `scope` argument — `"user"` (default,
+user-wide so the user can find the notes again from the Anna chat UI) or
+`"tool"` (plugin-private, an isolated per-executa bucket for caches and
+internal state). Passing `"app"` is rejected with a clear error: plugin
+`storage_token`s never cover `app` scope — that scope belongs to the
+App-side Host API, which is exactly what **HOST API** mode demonstrates
+(host-forced `scope: "app"`, separate from both Executa scopes).
 
 ---
 

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Capture Detail</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>Capture Detail <span class="badge">DESKTOP ENTRY</span></h1>
+    <p class="muted">
+      If you see this badge inside the Anna mobile app, the
+      <code>mobile_entry</code> inheritance for child windows regressed
+      (nexus beta.144 anchor) — this view should have loaded
+      <code>detail-mobile.html</code>.
+    </p>
+    <img id="img" class="preview" hidden alt="capture" />
+    <div id="meta" class="muted"></div>
+    <script type="module" src="detail.js"></script>
+  </body>
+</html>

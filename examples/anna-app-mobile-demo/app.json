@@ -1,0 +1,8 @@
+{
+  "slug": "mobile-demo",
+  "name": "Mobile Bridge Demo",
+  "version": "0.1.0",
+  "tagline": "anna.mobile.* native bridge: camera → share with haptics, plus clean desktop degradation.",
+  "description": "Mobile Bridge Demo is the reference implementation for the Anna App mobile native bridge (`anna.mobile.*`, mobile runtime Phase 3).\n\nIt demonstrates:\n\n1. **Declaring the bridge** — `ui.form_factors: [\"desktop\", \"mobile\"]` plus `ui.host_api.mobile: [\"share\", \"haptics\", \"camera_capture\"]`.\n2. **The full capture → share loop on a phone** — `camera_capture` returns `{data_url, mime, width, height, byte_size}` (EXIF stripped), the preview opens in a sub-view via `window.open_view`, and `share({data_url})` hands the image to the system share sheet. Key interactions fire `haptics`.\n3. **Error-code layering** — `unsupported_container` (right grant, wrong container: the desktop entry renders a clean degradation notice), `permission_denied` (grant missing), and the structured non-error outcomes `permission_denied_by_user` / `cancelled` / `too_large`; `share` user-cancel is `{shared: false}`, not an error.\n4. **Dual entry (`mobile_entry`)** — the desktop entry is a capability handbook; the mobile entry is a touch-first UI (safe-area padding, ≥44pt targets). NOTE: responsive single-entry is the recommended path — dual entry is the escape hatch for heavy UIs; this demo uses it to exercise the mechanism.\n5. **Local development with `dev.mocks`** — canned `mobile.*` responses make the whole flow runnable under `anna-app dev` where the native bridge does not exist.",
+  "category": "developer-tools"
+}

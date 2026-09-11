@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mobile Bridge Demo</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Mobile Bridge Demo <span class="badge">DESKTOP ENTRY</span></h1>
+      <p class="muted">
+        Capability handbook for <code>anna.mobile.*</code>. Open this app in
+        the <strong>Anna mobile app</strong> for the live touch UI
+        (<code>mobile.html</code> via <code>mobile_entry</code>); on desktop
+        each call below terminates with
+        <code>unsupported_container</code> — the buttons demonstrate the
+        clean degradation an app should render.
+      </p>
+    </header>
+
+    <section class="card">
+      <h2>Error-code layering</h2>
+      <table>
+        <tr><th>Code</th><th>Meaning</th><th>App reaction</th></tr>
+        <tr><td><code>unsupported_container</code></td><td>Grant OK, container is not the mobile shell</td><td>Degradation notice, no retry</td></tr>
+        <tr><td><code>permission_denied</code></td><td><code>ui.host_api.mobile</code> grant missing</td><td>Fix the manifest</td></tr>
+        <tr><td><code>permission_denied_by_user</code></td><td>OS camera refusal</td><td>Point at system settings</td></tr>
+        <tr><td><code>cancelled</code></td><td>User backed out of capture</td><td>Normal outcome</td></tr>
+        <tr><td><code>too_large</code></td><td>Over <code>max_bytes</code> after re-compression</td><td>Lower quality</td></tr>
+        <tr><td colspan="3"><code>share</code> user-cancel is <strong>not an error</strong>: it resolves <code>{shared: false}</code>.</td></tr>
+      </table>
+    </section>
+
+    <section class="card">
+      <h2>Live degradation demo</h2>
+      <p class="muted">
+        All three methods are granted in the manifest; on desktop they reject
+        with <code>unsupported_container</code>:
+      </p>
+      <div class="row">
+        <button id="btn-camera" class="secondary">camera_capture</button>
+        <button id="btn-share" class="secondary">share</button>
+        <button id="btn-haptics" class="secondary">haptics</button>
+      </div>
+      <div id="status" class="status muted">Waiting…</div>
+    </section>
+
+    <section class="card">
+      <h2>Local development</h2>
+      <p class="muted">
+        Under <code>anna-app dev</code> the native bridge doesn't exist; this
+        demo's <code>manifest.dev.mocks</code> provides canned
+        <code>mobile.*</code> responses so the full capture → detail → share
+        flow runs in the harness. Edit the mocks to exercise
+        <code>{shared: false}</code>, <code>cancelled</code> or
+        <code>too_large</code> paths.
+      </p>
+    </section>
+
+    <script type="module" src="desktop.js"></script>
+  </body>
+</html>
