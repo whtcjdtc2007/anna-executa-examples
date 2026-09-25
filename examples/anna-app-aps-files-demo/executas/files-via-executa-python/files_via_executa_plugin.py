@@ -67,16 +67,19 @@ from executa_sdk import (  # noqa: E402
 
 MANIFEST = {
     "display_name": "Files via Executa",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": (
         "Stores text attachments in Anna Persistent Storage (APS Files) "
         "on behalf of the calling app via the files/* reverse-RPC."
     ),
     "author": "Anna Developer",
-    # Required for APS object storage. Without `aps.files` the host refuses
-    # the files/* reverse-RPC with STORAGE_NOT_GRANTED. The user must also
-    # have enabled `storage_grant` on their UserExecuta.custom_config.
-    "host_capabilities": ["aps.files"],
+    # `aps.files` is required for APS object storage — without it the host
+    # refuses the files/* reverse-RPC with STORAGE_NOT_GRANTED. The user must
+    # also have enabled `storage_grant` on their UserExecuta.custom_config.
+    # `aps.scope.user.read` mirrors the app manifest's storage.scopes.user 'r':
+    # schema 3 requires the bundled Executa's normalized storage declaration
+    # to EQUAL the app's (single-declaration-position rule).
+    "host_capabilities": ["aps.files", "aps.scope.user.read"],
     "tools": [
         {
             "name": "save_note",

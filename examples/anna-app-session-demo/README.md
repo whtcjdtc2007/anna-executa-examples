@@ -1,6 +1,6 @@
 # anna-app-session-demo
 
-A minimal `schema: 2` Anna app that demonstrates **Agent Session
+A minimal `schema: 3` Anna app that demonstrates **Agent Session
 workspace best practices** — how to drive `anna.agent.session.*` when
 the agent is expected to **read and write workspace files reliably**.
 

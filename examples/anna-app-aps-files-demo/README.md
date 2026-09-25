@@ -1,6 +1,6 @@
 # anna-app-aps-files-demo
 
-A minimal `schema: 2` Anna App that stores attachments in **Anna
+A minimal `schema: 3` Anna App that stores attachments in **Anna
 Persistent Storage — APS Files** (object storage), demonstrating **both**
 ways an app can reach object storage, switchable live via a radio toggle
 in the UI:
@@ -55,10 +55,10 @@ you can compare the two side by side. Supporting both is why the manifest
 grants `ui.host_api.files` in addition to the executa-tools grant:
 
 ```json
-"permissions": ["chat.write_message", "tools.invoke"],
-"host_capabilities": ["aps.scope.user.read"],
+"schema": 3,
+"storage": { "kv": true, "files": true, "scopes": { "user": "r" } },
 "required_executas": [
-  { "tool_id": "bundled:files-via-executa", "min_version": "0.1.0", "version": "latest" }
+  { "tool_id": "bundled:files-via-executa", "min_version": "0.3.0", "version": "latest" }
 ],
 "ui": {
   "host_api": {
@@ -73,17 +73,21 @@ grants `ui.host_api.files` in addition to the executa-tools grant:
 > A real app that only needs the recommended pattern should drop the
 > `files` line entirely and keep `tools` only — the `files` grant exists
 > here purely to demonstrate the HOST API alternative. Exception: keep
-> `files: ["download"]` + `host_capabilities: ["aps.scope.user.read"]`
+> `files: ["download"]` + `storage.scopes.user: "r"`
 > if you want the host-mediated browser save for Executa-generated
 > (`scope=user`) artifacts — `files.download` is an app-iframe surface
 > (the browser save dialog must be triggered by the host page), so it
-> cannot be delegated to the Executa. `aps.scope.user.read` only ever
+> cannot be delegated to the Executa. The user-scope read only ever
 > exposes the current user's own rows (APS filters by `user_id`).
 
-The bundled Executa declares `host_capabilities: ["aps.files"]` in its
-`MANIFEST`. Without it the host refuses the `files/*` reverse-RPC with
-`STORAGE_NOT_GRANTED`. The user must also have `storage_grant` enabled on
-their `UserExecuta`.
+The bundled Executa declares `host_capabilities: ["aps.files",
+"aps.scope.user.read"]` in its `MANIFEST`. Without `aps.files` the host
+refuses the `files/*` reverse-RPC with `STORAGE_NOT_GRANTED`; schema 3
+additionally requires the Executa's normalized storage declaration to
+**equal** the app manifest's `storage` entry (single declaration
+position — legacy `aps.scope.*` caps imply `kv`, hence `kv: true` on the
+app side). The user must also have `storage_grant` enabled on their
+`UserExecuta`.
 
 ---
 
@@ -131,7 +135,7 @@ The harness opens the bundle in a Chromium iframe:
    a file — how does the app download it?”: in **Tool invoke** mode with
    `scope=user` the app calls
    `anna.files.download({ path, scope: "user" })`, gated by the manifest
-   `host_capabilities: ["aps.scope.user.read"]`; with `scope=tool` the
+   `storage.scopes.user: "r"` declaration; with `scope=tool` the
    object is plugin-private (app-side `files.download` is not exposed for
    tool scope), so the demo asks the **Executa** for a presigned link via
    `get_link` and opens that — the intended delegation path; in
@@ -171,7 +175,7 @@ App-side Host API, which is exactly what **HOST API** mode demonstrates
 ```
 anna-app-aps-files-demo/
   app.json                 # publish metadata + bundled_executas map
-  manifest.json            # schema:2 app manifest (tools-only host_api)
+  manifest.json            # schema:3 app manifest (structured storage decl)
   package.json             # dev scripts
   bundle/                  # static-spa UI (index.html, app.js, style.css)
   executas/

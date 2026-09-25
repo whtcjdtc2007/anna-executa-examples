@@ -1,6 +1,6 @@
 # anna-app-file-upload-demo
 
-A `schema: 2` Anna App (display name **Host Upload Demo**) that demonstrates
+A `schema: 3` Anna App (display name **Host Upload Demo**) that demonstrates
 the **`host/uploadFile`** reverse-RPC — **`inline`**, **`negotiate`** and
 **`confirm`** — persisting a binary blob to **short-lived** host storage
 (~30 min TTL, not enumerable).
@@ -125,7 +125,7 @@ returned link is the only deliverable.
 ## Permission surface
 
 ```json
-"permissions": ["chat.write_message", "tools.invoke"],
+"schema": 3,
 "required_executas": [
   { "tool_id": "bundled:file-upload-via-executa", "min_version": "0.1.0", "version": "latest" }
 ],

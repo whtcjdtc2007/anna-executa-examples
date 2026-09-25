@@ -1,6 +1,5 @@
 {
-  "schema": 2,
-  "permissions": ["tools.invoke"],
+  "schema": 3,
   "required_executas": [
     {
       "tool_id": "bundled:long-task-engine",

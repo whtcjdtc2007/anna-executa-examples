@@ -21,9 +21,9 @@ const EXECUTA_METHOD = "complete";
 
 const MODE_HINTS = {
   direct:
-    "Calls the host LLM directly from the iframe. Supports both anna.llm.complete (one-shot) and anna.llm.stream (token-by-token).",
+    "Calls the host LLM directly from the iframe. Supports both anna.llm.complete (one-shot) and anna.llm.stream (token-by-token), including MCP {type:'image'} content blocks for vision models.",
   executa:
-    "Invokes the Executa, which then asks the host to sample (sampling/createMessage). Buffered request/response only — no streaming. Requires --real LLM bridge; mock fixtures do not serve reverse sampling.",
+    "Invokes the Executa, which then asks the host to sample (sampling/createMessage). Buffered request/response only — no streaming, and TEXT-ONLY: image blocks are rejected with SAMPLING_INVALID_REQUEST. Requires --real LLM bridge; mock fixtures do not serve reverse sampling.",
 };
 
 const $ = (id) => document.getElementById(id);
@@ -83,6 +83,8 @@ function showError(label, err) {
     hint = " — session is gone; create a new one (delete by uuid still works to free quota).";
   } else if (name === "APP_SESSION_TOKEN_EXPIRED") {
     hint = " — token lapsed; click refresh (or just retry — run/cancel self-heal the token).";
+  } else if (name === "APP_MODEL_NOT_VISION_CAPABLE") {
+    hint = " — the resolved model can't see images; set a vision model hint (e.g. gemini) and retry.";
   }
   errBox.textContent = `[${label}] ${name || code}: ${msg}${hint}`;
   errBox.classList.add("err");
@@ -284,11 +286,49 @@ function buildModelPreferences(p) {
   return Object.keys(mp).length ? mp : undefined;
 }
 
-async function runDirect(prompt) {
+// Section-1 image input → MCP image blocks for llm.complete / llm.stream.
+// Local file → raw base64 + mimeType inside the block (no upload-first step
+// on the L1 surface — unlike session attachments, the payload stays inline).
+// URL → {type:'image', url} — must be public HTTPS (SSRF-guarded host-side).
+// Returns undefined when both controls are empty.
+async function readCompleteImageBlocks() {
+  const blocks = [];
+  const url = ($("cmp-img-url")?.value || "").trim();
+  if (url) blocks.push({ type: "image", url });
+  const file = $("cmp-img-file")?.files?.[0];
+  if (file) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result);
+      r.onerror = () => reject(r.error || new Error("file read failed"));
+      r.readAsDataURL(file);
+    });
+    const b64 = String(dataUrl).split(",", 2)[1] || "";
+    blocks.push({ type: "image", data: b64, mimeType: file.type || "image/png" });
+  }
+  return blocks.length ? blocks : undefined;
+}
+
+// One user message whose content array mixes text + image blocks. Separate
+// consecutive user messages (one text, one image) work identically — see the
+// App-Side LLM & Agent docs §2.0a.
+function buildCompleteMessages(prompt, imageBlocks) {
+  if (!imageBlocks) {
+    return [{ role: "user", content: { type: "text", text: prompt } }];
+  }
+  return [
+    {
+      role: "user",
+      content: [{ type: "text", text: prompt }, ...imageBlocks],
+    },
+  ];
+}
+
+async function runDirect(prompt, imageBlocks) {
   const anna = await annaReady;
   const p = readCompletionParams();
   const req = {
-    messages: [{ role: "user", content: { type: "text", text: prompt } }],
+    messages: buildCompleteMessages(prompt, imageBlocks),
     maxTokens: p.maxTokens,
   };
   if (p.systemPrompt) req.systemPrompt = p.systemPrompt;
@@ -322,12 +362,24 @@ $("complete-btn").addEventListener("click", async () => {
   clearError();
   clearStats("complete-stats");
   const mode = modeSel?.value || "direct";
-  out.textContent = `(calling ${mode === "executa" ? "executa.complete" : "llm.complete"}…)`;
   const t0 = now();
   try {
     const prompt = $("complete-input").value || "hi";
+    const imageBlocks = await readCompleteImageBlocks();
+    if (mode === "executa" && imageBlocks) {
+      // Honest UI: don't round-trip a request we know the host will reject.
+      out.textContent =
+        "(not sent) sampling/createMessage is TEXT-ONLY — the host rejects " +
+        "image blocks with SAMPLING_INVALID_REQUEST (-32004).\n" +
+        "Switch LLM source to Direct (anna.llm.complete supports image " +
+        "blocks), or clear the image input.";
+      return;
+    }
+    out.textContent = `(calling ${mode === "executa" ? "executa.complete" : "llm.complete"}…)`;
     const reply =
-      mode === "executa" ? await runViaExecuta(prompt) : await runDirect(prompt);
+      mode === "executa"
+        ? await runViaExecuta(prompt)
+        : await runDirect(prompt, imageBlocks);
     const total = now() - t0;
     out.textContent = JSON.stringify(reply, null, 2);
     const tok = outTokens(reply.usage);
@@ -366,8 +418,9 @@ $("stream-btn").addEventListener("click", async () => {
     const anna = await annaReady;
     const p = readCompletionParams();
     const prompt = $("complete-input").value || "hi";
+    const imageBlocks = await readCompleteImageBlocks();
     const req = {
-      messages: [{ role: "user", content: { type: "text", text: prompt } }],
+      messages: buildCompleteMessages(prompt, imageBlocks),
       maxTokens: p.maxTokens,
     };
     if (p.systemPrompt) req.systemPrompt = p.systemPrompt;
@@ -593,6 +646,11 @@ $("catalog-btn")?.addEventListener("click", async () => {
 });
 
 $("session-create-btn").addEventListener("click", async () => {
+  clearError();
+  try {
+    const anna = await annaReady;
+    const systemPrompt =
+      ($("session-system-prompt")?.value || "").trim() || undefined;
     // Session tool surface (create-time quotaCaps). Inheriting the full host
     // kit can put hundreds of tool definitions (~100K tokens) in front of
     // every model call — uncheck "inherit" for a lean sandbox session whose

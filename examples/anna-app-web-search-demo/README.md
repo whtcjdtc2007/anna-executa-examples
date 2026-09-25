@@ -1,6 +1,6 @@
 # anna-app-web-search-demo
 
-A `schema: 2` Anna App (display name **Web Search Demo**) that demonstrates
+A `schema: 3` Anna App (display name **Web Search Demo**) that demonstrates
 Anna's host-managed **web capability** over **both channels** — the iframe
 **HOST API** (`anna.web.search` / `anna.web.fetch` / `anna.web.image_search`
 / `anna.web.image_fetch`) and the **Reverse RPC** twin (`web/search` /

@@ -1,0 +1,8 @@
+{
+  "slug": "frame-embed-demo",
+  "name": "Frame Embed Demo",
+  "version": "0.1.0",
+  "tagline": "Embed third-party iframes (a YouTube player) from an App window via scoped csp_overrides[frame-src] — with working fullscreen, autoplay and timestamp jumps.",
+  "description": "Frame Embed Demo is the minimal reference for the scoped `frame-src` CSP override (forum #343). By default an App bundle's CSP is `default-src 'none'` with no `frame-src`, so **every nested iframe is blocked**. Declaring explicit https origins in `manifest.ui.csp_overrides[\"frame-src\"]` lifts that for those origins only — no wildcards, no paths, max 8.\n\n**What it shows**\n\n- The manifest declaration: `\"frame-src\": [\"https://www.youtube-nocookie.com\"]`.\n- The **permission delegation chain**: declaring `frame-src` makes the platform scope `autoplay` / `encrypted-media` / `fullscreen` / `picture-in-picture` to the declared origins (response `Permissions-Policy` header + host window iframe `allow` attribute). Your own `<iframe>` inside the bundle must still forward them via its `allow` attribute — this demo's app.js does exactly that.\n- **Jump to cited timestamps**: buttons rebuild the embed URL with `?start=N&autoplay=1`, the #343 use case (a research assistant jumping to video moments).\n\n**No Host API calls, no executas, no grants** — this is the smallest possible UI-only Anna App.\n\n⚠️ Local harness parity: `anna-app dev` serves the bundle **without** CSP/Permissions-Policy headers, so embeds work locally even without the declaration. Verify with `anna-app validate` and an online working draft.",
+  "category": "developer-tools"
+}

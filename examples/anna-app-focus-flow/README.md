@@ -50,7 +50,7 @@ For the full discovery rules and `executa.json` schema see the
 ```
 anna-app-focus-flow/
 ├── app.json                          # App metadata (slug, name, category…)
-├── manifest.json                     # AppManifest (schema:2)
+├── manifest.json                     # AppManifest (schema:3)
 ├── scripts/
 │   └── set-tool-id.py                # apply / reset minted IDs across the Python flavour files
 ├── bundle/                           # static-spa UI loaded by UI Runtime
@@ -130,9 +130,7 @@ stdio JSON-RPC contract.
 
 ```json
 {
-  "schema": 1,
-  "permissions": ["tools.invoke", "chat.write_message", "storage.read",
-                  "storage.write", "ui.svg"],
+  "schema": 3,
   "required_executas": [
     { "tool_id": "tool-CHANGEME-focus-session-CHANGEME", "min_version": "1.0.0" },
     { "tool_id": "skill-CHANGEME-focus-coach-CHANGEME" }

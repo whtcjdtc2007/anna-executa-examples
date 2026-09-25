@@ -1,0 +1,9 @@
+{
+  "slug": "display-blocks-demo",
+  "name": "display-blocks-demo",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Example Executa plugin demonstrating verbatim `_display` blocks: host-rendered, byte-exact tool output the model cannot paraphrase.",
+  "tool_id": "tool-dev-display-blocks-demo",
+  "type": "python"
+}

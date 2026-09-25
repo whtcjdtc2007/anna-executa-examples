@@ -1,6 +1,6 @@
 # anna-app-embed-demo
 
-A minimal `schema: 2` Anna app that exercises the **host-managed
+A minimal `schema: 3` Anna app that exercises the **host-managed
 Embeddings** surface from inside its iframe, with **two switchable
 paths**:
 
@@ -61,7 +61,7 @@ embedding**. The UI displays:
 ## Manifest grants
 
 ```json
-"permissions": ["chat.write_message", "tools.invoke"],
+"schema": 3,
 "required_executas": [
   { "tool_id": "tool-test-embed-via-executa-12345678", "min_version": "0.1.0", "version": "latest" }
 ],
@@ -83,7 +83,7 @@ its `MANIFEST` — without it the host refuses the reverse-RPC with
 
 | Path | What |
 |---|---|
-| `manifest.json` | `schema: 2` manifest with `host_api.llm: ["embed"]` |
+| `manifest.json` | `schema: 3` manifest with `host_api.llm: ["embed"]` |
 | `bundle/index.html` | Single-page UI with mode selector + result panel |
 | `bundle/app.js` | Pure DOM + `window.anna.*` calls, routes by selected mode |
 | `bundle/style.css` | Light styling (cloned from `anna-app-llm-demo`) |

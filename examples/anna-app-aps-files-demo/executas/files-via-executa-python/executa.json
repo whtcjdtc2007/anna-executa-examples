@@ -1,7 +1,7 @@
 {
   "slug": "files-via-executa",
   "name": "Files via Executa",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "executa_type": "tool",
   "description": "Stores text attachments in Anna Persistent Storage (APS Files) on behalf of the calling app via the files/* reverse-RPC — in scope=user (user-wide) or scope=tool (plugin-private) — so the app never needs its own host.files / host.upload grant.",
 

@@ -1,0 +1,13 @@
+{
+  "name": "anna-app-frame-embed-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Anna App demonstrating scoped csp_overrides[frame-src]: embedding a third-party iframe (YouTube player) with working fullscreen/autoplay delegation and timestamp jumps.",
+  "scripts": {
+    "dev": "anna-app dev",
+    "validate": "anna-app validate"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.56"
+  }
+}
