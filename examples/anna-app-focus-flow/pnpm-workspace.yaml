@@ -8,3 +8,8 @@
 # 退出。下面显式放行 esbuild，其它任何包仍走默认（拒绝）。
 allowBuilds:
   esbuild: true
+
+# pnpm v12 默认 minimumReleaseAge=1440（拒装发布不满 24h 的包，防供应链
+# 投毒）。@anna-ai/* 是自家一方包，发版后需要立即在 CI 里可装，故豁免。
+minimumReleaseAgeExclude:
+  - "@anna-ai/*"
