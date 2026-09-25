@@ -1,9 +1,5 @@
 {
-  "schema": 2,
-  "permissions": [
-    "chat.write_message",
-    "tools.invoke"
-  ],
+  "schema": 3,
   "required_executas": [
     {
       "tool_id": "bundled:file-upload-via-executa",

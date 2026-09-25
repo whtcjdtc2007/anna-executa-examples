@@ -16,6 +16,7 @@ distributed, or built in isolation.
 | **Google OAuth Plugin** | [`google-oauth-tool/`](google-oauth-tool/) | Gmail reader — consumes Google OAuth2 access tokens injected by the platform (no OAuth flow inside the plugin). |
 | **Sampling Plugin (v2)** | [`sampling-summarizer/`](sampling-summarizer/) | Summarizer that asks the host to perform an LLM completion via reverse `sampling/createMessage` (no API key required — host owns model selection, billing and quota). See [docs/sampling.md](https://anna.partners/developers/reference/executa-sampling). |
 | **Storage Plugin (v2)** | [`storage-notebook/`](storage-notebook/) | Notebook + attachment uploader that uses Anna Persistent Storage via reverse `storage/*` and `files/*` RPC (per-user/app KV plus two-step object uploads via the host's presigned URL). See [docs/persistent-storage.md](https://anna.partners/developers/reference/executa-persistent-storage). |
+| **Display Blocks Demo** | [`display-blocks-demo/`](display-blocks-demo/) | Miniature error journal demonstrating the verbatim `_display` render channel — presentation-critical lines (headline, follow-up) are rendered byte-for-byte by the host UI instead of being paraphrased by the model. |
 
 ## Subdirectory Layout
 

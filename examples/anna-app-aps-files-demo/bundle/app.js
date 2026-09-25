@@ -119,8 +119,8 @@ const toolMode = {
     //   scope=user — the app reaches it with the CROSS-SCOPE form of the
     //     host-mediated download: `scope: "user"`. Gating is two-layer:
     //     `ui.host_api.files: ["download"]` (dispatcher ACL) +
-    //     `host_capabilities: ["aps.scope.user.read"]` (scope gate —
-    //     download is a read, so .read suffices). APS rows are always
+    //     the manifest `storage.scopes.user: "r"` declaration (scope gate —
+    //     download is a read, so "r" suffices). APS rows are always
     //     filtered by user_id, so this only ever reads the CURRENT user's
     //     own space.
     //

@@ -44,6 +44,8 @@ anna-executa-examples/
 │                                        #     (fixed-client affinity, absolute paths, nonce-verified writes)
 │   └── anna-app-mobile-demo/            # ⭐ Anna App — anna.mobile.* native bridge (share/haptics/camera),
 │                                        #     dual mobile_entry + desktop degradation + dev.mocks
+│   └── anna-app-frame-embed-demo/       # ⭐ Anna App — scoped csp_overrides[frame-src] third-party embeds
+│                                        #     (YouTube player, playback permission delegation, timestamp jumps)
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

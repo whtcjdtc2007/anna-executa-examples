@@ -1,0 +1,32 @@
+{
+  "schema": 3,
+  "required_executas": [],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Frame Embed Demo app open. It demonstrates the scoped csp_overrides[frame-src] manifest declaration: an App bundle may embed third-party iframes (here a YouTube player from www.youtube-nocookie.com) only from origins explicitly declared in the manifest. Declaring frame-src also scopes the playback permission delegation (autoplay / encrypted-media / fullscreen / picture-in-picture) to those origins; the bundle's own <iframe> must forward them via its allow attribute. The demo has no executas and calls no Host APIs.",
+  "tags": ["demo", "ui", "frame-src", "csp", "embed", "video"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Frame Embed Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 480, "h": 480 },
+        "default_size": { "w": 720, "h": 640 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      }
+    ],
+    "host_api": {},
+    "csp_overrides": {
+      "frame-src": ["https://www.youtube-nocookie.com"]
+    },
+    "state_merge": "last_writer_wins"
+  }
+}

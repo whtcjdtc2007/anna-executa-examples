@@ -1,14 +1,22 @@
 # anna-app-llm-demo
 
-A minimal `schema: 2` Anna app that exercises the **app-side LLM &
+A minimal `schema: 3` Anna app that exercises the **app-side LLM &
 Agent surfaces** from inside its iframe, with **two switchable paths**
 to reach an LLM:
 
-- `anna.llm.complete(...)` — direct, single-shot completion.
+- `anna.llm.complete(...)` — direct, single-shot completion. Supports
+  **image inputs** as MCP `{type:'image'}` content blocks (raw base64 +
+  `mimeType`, a `data:` URI, or a public-HTTPS `url`) so a vision model
+  answers from the image in the same completion; `anna.llm.stream`
+  takes the identical request shape. Non-vision models fail fast with
+  `APP_MODEL_NOT_VISION_CAPABLE` — images are never silently dropped.
 - `anna.tools.invoke({ tool_id, method: "complete", args })` against a
   bundled Executa (`executas/llm-via-executa-python/`) which in turn
   issues a reverse `sampling/createMessage` to the host. This lets you
   observe / shape the prompt server-side before it reaches the model.
+  **Text-only**: `sampling/createMessage` rejects image blocks with
+  `SAMPLING_INVALID_REQUEST`; the demo blocks the request client-side
+  with a hint instead of round-tripping a known rejection.
   The Executa also exposes `method: "sample_chain"` — N sequential
   sampling calls in a single invoke — to exercise the host's
   `max_calls` quota **and** the sampling-token renewal that keeps a
@@ -284,7 +292,7 @@ When a session is past its deadline the call rejects with a stable
 ## Manifest grants
 
 ```json
-"permissions": ["chat.write_message", "tools.invoke"],
+"schema": 3,
 "required_executas": [
   { "tool_id": "bundled:llm-via-executa", "min_version": "0.1.0", "version": "latest" }
 ],
@@ -320,7 +328,7 @@ When a session is past its deadline the call rejects with a stable
 
 | Path | What |
 |---|---|
-| `manifest.json` | `schema: 2` manifest with `host_api.llm` + `host_api.tools` + `host_api.agent.session.auto` |
+| `manifest.json` | `schema: 3` manifest with `host_api.llm` + `host_api.tools` + `host_api.agent.session.auto` |
 | `bundle/index.html` | Single-page UI: LLM source selector + session transport selector + lifecycle line |
 | `bundle/app.js` | Pure DOM + `window.anna.*` calls; routes by selected mode + transport; renders lifecycle + `error.name` hints |
 | `bundle/style.css` | Light styling |

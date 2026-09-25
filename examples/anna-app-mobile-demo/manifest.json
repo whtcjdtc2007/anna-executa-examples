@@ -1,6 +1,5 @@
 {
-  "schema": 2,
-  "permissions": [],
+  "schema": 3,
   "required_executas": [],
   "optional_executas": [],
   "system_prompt_addendum": "The user has the Mobile Bridge Demo app open. It demonstrates the anna.mobile.* native bridge (share / haptics / camera_capture) inside the anna-mobile shell, dual desktop/mobile entries via mobile_entry, and clean desktop degradation on unsupported_container. You do not need to summon any windows.",

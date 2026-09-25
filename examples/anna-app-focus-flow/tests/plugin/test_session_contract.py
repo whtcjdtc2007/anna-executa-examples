@@ -19,7 +19,8 @@ def plugin():
 
 def test_describe_advertises_session_tool(plugin):
     info = plugin.call("describe")
-    assert info["name"].startswith("tool-")
+    # Identity is the server-assigned tool_id; describe only carries display_name.
+    assert info["display_name"] == "Focus Session"
     tool_names = {t["name"] for t in info["tools"]}
     assert "session" in tool_names
 

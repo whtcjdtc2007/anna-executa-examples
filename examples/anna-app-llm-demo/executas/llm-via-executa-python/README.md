@@ -37,7 +37,7 @@ Runs a single-turn completion and showcases the **full
 |-------------------------|---------|---------------------------------------------------|
 | `prompt` (required)     | string  | user prompt                                       |
 | `system_prompt`         | string  | optional system instruction                       |
-| `max_tokens`            | integer | 16–4096, default 256                              |
+| `max_tokens`            | integer | 16–8192 (the sampling per-call cap), default 256  |
 | `temperature`           | number  | 0.0–2.0; omit → host uses 0.7 (not provider default) |
 | `stop`                  | string[]| optional stop sequences                           |
 | `model_hint`            | string  | preferred model name (`modelPreferences.hints`)   |
@@ -69,7 +69,7 @@ cannot:
 | `prompt` (required)                    | string  | seed prompt for step 1                       |
 | `steps`                                | integer | 1–8, default 3                               |
 | `system_prompt`                        | string  | applied to every step                        |
-| `max_tokens`                           | integer | per-step, 16–4096, default 128               |
+| `max_tokens`                           | integer | per-step, 16–8192, default 128               |
 | `temperature`                          | number  | applied to every step                        |
 | `delay_s`                              | number  | sleep between steps; set large to stretch the invoke past the token TTL and prove renewal |
 | `model_hint` / `*_priority`            | —       | same `modelPreferences` fields as `complete` |

@@ -1,6 +1,5 @@
 {
-  "schema": 2,
-  "permissions": [],
+  "schema": 3,
   "required_executas": [],
   "optional_executas": [],
   "system_prompt_addendum": "The user has the Agent Session Demo app open. It demonstrates agent.session workspace best practices: pinning a session to one filesystem client (submode=fixed), discovering the workspace root and then using absolute paths only, verifying file writes with a nonce read-back, and reporting structured filesystem errors (PATH_OUTSIDE_SANDBOX / NOT_FOUND) verbatim instead of falling back to similar paths. You do not need to summon any windows.",

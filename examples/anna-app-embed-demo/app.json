@@ -1,7 +1,7 @@
 {
   "slug": "embed-demo",
   "name": "Embed Demo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "tagline": "Compute embeddings directly or through a bundled Executa.",
   "description": "Embed Demo shows the two ways an Anna App can compute embeddings. It can call `anna.llm.embed` directly from the window, or invoke a bundled Python Executa (`embed-via-executa`) that turns around and calls `embeddings/create` back to the host via reverse-RPC.\n\n**What's inside**\n\n- A static single-window UI (`static-spa`) with controls for the direct and Executa-backed paths.\n- `embed-via-executa` — Python stdio Executa that wraps host `embeddings/create`.\n\n**How to use**\n\nOpen the window and request an embedding via either path; compare the direct `anna.llm.embed` result with the Executa round-trip.",
   "category": "developer-tools",

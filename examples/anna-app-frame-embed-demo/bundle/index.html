@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Frame Embed Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Inline <style> is fine (base CSP style-src includes 'unsafe-inline');
+         inline <script> is NOT (script-src is 'self' only) — JS lives in app.js. -->
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        padding: 16px;
+        font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      h1 { font-size: 18px; margin: 0 0 4px; }
+      .muted { color: #888; font-size: 12.5px; margin: 0 0 12px; }
+      .muted code { font-size: 11.5px; }
+      .player {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .player iframe {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      .chapters { margin: 12px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+      .chapters button {
+        padding: 6px 12px;
+        border: 1px solid #8884;
+        border-radius: 6px;
+        background: transparent;
+        cursor: pointer;
+        font: inherit;
+      }
+      .chapters button:hover { background: #8882; }
+      .note {
+        margin-top: 14px;
+        padding: 10px 12px;
+        border-left: 3px solid #e9a13b;
+        background: #e9a13b18;
+        font-size: 12.5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Frame Embed Demo</h1>
+    <p class="muted">
+      This player is a nested third-party iframe — allowed only because the
+      manifest declares
+      <code>csp_overrides["frame-src"]: ["https://www.youtube-nocookie.com"]</code>.
+      Remove the declaration, republish, and the browser refuses the frame
+      (DevTools: <em>Refused to frame … frame-src</em>).
+    </p>
+
+    <div class="player">
+      <!-- The allow attribute forwards the playback features the platform
+           delegated to this app's declared frame-src origins. Without it the
+           player renders but fullscreen / autoplay-on-seek silently fail. -->
+      <iframe
+        id="yt"
+        src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?rel=0"
+        title="Big Buck Bunny (Blender Foundation, CC-BY)"
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        referrerpolicy="no-referrer"
+      ></iframe>
+    </div>
+
+    <div class="chapters" id="chapters">
+      <button data-start="0">▶ Intro (0:00)</button>
+      <button data-start="52">▶ The bunny wakes (0:52)</button>
+      <button data-start="203">▶ Trap building (3:23)</button>
+      <button data-start="466">▶ Payback (7:46)</button>
+    </div>
+
+    <p class="note">
+      <strong>Jump-to-timestamp</strong> rebuilds the embed URL with
+      <code>?start=N&amp;autoplay=1</code> — playback resumes only because
+      <code>autoplay</code> is delegated (Permissions-Policy header → window
+      iframe <code>allow</code> → this bundle's iframe <code>allow</code>).
+      Local harness note: <code>anna-app dev</code> sets no CSP headers, so
+      this works locally <em>even without</em> the manifest declaration —
+      always verify against an online working draft.
+    </p>
+
+    <script src="app.js"></script>
+  </body>
+</html>

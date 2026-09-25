@@ -102,7 +102,7 @@ MANIFEST = {
                 {
                     "name": "max_tokens",
                     "type": "integer",
-                    "description": "Max output tokens (16-4096).",
+                    "description": "Max output tokens (16-8192).",
                     "required": False,
                     "default": 256,
                 },
@@ -196,7 +196,7 @@ MANIFEST = {
                 {
                     "name": "max_tokens",
                     "type": "integer",
-                    "description": "Per-step max output tokens (16-4096).",
+                    "description": "Per-step max output tokens (16-8192).",
                     "required": False,
                     "default": 128,
                 },
@@ -478,7 +478,8 @@ async def _complete(
     if not prompt or not prompt.strip():
         return {"text": "", "note": "empty prompt"}
 
-    max_tokens = max(16, min(4096, int(max_tokens)))
+    # 8192 = host sampling per-call cap (DEFAULT_SAMPLING_MAX_TOKENS_PER_CALL)
+    max_tokens = max(16, min(8192, int(max_tokens)))
     model_preferences = _build_model_preferences(
         model_hint=model_hint,
         cost_priority=cost_priority,
@@ -544,7 +545,9 @@ async def _sample_chain(
         return {"text": "", "note": "empty prompt", "steps": []}
 
     steps = max(1, min(8, int(steps)))
-    max_tokens = max(16, min(4096, int(max_tokens)))
+    # 8192 = host sampling per-call cap; the 32k per-invoke pool still gates
+    # the chain cumulatively (SAMPLING_MAX_TOKENS_EXCEEDED past it).
+    max_tokens = max(16, min(8192, int(max_tokens)))
     delay_s = max(0.0, float(delay_s))
     model_preferences = _build_model_preferences(
         model_hint=model_hint,

@@ -1,20 +1,14 @@
 {
-  "schema": 2,
-  "permissions": [
-    "tools.invoke",
-    "chat.write_message",
-    "storage.read",
-    "storage.write",
-    "ui.svg"
-  ],
+  "schema": 3,
   "host_capabilities": [
-    "aps.kv",
-    "aps.scope.user.read",
-    "aps.scope.user.write",
     "llm.image",
     "llm.image.edit",
     "host.upload"
   ],
+  "storage": {
+    "kv": true,
+    "scopes": { "user": "rw" }
+  },
   "required_executas": [],
   "optional_executas": [
     {

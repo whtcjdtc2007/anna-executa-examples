@@ -1,12 +1,5 @@
 {
-  "schema": 2,
-  "permissions": [
-    "tools.invoke",
-    "chat.write_message",
-    "storage.read",
-    "storage.write",
-    "ui.svg"
-  ],
+  "schema": 3,
   "required_executas": [
     {
       "tool_id": "bundled:focus-session",
@@ -44,7 +37,7 @@
       }
     ],
     "host_api": {
-      "tools": ["required:bundled:focus-session"],
+      "tools": ["required:*"],
       "chat": ["write_message"],
       "artifact": [],
       "llm": [],

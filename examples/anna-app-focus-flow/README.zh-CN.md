@@ -47,7 +47,7 @@ anna-app dev --executa dir=./executas/focus-session-go,type=go
 ```
 anna-app-focus-flow/
 ├── app.json                          # App 元数据（slug、name、category…）
-├── manifest.json                     # AppManifest（schema:2）
+├── manifest.json                     # AppManifest（schema:3）
 ├── scripts/
 │   └── set-tool-id.py                # 一键把 Mint 出的 ID 写进 / 重置回 Python flavour 的文件
 ├── bundle/                           # UI Runtime 加载的 static-spa
@@ -124,9 +124,7 @@ Executa，bundle 只需在 `action` 上切换。
 
 ```json
 {
-  "schema": 1,
-  "permissions": ["tools.invoke", "chat.write_message", "storage.read",
-                  "storage.write", "ui.svg"],
+  "schema": 3,
   "required_executas": [
     { "tool_id": "tool-CHANGEME-focus-session-CHANGEME", "min_version": "1.0.0" },
     { "tool_id": "skill-CHANGEME-focus-coach-CHANGEME" }
