@@ -85,6 +85,11 @@ following Content Security Policy directive: "default-src 'none'"`.
 
 - Prefer `https://www.youtube-nocookie.com` over `https://www.youtube.com` —
   same player, fewer ambient cookies sent to Google.
+- **Never add `referrerpolicy="no-referrer"` to the embed iframe.** YouTube
+  requires a Referer on embed requests to validate the embedding origin and
+  shows **error 153** without one. Declaring `frame-src` makes the platform
+  serve your bundle with `Referrer-Policy: strict-origin-when-cross-origin`
+  (origin only, never the path) for exactly this reason.
 - The embedded page is a normal cross-origin iframe: it inherits the app
   sandbox, cannot reach the Anna host bridge, and cannot call Host APIs.
 - Docs: [App UI Manifest — Embedding third-party content](https://anna.partners/developers/apps/app-ui-manifest#embedding-third-party-content-frame-src).

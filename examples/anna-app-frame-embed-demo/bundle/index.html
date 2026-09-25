@@ -63,13 +63,14 @@
     <div class="player">
       <!-- The allow attribute forwards the playback features the platform
            delegated to this app's declared frame-src origins. Without it the
-           player renders but fullscreen / autoplay-on-seek silently fail. -->
+           player renders but fullscreen / autoplay-on-seek silently fail.
+           Do NOT add referrerpolicy="no-referrer" here — YouTube requires a
+           Referer on embed requests and shows error 153 without one. -->
       <iframe
         id="yt"
         src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?rel=0"
         title="Big Buck Bunny (Blender Foundation, CC-BY)"
         allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        referrerpolicy="no-referrer"
       ></iframe>
     </div>
 
