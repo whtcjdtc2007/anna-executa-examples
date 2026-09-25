@@ -9,22 +9,22 @@ importers:
   .:
     devDependencies:
       '@anna-ai/cli':
-        specifier: ^0.1.22
-        version: 0.1.22
+        specifier: ^0.1.56
+        version: 0.1.56
       vitest:
         specifier: ^2.1.0
         version: 2.1.9
 
 packages:
 
-  '@anna-ai/app-runtime@0.5.0':
-    resolution: {integrity: sha512-oAR9kkvDU/5SEHyxJxaibAQ9WntVndbZ2GMdm/jVbbHynn94vGkKCMTvAFzewbqPQ9gB+Uo5IL1/Fui6p5glPA==}
+  '@anna-ai/app-runtime@0.17.0':
+    resolution: {integrity: sha512-x93L5mj1IfIGvmd5oBbT+o2LvjEFY1FR1M4eseEeIyjG9ikYMCR9qank8PciUjMFhckZOfIYKEW2MNuilck4pg==}
 
-  '@anna-ai/app-schema@0.8.0':
-    resolution: {integrity: sha512-yAZY+wPdmv99vZd+e7QhBhco+mJ4YhsbFdLqi3cycnRMFejUPR2KzAIVGPvvbqeXQhfRhOYnm7Jo01IsnFzF3w==}
+  '@anna-ai/app-schema@0.23.0':
+    resolution: {integrity: sha512-1YpzOZVFUk8RZ9bB4LA/Rfs2k0oyQYINvJWTF+b2DNRx5Jq96JUuUe4u4fSoUC3nnGf0v0tO/IBRTSmdvwPCLw==}
 
-  '@anna-ai/cli@0.1.22':
-    resolution: {integrity: sha512-qtTfl7wKPJ6hmdDgR5GKzA1dNFQyUbKopdQK3l0iXErb7C/+nquH7HJFwS4/BkgNYdnM+eoBY5QtemXhmENfig==}
+  '@anna-ai/cli@0.1.56':
+    resolution: {integrity: sha512-9BkSiV5IWbUZBMsXA2U4R1cCU6/RvFcVfZ3L2ghO6sL94wwCQxQba3lDEisaDu0Y3lPjjO3C2obZR1IMIGilhw==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -404,8 +404,8 @@ packages:
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
 
-  fast-uri@3.1.2:
-    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
+  fast-uri@3.1.8:
+    resolution: {integrity: sha512-GZMtZUTNRpOVIECoXwLNZS5xUGE+mVNbTB8h/7Rwh2TFWcBQiPzTgyZi05BF9UMZKkLJv8XBRJTlU7zg8+ZfMg==}
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -459,8 +459,8 @@ packages:
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
 
-  smol-toml@1.6.1:
-    resolution: {integrity: sha512-dWUG8F5sIIARXih1DTaQAX4SsiTXhInKf1buxdY9DIg4ZYPZK5nGM1VRIYmEbDbsHt7USo99xSLFu5Q1IqTmsg==}
+  smol-toml@1.9.0:
+    resolution: {integrity: sha512-hpd+HLON7HdZXqYchMM/+LaTTbdK0AU3NngIJ4KVyWbY9bfQqdL9cD+4yf6dUoU2Ap4VsU0JkQi6FxAI1B2mXQ==}
     engines: {node: '>= 18'}
 
   source-map-js@1.2.1:
@@ -557,8 +557,8 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
-  ws@8.20.1:
-    resolution: {integrity: sha512-It4dO0K5v//JtTXuPkfEOaI3uUN87iYPnqo/ZzqCoG3g8uhA66QUMs/SrM0YK7/NAu+r4LMh/9dq2A7k+rHs+w==}
+  ws@8.21.3:
+    resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -571,20 +571,20 @@ packages:
 
 snapshots:
 
-  '@anna-ai/app-runtime@0.5.0': {}
+  '@anna-ai/app-runtime@0.17.0': {}
 
-  '@anna-ai/app-schema@0.8.0': {}
+  '@anna-ai/app-schema@0.23.0': {}
 
-  '@anna-ai/cli@0.1.22':
+  '@anna-ai/cli@0.1.56':
     dependencies:
-      '@anna-ai/app-runtime': 0.5.0
-      '@anna-ai/app-schema': 0.8.0
+      '@anna-ai/app-runtime': 0.17.0
+      '@anna-ai/app-schema': 0.23.0
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       commander: 12.1.0
       kleur: 4.1.5
-      smol-toml: 1.6.1
-      ws: 8.20.1
+      smol-toml: 1.9.0
+      ws: 8.21.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -786,7 +786,7 @@ snapshots:
   ajv@8.20.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.2
+      fast-uri: 3.1.8
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -848,7 +848,7 @@ snapshots:
 
   fast-deep-equal@3.1.3: {}
 
-  fast-uri@3.1.2: {}
+  fast-uri@3.1.8: {}
 
   fsevents@2.3.3:
     optional: true
@@ -914,7 +914,7 @@ snapshots:
 
   siginfo@2.0.0: {}
 
-  smol-toml@1.6.1: {}
+  smol-toml@1.9.0: {}
 
   source-map-js@1.2.1: {}
 
@@ -996,4 +996,4 @@ snapshots:
       siginfo: 2.0.0
       stackback: 0.0.2
 
-  ws@8.20.1: {}
+  ws@8.21.3: {}
