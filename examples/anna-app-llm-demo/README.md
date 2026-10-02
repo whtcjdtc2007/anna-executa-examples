@@ -52,8 +52,9 @@ It also demonstrates the **runtime-accurate tool surface** (host ≥
 
 Every agent run additionally opens with a **`run_meta` frame** carrying
 the same fields plus a structured `warnings` list — the app checks it
-for `NO_TOOLS_AVAILABLE` and shows a banner telling the user to enable
-"Let agent sessions use my tools" in the app's grants drawer. Check
+for `NO_TOOLS_AVAILABLE` and shows a banner with the fix: declare the
+tools in manifest `ui.host_api.agent.tools` (declaration is consent —
+they take effect with the user's single Agent permission). Check
 this **before** trusting any side effects an agent run claims to have
 made.
 
@@ -117,16 +118,16 @@ session:
    `app_session_uuid` into the editable uuid box.
 
    Expand **Session tools** to control the session's tool surface — and
-   therefore the **prompt weight**. Inheriting the full host kit can put
-   hundreds of tool definitions (~100K tokens) in front of every model
-   call, slowing runs and burning quota. Uncheck *inherit* to create a
-   **sandbox** session via create-time `quotaCaps`
-   (`{inherit_host_tools: false, allowed_tools: […]}`): the resolved set is
-   *platform public app tools ∩ your user grant ∩ your list* (e.g.
-   `web_search`); an empty list ⇒ a text-only agent. HOST API transport
-   only — Reverse-RPC sessions are minted via sampling and inherit by
-   default. The `tools:` line under the uuid box shows the
-   runtime-accurate resolved surface.
+   therefore the **prompt weight**. Declaration is consent: a HOST API
+   session resolves *platform registry ∩ manifest
+   `ui.host_api.agent.tools` ∩ the optional create-time
+   `quotaCaps.allowed_tools` list* — this demo declares `web_search`,
+   and there is no per-tool user grant. Leave the list empty for the
+   full declared set; an explicit empty set ⇒ a text-only agent.
+   Reverse-RPC sessions are minted via sampling and inherit the host
+   kit by default (`inherit_host_tools` is ignored for app sessions).
+   The `tools:` line under the uuid box shows the runtime-accurate
+   resolved surface.
 2. **run** — streams tokens into the output area. Expand **Per-run model
    preferences** to send MCP `modelPreferences` with the run — applied to
    that run only (sessions never pin a model) and forwarded on **both**

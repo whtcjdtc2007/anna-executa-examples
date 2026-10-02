@@ -27,7 +27,7 @@
       "window": ["set_title"],
       "agent": {
         "session": { "auto": true, "fixed": {} },
-        "tools": []
+        "tools": ["fs_read_file", "fs_list_directory", "fs_write_file"]
       }
     },
     "csp_overrides": {

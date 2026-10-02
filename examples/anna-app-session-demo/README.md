@@ -73,9 +73,12 @@ Related: check the **runtime-accurate tool surface** first.
 `session.create` and the `run_meta` first frame of every run return
 `granted_tools` / `inherit_host_tools`. If the session resolved
 **zero tools** it is text-only — the walkthrough cannot touch real
-files and every claimed side effect is hallucinated. The app shows a
-warning banner and the fix (enable "Let agent sessions use my tools"
-in the app's grants drawer).
+files and every claimed side effect is hallucinated. Declaration is
+consent: the surface is `platform registry ∩ manifest
+ui.host_api.agent.tools ∩ allowed_tools` (this demo declares
+`fs_read_file` / `fs_list_directory` / `fs_write_file`) — there is no
+per-tool user grant to toggle. The app shows a warning banner with
+that fix.
 
 ## 4. Structured errors are a stop signal, not a fallback cue
 
@@ -120,6 +123,29 @@ run before it starts and stops a running one at its next checkpoint
 (the stream then carries `task_cancelled` + `end`), and
 `session.delete` fans the cancel out to **all** active runs of the
 session — so tearing down on unmount also frees server-side workers.
+
+## 6. Zero-frame recovery — check status, replay frames, never re-run blind
+
+A silent stream is **not** proof the run failed: the push leg can die
+(background tab, network blip) while the run keeps executing — and
+billing — server-side (forum `/t/341`: 45 completed-and-charged runs,
+zero frames seen, three blind retry rounds). Push pairs with pull:
+
+- **run status** — `agent.session.run.status` (`handle.runStatus(runId)`,
+  SDK ≥ 0.18.0) answers `queued | running | completed | failed |
+  cancelled` for ~1h after enqueue. `completed` = the run executed and
+  was billed → recover, don't re-run. `failed`/`cancelled` = re-running
+  is safe.
+- **replay frames** — `agent.session.frames` pages the archived
+  `rpc.stream` frames by `seq` (`after_seq` cursor, `done:true` is the
+  terminal). Rate limit 30/min/user, shared with the host's own
+  recovery machinery — back off on `rate_limited`.
+
+SDK ≥ 0.18.0 also arms this automatically: `run()` with no frame within
+`firstFrameTimeoutMs` (default 20 s) transparently self-recovers by
+polling `frames` — your `for await` loop just sees late frames. The
+demo's section 4 exercises both methods manually so you can see the
+decision table (`completed → replay`, `failed → re-run`) in action.
 
 ---
 
@@ -172,12 +198,14 @@ pnpm dev:real
 
 For real runs you need:
 
-- a Matrix agent online (local, or a cloud agent),
-- the app granted **agent session** access, and
-- "Let agent sessions use my tools" enabled in the app's grants
-  drawer — otherwise the session resolves zero tools and the app
-  shows the `NO_TOOLS_AVAILABLE` banner instead of the walkthrough
-  doing real IO.
+- a Matrix agent online (local, or a cloud agent), and
+- the app granted **agent session** access — the declared tools
+  (`fs_read_file` / `fs_list_directory` / `fs_write_file` in this
+  demo's `manifest.json`) come with that single consent (declaration
+  is consent; there is no per-tool toggle). An app whose manifest
+  declares no `agent.tools` resolves zero tools and shows the
+  `NO_TOOLS_AVAILABLE` banner instead of the walkthrough doing real
+  IO.
 
 To exercise `submode: "fixed"`, copy your agent's client id from the
 dashboard (Agents page) into the `fixed_client_id` box before

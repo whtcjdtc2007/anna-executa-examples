@@ -163,6 +163,28 @@
     </section>
 
     <section>
+      <h2>4. Zero-frame recovery · run.status → frames replay</h2>
+      <p class="muted">
+        Push pairs with pull (forum <code>/t/341</code>): a silent stream does
+        <em>not</em> mean the run failed — it may have executed and billed
+        server-side while the realtime leg was down. Before re-running,
+        <strong>run status</strong> (<code>agent.session.run.status</code>)
+        answers queued / running / completed / failed / cancelled for the last
+        <code>run_id</code>; if it completed, <strong>replay frames</strong>
+        (<code>agent.session.frames</code>) recovers the full output from the
+        archive by <code>seq</code> — no re-run, no double billing. SDK ≥
+        0.18.0 also arms this automatically inside <code>run()</code>
+        (<code>firstFrameTimeoutMs</code>, default 20s). Try it: run something
+        in section 3, then use both buttons here.
+      </p>
+      <div class="btn-row">
+        <button id="status-btn" disabled>run status</button>
+        <button id="frames-btn" disabled>replay frames</button>
+      </div>
+      <pre id="recover-out" class="out">(no output yet)</pre>
+    </section>
+
+    <section>
       <h2>Errors</h2>
       <pre id="errors" class="out err">(none)</pre>
     </section>

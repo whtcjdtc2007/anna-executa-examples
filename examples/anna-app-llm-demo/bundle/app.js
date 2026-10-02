@@ -201,8 +201,9 @@ function renderToolSurface(info) {
       "NO_TOOLS_AVAILABLE: this session resolved ZERO executable tools. " +
         "It can only generate text — it cannot read or write local files, and any " +
         "side effects the model claims (e.g. changed_files) will NOT have happened. " +
-        "Ask the user to enable “Let agent sessions use my tools” in the app's " +
-        "grants drawer, or use llm.complete for text-only generation."
+        "Declaration is consent: declare the tools in manifest ui.host_api.agent.tools " +
+        "(this demo declares web_search) — they take effect once the user grants Agent " +
+        "access — or use llm.complete for text-only generation."
     );
   }
 }
@@ -621,8 +622,8 @@ async function executaSession(op, args = {}, timeoutMs = undefined) {
 // Pre-create discovery: which platform tools exist, and which would resolve
 // for THIS app (legal values for quotaCaps.allowed_tools / per-run
 // allowed_tools). Read-only — mints no session. blocked_by pinpoints the
-// failing gate: "manifest" → declare in ui.host_api.agent.tools; "user_grant"
-// → enable in the app's Permissions modal. Requires host dispatcher ≥ 0.18.0.
+// failing gate: "manifest" → declare in ui.host_api.agent.tools (or declare
+// ["*"] for the full registry) and republish. Requires host dispatcher ≥ 0.18.0.
 $("catalog-btn")?.addEventListener("click", async () => {
   clearError();
   const out = $("catalog-out");
@@ -651,19 +652,16 @@ $("session-create-btn").addEventListener("click", async () => {
     const anna = await annaReady;
     const systemPrompt =
       ($("session-system-prompt")?.value || "").trim() || undefined;
-    // Session tool surface (create-time quotaCaps). Inheriting the full host
-    // kit can put hundreds of tool definitions (~100K tokens) in front of
-    // every model call — uncheck "inherit" for a lean sandbox session whose
-    // tool list (∩ platform public app tools ∩ user grant) you control.
-    const inherit = $("sess-inherit")?.checked ?? true;
-    let quotaCaps;
-    if (!inherit) {
-      const tools = ($("sess-allowed-tools")?.value || "")
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
-      quotaCaps = { inherit_host_tools: false, allowed_tools: tools };
-    }
+    // Session tool surface (create-time quotaCaps). Declaration is consent:
+    // the session resolves platform registry ∩ manifest ui.host_api.agent.tools
+    // (this demo declares web_search) ∩ the optional list below — there is no
+    // per-tool user grant. Leave the input empty for the full declared set.
+    // inherit_host_tools is ignored for app sessions (INHERIT_IGNORED warning).
+    const tools = ($("sess-allowed-tools")?.value || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const quotaCaps = tools.length ? { allowed_tools: tools } : undefined;
     let uuid;
     if (transport() === "host") {
       sess.handle = await anna.agent.session({
