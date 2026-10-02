@@ -187,29 +187,25 @@
       <details class="params">
         <summary>Session tools (create-time <code>quotaCaps</code>)</summary>
         <p class="muted">
-          Controls the session's tool surface — and therefore the
-          <strong>prompt weight</strong>: inheriting the full host kit can put
-          hundreds of tool definitions (~100K tokens) in front of every model
-          call, which slows runs down and burns quota. Uncheck to create a
-          <strong>sandbox</strong> session limited to the listed platform app
-          tools (resolved as: platform public app tools ∩ your user grant ∩
-          this list; e.g. <code>web_search</code>). An empty list ⇒ text-only
-          agent (no side effects). HOST API transport only — Reverse-RPC
-          sessions are minted via sampling and inherit by default.
+          Declaration is consent: a HOST API session resolves
+          <em>platform registry ∩ manifest
+          <code>ui.host_api.agent.tools</code> ∩ the list below</em> — this
+          demo's manifest declares <code>web_search</code>, and there is no
+          per-tool user grant to toggle. Leave the list empty for the full
+          declared set; enter names to narrow it (per-run
+          <code>allowed_tools</code> narrows further). An undeclared name is
+          silently intersected away (use <em>catalog</em> to check
+          <code>blocked_by</code>). Reverse-RPC sessions are minted via
+          sampling and inherit the host kit by default (executa semantics —
+          <code>inherit_host_tools</code> is ignored for app sessions).
         </p>
-        <div class="mode-row">
-          <label for="sess-inherit">
-            <input id="sess-inherit" type="checkbox" checked />
-            inherit ALL host tools (heavy prompt)
-          </label>
-        </div>
         <div class="mode-row">
           <label for="sess-allowed-tools">Sandbox tools:</label>
           <input
             id="sess-allowed-tools"
             type="text"
             class="text-input"
-            placeholder="comma-separated, e.g. web_search (used when inherit is off)"
+            placeholder="comma-separated subset of the manifest declaration; empty = full declared set"
           />
           <button id="catalog-btn" type="button">catalog</button>
         </div>

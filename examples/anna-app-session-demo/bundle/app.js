@@ -53,7 +53,7 @@ const DEFAULT_SYSTEM_PROMPT = `You are a workspace file assistant. Path discipli
 
 // Unified session state. The uuid box is the single source of truth so the
 // user can act on ANY session (created, typed in, or picked from list()).
-const sess = { handle: null, runId: null, root: null, writtenPath: null };
+const sess = { handle: null, runId: null, streamId: null, root: null, writtenPath: null };
 
 const currentUuid = () => (uuidInput.value || "").trim();
 
@@ -117,7 +117,9 @@ function renderToolSurface(info) {
     toolsWarnEl.textContent =
       "NO_TOOLS_AVAILABLE: this session resolved ZERO executable tools. The walkthrough " +
       "below cannot touch real files — any write/verify output would be hallucinated. " +
-      "Enable “Let agent sessions use my tools” in the app's grants drawer, then re-create.";
+      "Declaration is consent: declare the tools in manifest ui.host_api.agent.tools " +
+      "(this demo declares fs_read_file / fs_list_directory / fs_write_file) and make " +
+      "sure the user has approved the Agent permission, then re-create.";
     toolsWarnEl.hidden = false;
   }
 }
@@ -144,6 +146,9 @@ function syncButtons() {
   // write needs a discovered root; verify additionally needs a written path.
   $("write-btn").disabled = !active || !sess.root;
   $("verify-btn").disabled = !active || !sess.writtenPath;
+  // recovery buttons are keyed by the LAST run/stream (forum /t/341 P3).
+  $("status-btn").disabled = !active || !sess.runId;
+  $("frames-btn").disabled = !active || (!sess.streamId && !sess.runId);
   statusEl.textContent = active ? `session: ${currentUuid()}` : "no session";
   for (const b of sessionListEl.querySelectorAll("button")) {
     b.classList.toggle("active", b.dataset.uuid === currentUuid());
@@ -326,6 +331,7 @@ async function runAndCollect(prompt, outEl) {
   const stream = handle.run({ content: prompt });
   for await (const frame of stream) {
     if (frame.run_id) sess.runId = frame.run_id;
+    if (stream.streamId) sess.streamId = stream.streamId; // for frames replay
     if (frame.event === "queued" || frame.event === "started") {
       outEl.textContent += `[${frame.event}]\n`;
     } else if (frame.event === "run_meta") {
@@ -356,6 +362,8 @@ async function runAndCollect(prompt, outEl) {
     }
   }
   if (stream.runId) sess.runId = stream.runId;
+  if (stream.streamId) sess.streamId = stream.streamId;
+  syncButtons();
   outEl.textContent += "\n(done)";
   return text;
 }
@@ -532,6 +540,71 @@ $("cancel-btn").addEventListener("click", async () => {
       `\n\n[cancel] ${JSON.stringify(res)} — signal recorded; the run's stream terminates with task_cancelled + end.`;
   } catch (err) {
     showError("agent.session.cancel", err);
+  }
+});
+
+// ── zero-frame recovery: run.status → frames replay (forum /t/341 P3) ────
+
+// Push pairs with pull: ALWAYS check run.status before re-running a silent
+// stream — "completed" means the run executed and was billed; recover its
+// output via frames instead of burning quota on a re-run.
+$("status-btn").addEventListener("click", async () => {
+  clearError();
+  const outEl = $("recover-out");
+  try {
+    if (!sess.runId) throw new Error("run something first (section 3) — status is keyed by run_id");
+    const handle = await hostHandle();
+    const st = await handle.runStatus(sess.runId);
+    sess.streamId = st.stream_id || sess.streamId;
+    outEl.textContent = JSON.stringify(st, null, 2);
+    const advice = {
+      completed: "✅ the run executed and was billed — recover its output via [replay frames], do NOT re-run",
+      running: "⏳ still executing — keep the stream open or poll frames; do NOT start a duplicate run",
+      queued: "⏳ waiting for a worker (queue wait can reach 120s) — be patient before assuming failure",
+      failed: "❌ re-running is safe — this run produced no billed result",
+      cancelled: "🚫 cancelled — re-run if it was unintentional",
+    }[st.status];
+    if (advice) outEl.textContent += `\n\n[app] ${advice}`;
+    syncButtons();
+  } catch (err) {
+    // not_found = unknown run / other app's run / older than the 1h window.
+    showError("agent.session.run.status", err);
+  }
+});
+
+// Pull-based replay of the archived stream — works with the realtime leg
+// completely dead. Pages by after_seq until a frame carries done:true.
+$("frames-btn").addEventListener("click", async () => {
+  clearError();
+  const outEl = $("recover-out");
+  try {
+    if (!sess.streamId) throw new Error("no stream_id yet — run something first, or click [run status]");
+    const anna = await annaReady;
+    outEl.textContent = `replaying ${sess.streamId} from the archive…\n\n`;
+    let after = 0;
+    let text = "";
+    let done = false;
+    for (let page = 0; page < 40 && !done; page++) {
+      const { frames, complete } = await anna.agent.session.frames({
+        stream_id: sess.streamId,
+        after_seq: after,
+      });
+      for (const f of frames) {
+        after = f.seq;
+        if (f.done) done = true;
+        const delta = f.payload?.choices?.[0]?.delta;
+        if (typeof delta?.content === "string") text += delta.content;
+      }
+      if (!done && (complete || frames.length === 0)) break; // archive tail
+    }
+    outEl.textContent += text || "(no token frames in the archive for this stream)";
+    outEl.textContent += done
+      ? `\n\n[app] ✅ terminal frame reached at seq=${after} — full output recovered WITHOUT re-running.`
+      : `\n\n[app] archive tail at seq=${after} without a done frame — the run may still be executing (check [run status]).`;
+  } catch (err) {
+    // rate_limited = shared 30/min/user budget with the host's own recovery
+    // machinery — back off and retry.
+    showError("agent.session.frames", err);
   }
 });
 

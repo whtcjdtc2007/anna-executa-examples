@@ -8,6 +8,8 @@ Brings stdio plugins to **parity** with anna-app iframes for LLM access:
 - ``AgentSession.history()``            →  ``agent/session.history``
 - ``AgentSession.refresh(...)``         →  ``agent/session.refresh`` (re-mint token + slide idle window)
 - ``AgentSession.delete()``             →  ``agent/session.delete``
+- ``AgentSession.run_status(run_id)``   →  ``agent/session.run.status`` (did it execute/bill? forum #341)
+- ``AgentSessionClient.frames(...)``    →  ``agent/session.frames`` (archived frame replay by seq)
 - ``AgentSessionClient.complete(...)``  →  ``agent/complete`` (L1 stateless)
 
 Wire / auth model (plugin POV):
@@ -50,6 +52,8 @@ METHOD_AGENT_SESSION_HISTORY = "agent/session.history"
 METHOD_AGENT_SESSION_DELETE = "agent/session.delete"
 METHOD_AGENT_SESSION_LIST = "agent/session.list"
 METHOD_AGENT_SESSION_REFRESH = "agent/session.refresh"
+METHOD_AGENT_SESSION_RUN_STATUS = "agent/session.run.status"
+METHOD_AGENT_SESSION_FRAMES = "agent/session.frames"
 METHOD_AGENT_COMPLETE = "agent/complete"
 
 # Mirror matrix/src/executa/protocol.py AGENT_ERR_*
@@ -163,6 +167,23 @@ class AgentSession:
         return await self._client._call(
             METHOD_AGENT_SESSION_CANCEL,
             {"app_session_uuid": self.uuid, "run_id": run_id},
+        )
+
+    async def run_status(self, run_id: str, *, timeout: float = 15.0) -> dict:
+        """Point-in-time status of one run (push pairs with pull, forum #341).
+
+        Check this BEFORE re-running after a broken/timed-out ``run()`` —
+        ``"completed"`` means the run executed and was billed; recover its
+        output via :meth:`AgentSessionClient.frames` (use the ``stream_id``
+        from THIS response — the one echoed by ``run()`` is host-local and
+        not valid for frame replay). Statuses: ``queued | running |
+        completed | failed | cancelled``; unknown / foreign / aged-out
+        (>1h) runs raise ``AGENT_ERR_SESSION_NOT_FOUND``-class errors.
+        """
+        return await self._client._call(
+            METHOD_AGENT_SESSION_RUN_STATUS,
+            {"app_session_uuid": self.uuid, "run_id": run_id},
+            timeout=timeout,
         )
 
     async def history(self) -> dict:
@@ -416,6 +437,48 @@ class AgentSessionClient:
             timeout=timeout,
         )
 
+    async def run_status(
+        self,
+        app_session_uuid: str,
+        run_id: str,
+        *,
+        timeout: float = 15.0,
+    ) -> dict:
+        """Point-in-time status of one run (client-level form of
+        :meth:`AgentSession.run_status` — works from a bare uuid after a
+        process restart). Returns ``{status, run_id, task_id, stream_id,
+        started_at?, finished_at?, model?, error?}``.
+        """
+        return await self._call(
+            METHOD_AGENT_SESSION_RUN_STATUS,
+            {"app_session_uuid": app_session_uuid, "run_id": run_id},
+            timeout=timeout,
+        )
+
+    async def frames(
+        self,
+        stream_id: str,
+        *,
+        after_seq: int = 0,
+        limit: int = 500,
+        timeout: float = 30.0,
+    ) -> dict:
+        """Replay a run's archived stream frames by ``seq``.
+
+        ``stream_id`` must come from :meth:`run_status` (the id echoed by
+        ``run()`` is host-local). Page with ``after_seq`` = last seen seq
+        until a frame carries ``done: true``. Rate limit 30/min/user shared
+        with the platform's other pull channels — back off on
+        ``AGENT_ERR_RATE_LIMITED``. Archive window ~1h.
+
+        Returns ``{"frames": [{seq>=1, payload, done, ...}], "complete"}``.
+        """
+        return await self._call(
+            METHOD_AGENT_SESSION_FRAMES,
+            {"stream_id": stream_id, "after_seq": after_seq, "limit": limit},
+            timeout=timeout,
+        )
+
     async def complete(
         self,
         *,
@@ -460,6 +523,8 @@ __all__ = [
     "METHOD_AGENT_SESSION_DELETE",
     "METHOD_AGENT_SESSION_LIST",
     "METHOD_AGENT_SESSION_REFRESH",
+    "METHOD_AGENT_SESSION_RUN_STATUS",
+    "METHOD_AGENT_SESSION_FRAMES",
     "METHOD_AGENT_COMPLETE",
     "AGENT_ERR_NOT_GRANTED",
     "AGENT_ERR_SESSION_NOT_FOUND",
