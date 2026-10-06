@@ -46,6 +46,9 @@ anna-executa-examples/
 │                                        #     dual mobile_entry + desktop degradation + dev.mocks
 │   └── anna-app-frame-embed-demo/       # ⭐ Anna App — scoped csp_overrides[frame-src] third-party embeds
 │                                        #     (YouTube player, playback permission delegation, timestamp jumps)
+│   └── anna-app-live-bridge-demo/       # ⭐ Anna App — live entry_payload delivery to an already-open
+│                                        #     single-instance window, runtime_state_synced patches and
+│                                        #     chat.append_artifact correct usage (forum #376 reference)
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

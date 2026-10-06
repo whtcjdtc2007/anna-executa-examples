@@ -1,0 +1,8 @@
+{
+  "slug": "live-bridge-demo",
+  "name": "Live Bridge Demo",
+  "version": "0.1.0",
+  "tagline": "Live entry_payload delivery, runtime_state patches and chat artifacts.",
+  "description": "Live Bridge Demo exercises the three host surfaces that connect Anna's LLM to an ALREADY-OPEN app window (forum #376 reference example).\n\n**What's inside**\n\n- **Entry payload panel** — shows the `entry_payload` received at the `hello` handshake AND every live `entry_payload` event pushed when the LLM re-invokes `open_app_view` on this single-instance window with a fresh payload. No refresh needed.\n- **Runtime state panel** — shows `runtime_state_synced {patch}` events pushed by the LLM's `update_app_view(runtime_state_patch=...)`.\n- **Artifact panel** — sends a `chat.append_artifact` with the CORRECT nested argument shape and shows the acknowledged `artifact_id` (or the error code).\n\n**How to use**\n\nKeep the window open, then ask Anna to call `open_app_view` with a fresh payload (the app builds the exact prompt for you) and watch the request arrive live.",
+  "category": "developer-tools"
+}

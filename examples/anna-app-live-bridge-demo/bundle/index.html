@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Live Bridge Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>anna-app Live Bridge Demo</h1>
+      <p class="muted">
+        Exercises live <code>entry_payload</code> delivery (single-instance
+        re-invocation), <code>runtime_state_synced</code> patches and
+        <code>chat.append_artifact</code>. Forum&nbsp;#376 reference example.
+      </p>
+      <p class="muted" id="conn-status">Connecting to Anna host…</p>
+    </header>
+
+    <section>
+      <h2>1. Entry payload — live delivery</h2>
+      <p class="muted">
+        Shown below: the payload from the <code>hello</code> handshake, then every
+        <code>entry_payload</code> event pushed while this window stays open.
+        <strong>No refresh needed.</strong>
+      </p>
+      <pre id="entry-payload-view">(not connected)</pre>
+      <div class="prompt-row">
+        <label for="app-id">This app's numeric ID
+          <input id="app-id" type="number" min="1" placeholder="e.g. 254" />
+        </label>
+        <button id="build-prompt" disabled>Build open_app_view prompt</button>
+      </div>
+      <p class="muted">
+        Paste the generated prompt into Anna main chat <em>while keeping this
+        window open</em>, then watch the event log.
+      </p>
+      <pre id="prompt-view" class="selectable">(enter the installed numeric app ID, then build a prompt)</pre>
+    </section>
+
+    <section>
+      <h2>2. Runtime state — <code>runtime_state_synced</code></h2>
+      <p class="muted">
+        Ask Anna: “call <code>update_app_view</code> on window
+        <span id="wid-hint">…</span> with
+        <code>runtime_state_patch={"demoNote":"hello"}</code>”.
+      </p>
+      <pre id="runtime-state-view">(no patch received yet)</pre>
+    </section>
+
+    <section>
+      <h2>3. Chat artifact — <code>chat.append_artifact</code></h2>
+      <p class="muted">
+        Sends the <strong>correct nested shape</strong>
+        <code>{ artifact: { kind, summary, data } }</code> — the fields are
+        <code>data</code> / <code>payload_ref</code>, <em>not</em>
+        <code>payload</code>, and the object must be wrapped in
+        <code>artifact</code>.
+      </p>
+      <button id="send-artifact" disabled>Send test artifact</button>
+    </section>
+
+    <section>
+      <h2>Event log</h2>
+      <pre id="log"></pre>
+    </section>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

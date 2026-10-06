@@ -1,0 +1,13 @@
+{
+  "name": "anna-app-live-bridge-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Minimal anna-app exercising live entry_payload delivery (single-instance re-invocation), runtime_state_synced patches and chat.append_artifact (forum #376 reference).",
+  "scripts": {
+    "dev": "anna-app dev --no-llm",
+    "validate": "anna-app validate"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.57"
+  }
+}
