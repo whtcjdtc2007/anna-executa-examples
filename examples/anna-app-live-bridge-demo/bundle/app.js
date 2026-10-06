@@ -117,6 +117,19 @@ try {
   $("conn-status").textContent = `Connected — window ${anna.windowUuid}`;
   $("wid-hint").textContent = anna.windowUuid;
 
+  // forum #376 DX: hosts >= dispatcher 0.25.0 expose the app's own identity
+  // in the hello handshake — auto-fill the numeric ID (manual input stays
+  // as the fallback for older hosts).
+  if (anna.app && Number.isInteger(anna.app.id)) {
+    $("app-id").value = String(anna.app.id);
+    log(
+      `app identity from hello: id=${anna.app.id}` +
+        (anna.app.slug ? ` slug=${anna.app.slug}` : "")
+    );
+  } else {
+    log("host did not send app identity (older host) — enter the numeric ID manually");
+  }
+
   handleEntryPayload(anna.entryPayload, "hello handshake");
   anna.on("entry_payload", (p) => handleEntryPayload(p, "entry_payload event"));
 

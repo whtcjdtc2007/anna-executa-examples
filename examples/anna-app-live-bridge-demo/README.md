@@ -29,7 +29,7 @@ No Executas, storage, LLM calls or media — the manifest declares only
 | Flat `append_artifact({kind, summary, ...})` args | RPC succeeds but the artifact is empty | Wrap in `artifact`: `anna.chat.append_artifact({ artifact: { kind, summary, data } })` |
 | `payload` field on the artifact | Data silently dropped | The fields are `data` (inline JSON) / `payload_ref` |
 | `permission_denied` on `append_artifact` | Manifest lacks the grant **as seen by the host** | Declare `ui.host_api.chat: ["append_artifact"]` and `anna-app apps push` — since forum #376 the manifest ACL is live from push (grants like llm/image still need `apps install`) |
-| String app ID in `open_app_view` | `Input should be a valid integer` | `app_id` is the numeric `AnnaApp.id` |
+| String app ID in `open_app_view` | `Input should be a valid integer` | `app_id` is the numeric `AnnaApp.id` — the demo auto-fills it from `anna.app.id` (hosts ≥ dispatcher 0.25.0) |
 | Treating `open_app_view` success as delivery | "✅ opened existing window" but the app never saw the request | Only an `entry_payload` event (or a matching artifact) proves delivery — the demo logs both |
 
 ---
@@ -48,8 +48,10 @@ npx --yes @anna-ai/cli@latest dev --no-llm
 
 ## Verify in production
 
-Push + install as a disposable dev app, open the window, note its numeric
-app ID, then run the three scripted scenarios:
+Push + install as a disposable dev app and open the window — on hosts
+≥ dispatcher 0.25.0 the numeric app ID is **auto-detected** from the
+`hello` handshake (`anna.app.id`) and pre-filled; on older hosts type it
+manually. Then run the three scripted scenarios:
 
 1. **Live entry payload** — type the app ID into panel 1, click
    *Build open_app_view prompt*, paste the prompt into Anna main chat
