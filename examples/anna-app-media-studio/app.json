@@ -1,0 +1,19 @@
+{
+  "slug": "media-studio",
+  "version": "0.0.1",
+  "name": "Media Studio",
+  "tagline": "Generate short videos and narration via Anna's host media services — async jobs, progress, cancel, persist.",
+  "description": "Media Studio is the reference App for the platform media generation surface (forum #373/#358): text-to-video and image-to-video as async jobs with live progress and cancel/refund, synchronous TTS narration, capability discovery with CU pricing, URL-expiry recovery, and persisting artifacts to host storage. It also bundles the clip-narrator executa demonstrating the plugin-side reverse RPC half (video/generate + audio/speak).",
+  "category": "creative",
+  "logo_file": "bundle/icon.svg",
+  "cover_url": "",
+  "screenshots": [],
+  "homepage_url": "https://anna.partners/apps/media-studio",
+  "support_url": "https://anna.partners/apps/media-studio/support",
+  "privacy_url": "https://anna.partners/apps/media-studio/privacy",
+  "bundled_executas": {
+    "clip-narrator": {
+      "path": "./executas/clip-narrator"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "slug": "clip-narrator",
+  "name": "clip-narrator",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Example Executa v2 media plugin — generates a short video clip via reverse video/generate (async job, awaited) and narration via audio/speak.",
+  "tool_id": "tool-dev-clip-narrator",
+  "type": "python",
+
+  "distribution": {
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true
+      }
+    }
+  },
+
+  "_comment": "The `distribution` block with active=local makes `anna-app apps push` auto-install a local dev shim at ~/.anna/executa/bin/<minted-tool_id> (installLocalBundledShims), so Rediscover Local finds and runs it. Do NOT pin `executable_name` in the local profile — nexus lookup is `executable_name or tool_id`, and it must fall back to the minted tool_id. For production, add a `binary` profile (PyInstaller + binary_urls, see focus-session-python) and flip `active` or use `--profile`."
+}

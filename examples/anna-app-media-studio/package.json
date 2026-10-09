@@ -1,0 +1,16 @@
+{
+  "name": "anna-app-media-studio",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Media Studio — host video generate async jobs + audio speak + asset import best practices.",
+  "scripts": {
+    "dev": "anna-app dev",
+    "validate": "anna-app validate --strict",
+    "fixture:verify": "anna-app fixture verify fixtures/*.jsonl",
+    "fixture:summarize": "anna-app fixture summarize fixtures/happy-path.jsonl",
+    "test": "echo '(no JS tests for media-studio yet)'"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.14"
+  }
+}

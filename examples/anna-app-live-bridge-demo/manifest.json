@@ -1,0 +1,38 @@
+{
+  "schema": 3,
+  "required_executas": [],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Live Bridge Demo app open. When asked to deliver a payload to it, call open_app_view EXACTLY ONCE with the JSON arguments the user pastes (numeric app_id, view 'main', the given payload). Opening/focusing the window is NOT delivery confirmation — the app logs an entry_payload event when the payload actually arrives.",
+  "tags": ["demo", "entry-payload", "runtime-state", "artifact", "live-bridge"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Live Bridge Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 480, "h": 560 },
+        "default_size": { "w": 720, "h": 760 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      }
+    ],
+    "host_api": {
+      "window": ["ready", "set_title"],
+      "chat": ["append_artifact"]
+    },
+    "csp_overrides": {
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "user_id": 1
+  }
+}

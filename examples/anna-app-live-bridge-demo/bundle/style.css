@@ -1,0 +1,73 @@
+/* Live Bridge Demo — matches the dark minimal look of sibling demos. */
+:root {
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  padding: 24px;
+  background: #101b21;
+  color: #dce9eb;
+  font: 15px/1.5 system-ui, -apple-system, sans-serif;
+}
+header h1 {
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+h2 {
+  font-size: 16px;
+  margin: 28px 0 8px;
+}
+.muted {
+  color: #8fa8ae;
+  font-size: 13px;
+  margin: 4px 0;
+}
+pre {
+  background: #172830;
+  border: 1px solid #24404a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 260px;
+  overflow: auto;
+}
+pre.selectable {
+  user-select: all;
+}
+button,
+input {
+  font: inherit;
+  padding: 8px 12px;
+  background: #193139;
+  color: #dce9eb;
+  border: 1px solid #35717c;
+  border-radius: 8px;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+button:not(:disabled):hover {
+  background: #1f3d47;
+}
+input {
+  width: 110px;
+  margin-left: 8px;
+}
+.prompt-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 10px 0;
+}
+code {
+  background: #172830;
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 0.92em;
+}

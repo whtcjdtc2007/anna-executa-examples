@@ -1,0 +1,9 @@
+# AUTO-GENERATED at publish time by `anna-app apps push/publish`
+# (maps bundled_executas handles → server-minted tool_ids)
+bundle/anna-tool-ids.js
+# bundled executa local build/venv artifacts
+executas/*/__pycache__/
+executas/*/uv.lock
+executas/*/*.egg-info/
+executas/*/.venv/
+node_modules/

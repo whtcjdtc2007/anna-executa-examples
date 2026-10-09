@@ -46,6 +46,12 @@ anna-executa-examples/
 │                                        #     dual mobile_entry + desktop degradation + dev.mocks
 │   └── anna-app-frame-embed-demo/       # ⭐ Anna App — scoped csp_overrides[frame-src] third-party embeds
 │                                        #     (YouTube player, playback permission delegation, timestamp jumps)
+│   └── anna-app-live-bridge-demo/       # ⭐ Anna App — live entry_payload delivery to an already-open
+│                                        #     single-instance window, runtime_state_synced patches and
+│                                        #     chat.append_artifact correct usage (forum #376 reference)
+│   └── anna-app-media-studio/           # ⭐ Anna App — host video generate async jobs (progress/cancel/
+│                                        #     re-sign) + audio.speak TTS + llm.catalog pricing discovery,
+│                                        #     bundles the clip-narrator media reverse-RPC executa
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk
@@ -217,6 +223,7 @@ python examples/python/storage-notebook/storage_notebook.py
 - [Persistent Storage](https://anna.partners/developers/reference/executa-persistent-storage) — Per-user / per-app KV + object storage hosted by Anna
 - [Common Pitfalls](https://anna.partners/developers/reference/executa-pitfalls) — Read this first when a plugin shows as "Stopped"
 - [Anna App Example — Focus Flow](examples/anna-app-focus-flow/README.md) — End-to-end Anna App: 1 tool + 1 skill + premium UI bundle + full app manifest
+- [Anna App Example — Media Studio](examples/anna-app-media-studio/README.md) — Host media services: async video jobs + TTS narration + bundled media reverse-RPC executa
 
 ## License
 

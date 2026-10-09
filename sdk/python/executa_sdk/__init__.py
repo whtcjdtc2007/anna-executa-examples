@@ -63,6 +63,15 @@ from .web import (  # noqa: F401
     METHOD_WEB_SEARCH,
     METHOD_WEB_FETCH,
 )
+from .media import (  # noqa: F401
+    MediaClient,
+    MediaError,
+    VideoJobTimeout,
+    METHOD_VIDEO_GENERATE,
+    METHOD_VIDEO_GET_JOB,
+    METHOD_VIDEO_CANCEL_JOB,
+    METHOD_AUDIO_SPEAK,
+)
 from .context import (  # noqa: F401
     InvokeContext,
     attach_invoke_context,
@@ -85,6 +94,9 @@ __all__ = [
     "AgentSessionClient",
     "AgentError",
     "ImageClient",
+    "MediaClient",
+    "MediaError",
+    "VideoJobTimeout",
     "ImageError",
     "HostUploadClient",
     "UploadError",
