@@ -1,0 +1,32 @@
+[project]
+name = "clip-narrator"
+version = "0.1.0"
+description = "Example Executa v2 media plugin — generates a video clip via reverse video/generate and narration via audio/speak."
+requires-python = ">=3.10"
+authors = [{ name = "Anna Developer" }]
+license = { text = "MIT" }
+dependencies = [
+    "executa-sdk>=0.1.0",
+]
+
+[project.optional-dependencies]
+build = ["pyinstaller>=6.19.0"]
+
+[project.scripts]
+clip-narrator = "clip_narrator:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Resolve `executa-sdk` from the local in-repo SDK when installing from
+# this checkout. Mirrors image-poster / sampling-summarizer.
+[tool.uv.sources]
+executa-sdk = { path = "../../../../sdk/python", editable = true }
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+only-include = ["clip_narrator.py"]

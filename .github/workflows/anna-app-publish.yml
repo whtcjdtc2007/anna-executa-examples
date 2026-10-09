@@ -50,6 +50,7 @@ on:
           - anna-app-embed-demo
           - anna-app-llm-demo
           - anna-app-focus-flow
+          - anna-app-media-studio
       lifecycle:
         description: "build = assets only · push = + working draft · cut = + freeze & R2 mirror"
         type: choice

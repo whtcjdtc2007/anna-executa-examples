@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Media Studio</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body data-theme="light">
+    <main class="shell">
+      <aside class="sidebar">
+        <header class="sidebar__head">
+          <img src="icon.svg" alt="" width="28" height="28" />
+          <span class="brand__name">Media Studio</span>
+        </header>
+
+        <section class="panel">
+          <label for="prompt">Prompt</label>
+          <textarea
+            id="prompt"
+            rows="3"
+            placeholder="Aerial drone shot over a misty pine forest at sunrise"
+          ></textarea>
+
+          <label for="model">Video model</label>
+          <select id="model"><option value="">Default (catalog)</option></select>
+
+          <div class="grid2">
+            <div>
+              <label for="duration">Duration (s)</label>
+              <select id="duration"></select>
+            </div>
+            <div>
+              <label for="resolution">Resolution</label>
+              <select id="resolution"></select>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <label for="ratio">Aspect ratio</label>
+              <select id="ratio"></select>
+            </div>
+            <div>
+              <label for="audio-toggle">Native audio</label>
+              <select id="audio-toggle">
+                <option value="">n/a</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="estimate" id="estimate">estimate: —</div>
+
+          <button id="generate-btn">Generate video</button>
+          <button id="cancel-btn" disabled>Cancel job</button>
+          <button id="i2v-btn">Image → Video (first frame)</button>
+
+          <hr />
+          <label for="narration">Narration text</label>
+          <textarea
+            id="narration"
+            rows="2"
+            placeholder="Welcome to Media Studio."
+          ></textarea>
+
+          <label for="tts-model">TTS model</label>
+          <select id="tts-model"><option value="">Default (catalog)</option></select>
+
+          <div class="grid2">
+            <div>
+              <label for="tts-voice">Voice</label>
+              <select id="tts-voice"></select>
+            </div>
+            <div>
+              <label for="tts-language">Language</label>
+              <select id="tts-language"></select>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <label for="tts-format">Format</label>
+              <select id="tts-format"></select>
+            </div>
+            <div>
+              <label for="tts-speed">Speed <span id="tts-speed-val">1.0×</span></label>
+              <input id="tts-speed" type="range" min="0.5" max="2" step="0.1" value="1" />
+            </div>
+          </div>
+
+          <label class="check" id="tts-timestamps-row" hidden>
+            <input id="tts-timestamps" type="checkbox" /> Word timestamps
+          </label>
+
+          <div class="estimate" id="tts-estimate">0 chars · estimate: —</div>
+
+          <button id="speak-btn">Speak (TTS)</button>
+
+          <hr />
+          <button id="persist-btn" disabled>Persist video to host storage</button>
+          <button id="persist-audio-btn" disabled>Persist narration to host storage</button>
+          <button id="chat-btn" disabled>Send video to chat</button>
+          <button id="refresh-btn" disabled>Re-sign expired URL</button>
+
+          <details class="errors">
+            <summary>Error demos</summary>
+            <button id="err-invalid-btn">-32122 invalid duration</button>
+            <button id="err-voice-btn">-32145 invalid voice</button>
+            <button id="err-quota-btn">Catalog &amp; quota probe</button>
+          </details>
+
+          <div id="status" class="status" aria-live="polite">Not connected.</div>
+        </section>
+      </aside>
+
+      <section class="canvas">
+        <div id="preview" class="preview preview--empty">
+          <span class="preview__hint">Your generated video will appear here.</span>
+        </div>
+
+        <div class="progress" id="progress-row" hidden>
+          <div class="progress__bar"><div id="progress-fill"></div></div>
+          <span id="progress-text">queued…</span>
+        </div>
+
+        <div class="meta">
+          <span id="meta-model">model: —</span>
+          <span id="meta-cost">cost: —</span>
+          <span id="meta-job">job: —</span>
+          <span id="meta-r2">r2: —</span>
+        </div>
+
+        <div class="narration" id="narration-box" hidden>
+          <audio id="narration-player" controls></audio>
+          <div class="meta">
+            <span id="tts-meta-model">model: —</span>
+            <span id="tts-meta-voice">voice: —</span>
+            <span id="tts-meta-chars">chars: —</span>
+            <span id="tts-meta-cost">cost: —</span>
+          </div>
+        </div>
+
+        <div class="history" id="history"></div>
+      </section>
+    </main>
+
+    <script src="anna-tool-ids.js" defer></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

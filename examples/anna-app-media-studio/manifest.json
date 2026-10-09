@@ -1,0 +1,65 @@
+{
+  "schema": 3,
+  "host_capabilities": [
+    "llm.image",
+    "llm.video",
+    "llm.audio.speak",
+    "host.upload"
+  ],
+  "storage": {
+    "kv": true,
+    "scopes": {
+      "user": "rw"
+    }
+  },
+  "required_executas": [],
+  "optional_executas": [
+    {
+      "tool_id": "bundled:clip-narrator",
+      "version": "latest"
+    }
+  ],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Media Studio",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 640, "h": 520 },
+        "default_size": { "w": 1040, "h": 720 },
+        "max_size": { "w": 1680, "h": 1200 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "icon": "icon.svg"
+      }
+    ],
+    "host_api": {
+      "tools": ["optional:bundled:clip-narrator"],
+      "chat": ["append_artifact"],
+      "artifact": [],
+      "llm": ["catalog"],
+      "fs": [],
+      "storage": ["get", "set", "list", "delete"],
+      "prefs": [],
+      "window": ["set_title"],
+      "image": ["generate"],
+      "video": ["generate", "getJob", "cancelJob", "listJobs"],
+      "audio": ["speak"],
+      "upload": ["inline", "negotiate", "confirm"]
+    },
+    "csp_overrides": {
+      "img-src": ["'self'", "data:", "blob:", "https:"],
+      "media-src": ["'self'", "blob:", "https:"],
+      "font-src": ["'self'", "data:"],
+      "script-src": ["'self'"],
+      "connect-src": ["'self'", "https:"]
+    }
+  }
+}
