@@ -1,0 +1,64 @@
+{
+  "schema": 3,
+  "required_executas": [],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Voice Demo app open — a push-to-talk realtime voice session (anna.audio.session) that injects live context and can speak text directly. You do not need to summon any windows.",
+  "tags": [
+    "demo",
+    "voice",
+    "audio",
+    "realtime",
+    "agent"
+  ],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "form_factors": [
+      "desktop",
+      "mobile"
+    ],
+    "views": [
+      {
+        "name": "main",
+        "title": "Voice Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": {
+          "w": 420,
+          "h": 560
+        },
+        "default_size": {
+          "w": 520,
+          "h": 760
+        },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "icon": "icon.svg"
+      }
+    ],
+    "host_api": {
+      "window": [
+        "set_title"
+      ],
+      "audio": [
+        "speak",
+        "transcribe",
+        "session"
+      ],
+      "agent": {
+        "session": {
+          "auto": true
+        },
+        "tools": []
+      }
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "user_id": 1
+  }
+}

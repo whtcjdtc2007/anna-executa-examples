@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Voice Demo</title>
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="head">
+        <img src="icon.svg" alt="" width="28" height="28" />
+        <div>
+          <div class="brand">Voice Demo</div>
+          <div class="sub" id="status">idle</div>
+        </div>
+        <div class="head__right">
+          <label class="toggle"><input type="checkbox" id="llm-agent" checked /> LLM: agent</label>
+          <button id="btn-open" class="primary">Start session</button>
+          <button id="btn-end" disabled>End</button>
+        </div>
+      </header>
+
+      <section class="row models" id="models" hidden></section>
+
+      <section class="panel talk">
+        <button id="ptt" class="ptt" disabled>
+          <span class="ptt__dot"></span>
+          <span class="ptt__label">Hold to talk</span>
+        </button>
+        <div class="talk__hint">
+          Push-to-talk: PCM is streamed <b>only while pressed</b> (ASR is billed per second of audio you send).
+          Speak while Anna is talking to try barge-in.
+        </div>
+        <canvas id="vu" width="320" height="24"></canvas>
+      </section>
+
+      <section class="panel">
+        <label for="context">Live context — <code>setContext()</code> (replaces; applies from the next utterance, never enters history)</label>
+        <textarea id="context" rows="3" placeholder='e.g. {"game":"dota2","minute":12,"hero":"Pudge","gold":1830,"enemy_cores":["Anti-Mage"]}'></textarea>
+        <div class="row">
+          <button id="btn-context">Set context</button>
+          <button id="btn-context-tick">Auto-update every 5s</button>
+          <span class="muted" id="context-state">—</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <label for="say-text"><code>say()</code> — TTS-only, no LLM</label>
+        <div class="row">
+          <input id="say-text" value="小心上路，敌方三人消失。" />
+          <select id="say-priority">
+            <option value="normal">normal (queue)</option>
+            <option value="high">high (preempt)</option>
+          </select>
+          <button id="btn-say">Say</button>
+          <button id="btn-interrupt">Interrupt</button>
+        </div>
+      </section>
+
+      <section class="panel transcript" id="transcript"></section>
+
+      <footer class="panel usage">
+        <div><span class="muted">first audio</span> <b id="m-ttfa">—</b></div>
+        <div><span class="muted">say first audio</span> <b id="m-say-ttfa">—</b></div>
+        <div><span class="muted">chunks sent</span> <b id="m-chunks">0</b></div>
+        <div><span class="muted">usage</span> <b id="m-usage">—</b></div>
+      </footer>
+    </main>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

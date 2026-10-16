@@ -55,6 +55,7 @@ Error codes — keep in sync with ``matrix/src/executa/protocol.py`` and
 from __future__ import annotations
 
 import asyncio
+import base64
 import threading
 import uuid
 from dataclasses import dataclass
@@ -69,6 +70,7 @@ METHOD_VIDEO_GENERATE = "video/generate"
 METHOD_VIDEO_GET_JOB = "video/get_job"
 METHOD_VIDEO_CANCEL_JOB = "video/cancel_job"
 METHOD_AUDIO_SPEAK = "audio/speak"
+METHOD_AUDIO_TRANSCRIBE = "audio/transcribe"
 
 # ─── Error codes ──────────────────────────────────────────────────────
 
@@ -89,6 +91,7 @@ AUDIO_ERR_PROVIDER_ERROR = -32144
 AUDIO_ERR_VOICE_INVALID = -32145
 AUDIO_ERR_MODEL_UNAVAILABLE = -32146
 AUDIO_ERR_CONTENT_REJECTED = -32147
+AUDIO_ERR_INVOKE_BUDGET_EXCEEDED = -32148  # audio/transcribe per-invoke seconds budget
 
 _TERMINAL_JOB_STATES = frozenset({"succeeded", "failed", "cancelled", "expired"})
 
@@ -145,7 +148,7 @@ class MediaClient:
         print(job["result"]["url"])          # presigned GET, ~30 min TTL
 
         # Sync TTS
-        speech = await media.speak(text="Welcome!", voice="Cherry")
+        speech = await media.speak(text="Welcome!")  # voice omitted → model default
         print(speech["url"])
 
     Like ``StorageClient``, register a stdin reader that calls
@@ -372,13 +375,54 @@ class MediaClient:
             params["model"] = model
         return await self._call(METHOD_AUDIO_SPEAK, params, timeout)
 
+    async def transcribe(
+        self,
+        *,
+        audio_bytes: Optional[bytes] = None,
+        audio_url: Optional[str] = None,
+        format: str = "wav",
+        language: Optional[str] = None,
+        model: Optional[str] = None,
+        timeout: float = 90.0,
+    ) -> dict:
+        """Synchronous STT (``audio/transcribe``; EXECUTA_STT billing).
+
+        Exactly one of ``audio_bytes`` (inline, ≤ 10 MB decoded — the SDK
+        base64-encodes it) or ``audio_url`` (public https, ≤ 25 MB) is
+        required. ``format`` is mandatory for inline audio:
+        ``wav|mp3|webm|ogg|flac|m4a``. Max 10 minutes per call; per-invoke
+        total seconds are capped by the host (``-32148``).
+
+        Requires ``host_capabilities ∋ "llm.audio.transcribe"`` **and** the
+        user's ``media_grant.audio.transcribe``. Returns::
+
+            {"text": "...", "durationSec": 2.8, "durationExact": true,
+             "language": "zh", "billedCostCU": 1, "model": "<resolved model>"}
+        """
+        if (audio_bytes is None) == (audio_url is None):
+            raise MediaError(
+                VIDEO_ERR_INVALID_REQUEST,
+                "exactly one of audio_bytes / audio_url is required",
+            )
+        params: Dict[str, Any] = {}
+        if audio_bytes is not None:
+            params["audioBase64"] = base64.b64encode(audio_bytes).decode("ascii")
+            params["format"] = format
+        else:
+            params["audioUrl"] = audio_url
+        if language is not None:
+            params["language"] = language
+        if model is not None:
+            params["model"] = model
+        return await self._call(METHOD_AUDIO_TRANSCRIBE, params, timeout)
+
     # — internal —
 
     async def _call(self, method: str, params: dict, timeout: float) -> dict:
         if self._disabled_reason:
             code = (
                 AUDIO_ERR_NOT_GRANTED
-                if method == METHOD_AUDIO_SPEAK
+                if method in (METHOD_AUDIO_SPEAK, METHOD_AUDIO_TRANSCRIBE)
                 else VIDEO_ERR_NOT_GRANTED
             )
             raise MediaError(code, self._disabled_reason)
@@ -421,6 +465,7 @@ __all__ = [
     "METHOD_VIDEO_GET_JOB",
     "METHOD_VIDEO_CANCEL_JOB",
     "METHOD_AUDIO_SPEAK",
+    "METHOD_AUDIO_TRANSCRIBE",
     "VIDEO_ERR_NOT_GRANTED",
     "VIDEO_ERR_QUOTA_EXCEEDED",
     "VIDEO_ERR_INVALID_REQUEST",
@@ -438,4 +483,5 @@ __all__ = [
     "AUDIO_ERR_VOICE_INVALID",
     "AUDIO_ERR_MODEL_UNAVAILABLE",
     "AUDIO_ERR_CONTENT_REJECTED",
+    "AUDIO_ERR_INVOKE_BUDGET_EXCEEDED",
 ]

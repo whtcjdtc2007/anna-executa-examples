@@ -33,6 +33,7 @@ package media
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -45,10 +46,11 @@ import (
 // Constants — keep in sync with matrix/src/executa/protocol.py and
 // matrix-nexus/src/services/app_media_facade.py.
 const (
-	MethodVideoGenerate  = "video/generate"
-	MethodVideoGetJob    = "video/get_job"
-	MethodVideoCancelJob = "video/cancel_job"
-	MethodAudioSpeak     = "audio/speak"
+	MethodVideoGenerate   = "video/generate"
+	MethodVideoGetJob     = "video/get_job"
+	MethodVideoCancelJob  = "video/cancel_job"
+	MethodAudioSpeak      = "audio/speak"
+	MethodAudioTranscribe = "audio/transcribe"
 
 	ErrCodeVideoNotGranted          = -32120
 	ErrCodeVideoQuotaExceeded       = -32121
@@ -67,6 +69,8 @@ const (
 	ErrCodeAudioVoiceInvalid        = -32145
 	ErrCodeAudioModelUnavailable    = -32146
 	ErrCodeAudioContentRejected     = -32147
+	// audio/transcribe per-invoke seconds budget exceeded (host gate).
+	ErrCodeAudioInvokeBudgetExceeded = -32148
 )
 
 // MediaError wraps a JSON-RPC error returned by the host.
@@ -103,6 +107,28 @@ type SpeakRequest struct {
 	Speed      float64 `json:"speed,omitempty"`    // 0.5–2.0
 	Delivery   string  `json:"delivery,omitempty"` // "url"(default)|"inline"
 	Model      string  `json:"model,omitempty"`
+}
+
+// TranscribeRequest mirrors `audio/transcribe` params (synchronous STT ≤ 10 min).
+// Exactly one of AudioBase64 / AudioURL is required; Format is mandatory for
+// inline audio (wav|mp3|webm|ogg|flac|m4a). Use Client.TranscribeBytes to
+// base64-encode raw bytes.
+type TranscribeRequest struct {
+	AudioBase64 string `json:"audioBase64,omitempty"` // inline, ≤ 10 MB decoded
+	AudioURL    string `json:"audioUrl,omitempty"`    // public https, ≤ 25 MB
+	Format      string `json:"format,omitempty"`
+	Language    string `json:"language,omitempty"`
+	Model       string `json:"model,omitempty"`
+}
+
+// TranscribeResult is the response of audio/transcribe.
+type TranscribeResult struct {
+	Text          string  `json:"text"`
+	DurationSec   float64 `json:"durationSec,omitempty"`
+	DurationExact bool    `json:"durationExact,omitempty"` // false → byte-based estimate (non-wav)
+	Language      string  `json:"language,omitempty"`
+	BilledCostCU  int     `json:"billedCostCU"`
+	Model         string  `json:"model,omitempty"` // resolved STT model
 }
 
 // VideoResult is the terminal `result` object of a succeeded job.
@@ -302,13 +328,39 @@ func (c *Client) Speak(req SpeakRequest, timeout time.Duration) (*SpeakResult, e
 	return &out, nil
 }
 
+// Transcribe issues a synchronous `audio/transcribe` STT request
+// (EXECUTA_STT billing). Requires host_capabilities "llm.audio.transcribe"
+// and the user's media_grant.audio.transcribe.
+func (c *Client) Transcribe(req TranscribeRequest, timeout time.Duration) (*TranscribeResult, error) {
+	if (req.AudioBase64 == "") == (req.AudioURL == "") {
+		return nil, errors.New("exactly one of AudioBase64 / AudioURL is required")
+	}
+	if req.AudioBase64 != "" && req.Format == "" {
+		return nil, errors.New("Format is required for inline audio")
+	}
+	var out TranscribeResult
+	if err := c.call(MethodAudioTranscribe, req, timeout, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// TranscribeBytes is a convenience wrapper that base64-encodes raw audio.
+func (c *Client) TranscribeBytes(audio []byte, format, language string, timeout time.Duration) (*TranscribeResult, error) {
+	return c.Transcribe(TranscribeRequest{
+		AudioBase64: base64.StdEncoding.EncodeToString(audio),
+		Format:      format,
+		Language:    language,
+	}, timeout)
+}
+
 func (c *Client) call(method string, params any, timeout time.Duration, out any) error {
 	c.mu.Lock()
 	if c.disabledReason != "" {
 		reason := c.disabledReason
 		c.mu.Unlock()
 		code := ErrCodeVideoNotGranted
-		if method == MethodAudioSpeak {
+		if method == MethodAudioSpeak || method == MethodAudioTranscribe {
 			code = ErrCodeAudioNotGranted
 		}
 		return &MediaError{Code: code, Message: reason}
