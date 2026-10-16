@@ -1,0 +1,14 @@
+{
+  "slug": "voice-demo",
+  "version": "0.0.1",
+  "name": "Voice Demo",
+  "tagline": "Push-to-talk realtime voice with Anna — live context injection, say(), barge-in.",
+  "description": "Reference App for the realtime voice session surface (anna.audio.session): a push-to-talk microphone streams 16 kHz PCM to the host, which runs streaming ASR → this app's agent session → streaming TTS with barge-in. Demonstrates setContext() (per-turn live state injected into the prompt, never into history), say() (TTS-only text with priority/preemption), interrupt(), the gapless PCM player, and the usage summary returned on end().",
+  "category": "productivity",
+  "logo_file": "bundle/icon.svg",
+  "cover_url": "",
+  "screenshots": [],
+  "homepage_url": "https://anna.partners/apps/voice-demo",
+  "support_url": "https://anna.partners/apps/voice-demo/support",
+  "privacy_url": "https://anna.partners/apps/voice-demo/privacy"
+}

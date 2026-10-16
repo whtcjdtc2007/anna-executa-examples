@@ -49,6 +49,7 @@
  *   AUDIO_ERR_VOICE_INVALID        = -32145
  *   AUDIO_ERR_MODEL_UNAVAILABLE    = -32146
  *   AUDIO_ERR_CONTENT_REJECTED     = -32147
+ *   AUDIO_ERR_INVOKE_BUDGET_EXCEEDED = -32148   (audio/transcribe per-invoke seconds)
  */
 
 "use strict";
@@ -61,6 +62,7 @@ const METHOD_VIDEO_GENERATE = "video/generate";
 const METHOD_VIDEO_GET_JOB = "video/get_job";
 const METHOD_VIDEO_CANCEL_JOB = "video/cancel_job";
 const METHOD_AUDIO_SPEAK = "audio/speak";
+const METHOD_AUDIO_TRANSCRIBE = "audio/transcribe";
 
 const VIDEO_ERR_NOT_GRANTED = -32120;
 const VIDEO_ERR_QUOTA_EXCEEDED = -32121;
@@ -79,6 +81,7 @@ const AUDIO_ERR_PROVIDER_ERROR = -32144;
 const AUDIO_ERR_VOICE_INVALID = -32145;
 const AUDIO_ERR_MODEL_UNAVAILABLE = -32146;
 const AUDIO_ERR_CONTENT_REJECTED = -32147;
+const AUDIO_ERR_INVOKE_BUDGET_EXCEEDED = -32148; // audio/transcribe per-invoke seconds budget
 
 const TERMINAL_JOB_STATES = new Set([
   "succeeded",
@@ -266,6 +269,46 @@ class MediaClient {
     return this._call(METHOD_AUDIO_SPEAK, params, timeoutMs);
   }
 
+  /**
+   * Synchronous STT (`audio/transcribe`; EXECUTA_STT billing). Exactly one of
+   * `audioBuffer` (inline, ≤ 10 MB; base64-encoded by the SDK; `format`
+   * required: wav|mp3|webm|ogg|flac|m4a) or `audioUrl` (public https, ≤ 25 MB).
+   * Max 10 min per call; per-invoke total seconds capped by the host (-32148).
+   * Requires `host_capabilities ∋ "llm.audio.transcribe"` + user grant
+   * `media_grant.audio.transcribe`. Resolves to
+   * `{text, durationSec, durationExact, language, billedCostCU, model}`.
+   *
+   * @param {{
+   *   audioBuffer?: Buffer | Uint8Array,
+   *   audioUrl?: string,
+   *   format?: string,            // default "wav" (inline only)
+   *   language?: string,
+   *   model?: string,
+   *   timeoutMs?: number,         // default 90_000
+   * }} opts
+   */
+  transcribe(opts) {
+    const { audioBuffer, audioUrl, format = "wav", language, model, timeoutMs = 90_000 } = opts || {};
+    if ((audioBuffer == null) === (audioUrl == null)) {
+      return Promise.reject(
+        new MediaError(
+          VIDEO_ERR_INVALID_REQUEST,
+          "exactly one of audioBuffer / audioUrl is required"
+        )
+      );
+    }
+    const params = {};
+    if (audioBuffer != null) {
+      params.audioBase64 = Buffer.from(audioBuffer).toString("base64");
+      params.format = format;
+    } else {
+      params.audioUrl = audioUrl;
+    }
+    if (language != null) params.language = language;
+    if (model != null) params.model = model;
+    return this._call(METHOD_AUDIO_TRANSCRIBE, params, timeoutMs);
+  }
+
   dispatchResponse(msg) {
     if (!msg || typeof msg !== "object" || "method" in msg) return false;
     const id = msg.id;
@@ -291,7 +334,7 @@ class MediaClient {
   _call(method, params, timeoutMs) {
     if (this._disabledReason) {
       const code =
-        method === METHOD_AUDIO_SPEAK
+        method === METHOD_AUDIO_SPEAK || method === METHOD_AUDIO_TRANSCRIBE
           ? AUDIO_ERR_NOT_GRANTED
           : VIDEO_ERR_NOT_GRANTED;
       return Promise.reject(new MediaError(code, this._disabledReason));
@@ -333,6 +376,7 @@ module.exports = {
   METHOD_VIDEO_GET_JOB,
   METHOD_VIDEO_CANCEL_JOB,
   METHOD_AUDIO_SPEAK,
+  METHOD_AUDIO_TRANSCRIBE,
   VIDEO_ERR_NOT_GRANTED,
   VIDEO_ERR_QUOTA_EXCEEDED,
   VIDEO_ERR_INVALID_REQUEST,
@@ -350,4 +394,5 @@ module.exports = {
   AUDIO_ERR_VOICE_INVALID,
   AUDIO_ERR_MODEL_UNAVAILABLE,
   AUDIO_ERR_CONTENT_REJECTED,
+  AUDIO_ERR_INVOKE_BUDGET_EXCEEDED,
 };

@@ -1,0 +1,14 @@
+{
+  "name": "anna-app-voice-demo",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Voice Demo — push-to-talk realtime voice session (anna.audio.session) with live context, say() and barge-in.",
+  "scripts": {
+    "dev": "anna-app dev",
+    "validate": "anna-app validate --strict",
+    "test": "echo '(no JS tests for voice-demo yet)'"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.58"
+  }
+}
