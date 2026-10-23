@@ -2,13 +2,16 @@
  * Media Studio — anna-app bundle.
  *
  * Reference App for the platform media generation surface
- * (`platform-media-generation-video-audio.md` §12), built on
- * `@anna-ai/app-runtime` >= 0.20.0:
+ * (`platform-media-generation-video-audio.md` §12 +
+ * `platform-media-generation-music.md` §12.2), built on
+ * `@anna-ai/app-runtime` >= 0.23.0:
  *
  *   anna.llm.catalog({serviceType})        → capability + CU pricing discovery
  *   anna.video.generate(...)               → async job submit ({jobId, estimatedCostCU})
  *   anna.video.generateAwait(args, opts)   → submit + media_job events + poll
  *   anna.video.{getJob,cancelJob,listJobs} → job lifecycle (getJob re-signs URLs)
+ *   anna.music.generateAwait(args, opts)   → async music job (capability-driven form,
+ *                                            idempotencyKey replay, -32165 alternatives)
  *   anna.audio.speak(...)                  → sync TTS narration
  *   anna.image.generate(...)               → first frame for image-to-video
  *   anna.upload.inline / negotiate+confirm → persist artifacts to host storage
@@ -21,7 +24,11 @@
  *   5. persist to host storage + chat.append_artifact + URL-expiry recovery
  *      (getJob re-sign button);
  *   6. error demo area (invalid params / quota probes) showing canonical
- *      error codes.
+ *      error codes;
+ *   7. Music panel (music.md §12.2): catalog-driven lyrics / instrumental /
+ *      duration / reference-image controls, idempotent replay, -32165
+ *      MUSIC_FEATURE_UNSUPPORTED → alternatives chips, <audio> + lyrics echo,
+ *      entry_payload prefill (agent → App hand-off), persist to storage.
  *
  * Errors arrive as standard RPC errors with `.code` set to the facade's
  * canonical name; the original numeric JSON-RPC code (-32120…-32147 for the
@@ -41,6 +48,13 @@ const state = {
   abort: null, // AbortController for the in-flight generateAwait
   history: [], // [{jobId, prompt, model, state}]
   narration: null, // last audio.speak result + request echo
+  musicCatalog: [], // music_gen models from anna.llm.catalog
+  musicJob: null, // last music job view
+  musicAbort: null, // AbortController for the in-flight music generateAwait
+  lastFirstFrameUrl: null, // image.generate output (reference image for Lyria)
+  lastFirstFrameR2Key: null, // → anna.image.resign after the 30-min URL TTL
+  imageAbort: null, // AbortController for the in-flight image.generateAwait (job mode)
+  imageJob: null, // last image job view (ijob_…) when "Run first frame as job" is on
 };
 
 let anna = null;
@@ -59,8 +73,28 @@ async function init() {
     anna.window.setTitle("Media Studio");
   } catch (_) {}
 
-  await Promise.all([loadCatalog(), loadTtsCatalog(), restoreHistory()]);
+  await Promise.all([loadCatalog(), loadTtsCatalog(), loadMusicCatalog(), restoreHistory()]);
+  applyEntryPayload(anna.entryPayload);
+  // Agent → App hand-off: open_app_view(entry_payload={music:{prompt,lyrics,…}})
+  // on a live window re-pushes the payload (single_instance) — prefill again.
+  anna.on("entry_payload", (p) => applyEntryPayload(p));
   setStatus("Connected. Pick a model and generate.", "ok");
+}
+
+/** `entry_payload.music` prefills the Music panel (platform-operates-App
+ *  hand-off, music.md §12.2 item 7). Nothing is auto-submitted. */
+function applyEntryPayload(payload) {
+  const m = payload && payload.music;
+  if (!m || typeof m !== "object") return;
+  if (m.prompt) el("music-prompt").value = String(m.prompt);
+  if (m.lyrics) el("music-lyrics").value = String(m.lyrics);
+  if (m.model && state.musicCatalog.some((x) => x.modelName === m.model)) el("music-model").value = m.model;
+  if (typeof m.instrumental === "boolean") el("music-instrumental").checked = m.instrumental;
+  if (m.idempotencyKey) el("music-idem").value = String(m.idempotencyKey);
+  syncMusicParamSpace();
+  if (m.durationSec) el("music-duration").value = String(m.durationSec);
+  updateMusicEstimate();
+  setStatus("Music panel prefilled from entry payload — review and Generate.", "ok");
 }
 
 // ─── capability discovery (§7.6) ────────────────────────────────────
@@ -280,35 +314,412 @@ async function onGenerate(extraArgs = {}) {
 }
 
 function onCancel() {
+  if (state.imageAbort) {
+    state.imageAbort.abort(); // → image.cancelJob under the hood
+    setStatus("Cancel requested…", "warn");
+    return;
+  }
   if (state.abort) {
     state.abort.abort(); // → video.cancelJob under the hood
     setStatus("Cancel requested…", "warn");
   }
 }
 
-/** Step 3: image.generate → first frame → image-to-video. */
+/** Step 3: image.generate (sync) or image.generateAwait (job) → first frame → image-to-video.
+ *
+ * "Run first frame as job" (platform-media-generation-image-jobs.md §12.1): same
+ * request body, but the host returns an ``ijob_…`` immediately and we await it
+ * through the shared media_job event stream — the render survives an iframe
+ * reload (``image.listJobs``), can be cancelled, and ``result.images[].url`` is
+ * re-signed by ``image.getJob`` / ``image.resign`` after the 30-min TTL. */
 async function onImageToVideo() {
   const prompt = el("prompt").value.trim();
   if (!prompt) {
     setStatus("Enter a prompt first.", "warn");
     return;
   }
+  const asJob = el("image-as-job").checked && typeof anna.image.generateAwait === "function";
   setBusy(true);
-  setStatus("Generating first frame via image.generate…");
+  setStatus(asJob ? "Submitting first frame as image job…" : "Generating first frame via image.generate…");
   try {
-    const res = await anna.image.generate({
+    const args = {
       prompt: `Single cinematic keyframe, first frame of a video: ${prompt}`,
       n: 1,
-    });
-    const img = (res.images || [])[0];
-    if (!img || !img.url) throw new Error("image.generate returned no image");
+    };
+    let img;
+    if (asJob) {
+      state.imageAbort = new AbortController();
+      const view = await anna.image.generateAwait(
+        { ...args, clientTag: "first-frame", idempotencyKey: `first-frame:${hashPrompt(prompt)}` },
+        {
+          signal: state.imageAbort.signal,
+          onProgress: (p) => {
+            const q = p.progress && p.progress.queuePosition;
+            setStatus(`First frame job ${p.state}${q != null ? ` · queue ${q}` : ""}…`);
+          },
+        }
+      );
+      state.imageJob = view;
+      img = ((view.result && view.result.images) || [])[0];
+      if (view.idempotentReplay) setStatus("↩ idempotent replay · 0 CU charged", "warn");
+    } else {
+      const res = await anna.image.generate(args);
+      img = (res.images || [])[0];
+    }
+    if (!img || !img.url) throw new Error("image returned no image");
+    state.lastFirstFrameUrl = img.url; // reusable as Lyria referenceImageUrl
+    state.lastFirstFrameR2Key = img.r2Key || img.r2_key || null; // → image.resign after 30 min
+    el("music-ref-from-frame-btn").hidden = false;
     setStatus("First frame ready — animating it…");
     setBusy(false);
     await onGenerate({ imageUrl: img.url });
   } catch (e) {
     setStatus(`Image → video failed: ${describeError(e)}`, "err");
     setBusy(false);
+  } finally {
+    state.imageAbort = null;
   }
+}
+
+function hashPrompt(text) {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+// ─── music (platform-media-generation-music.md §12.2) ───────────────
+
+async function loadMusicCatalog() {
+  try {
+    const res = await anna.llm.catalog({ serviceType: "music_gen" });
+    state.musicCatalog = res.models || [];
+    if (res.quota) state.remainingCU = res.quota.remainingCU;
+  } catch (e) {
+    setStatus(`llm.catalog(music_gen) failed: ${describeError(e)}`, "warn");
+    state.musicCatalog = [];
+  }
+  fillModelSelect(el("music-model"), state.musicCatalog, "Default (admin/catalog pick)");
+  for (const o of el("music-model").options) {
+    const m = state.musicCatalog.find((x) => x.modelName === o.value);
+    if (m && m.isPlatformDefault) o.textContent += " ◆";
+  }
+  syncMusicParamSpace();
+  updateMusicEstimate();
+}
+
+function selectedMusicModel() {
+  const name = el("music-model").value;
+  return (
+    state.musicCatalog.find((m) => m.modelName === name) ||
+    state.musicCatalog.find((m) => m.isUserPreferred) ||
+    state.musicCatalog.find((m) => m.isPlatformDefault) ||
+    null
+  );
+}
+
+/** The whole form is driven by `capabilities` — no model knowledge is
+ *  hard-coded here (forum #426 "model-specific discovery"). */
+function syncMusicParamSpace() {
+  const m = selectedMusicModel();
+  const caps = (m && m.capabilities) || {};
+  const capsBox = el("music-caps");
+  if (!m) {
+    capsBox.textContent = "capabilities: —";
+  } else {
+    const d = caps.duration || {};
+    capsBox.textContent =
+      `capabilities: lyrics ${caps.lyrics ? `yes (${caps.lyricsMode})` : "no"}` +
+      ` · vocals ${caps.vocals ? "yes" : "no"}` +
+      ` · length ${d.type === "range" ? `${d.min}–${d.max}s` : `model-decided${d.typicalMaxSec ? ` ≤${d.typicalMaxSec}s` : ""}`}` +
+      ` · ${(caps.formats || []).join("/")}` +
+      (caps.referenceImage ? " · reference image" : "") +
+      (caps.lyricsRequiredForVocals ? " · lyrics required for vocals" : "");
+  }
+
+  // lyrics: hidden when the model cannot take them; hint on prompt_embedded
+  el("music-lyrics-row").hidden = !caps.lyrics;
+  el("music-lyrics-hint").textContent =
+    caps.lyricsMode === "prompt_embedded" ? "(model may rewrite — pick a lyricsMode=field model for verbatim singing)" : "";
+  el("music-lyrics").maxLength = caps.lyricsMaxChars || 4000;
+
+  // instrumental: instrumental-only models lock it on
+  const inst = el("music-instrumental");
+  if (caps.instrumentalOnly) {
+    inst.checked = true;
+    inst.disabled = true;
+  } else {
+    inst.disabled = !caps.instrumental;
+  }
+  el("music-lyrics").disabled = inst.checked;
+
+  // duration: only range-length models expose the select
+  const dur = el("music-duration");
+  dur.innerHTML = "";
+  const d = caps.duration || {};
+  if (d.type === "range") {
+    const step = d.max - d.min > 120 ? 15 : d.max - d.min > 30 ? 5 : 1;
+    const seen = new Set();
+    for (const v of [d.default, d.min, ...range(d.min, d.max, step), d.max]) {
+      if (v == null || seen.has(v)) continue;
+      seen.add(v);
+      addOpt(dur, v, `${v}s${v === d.default ? " (default)" : ""}`);
+    }
+    dur.value = String(d.default);
+    dur.disabled = false;
+  } else {
+    addOpt(dur, "", d.typicalMaxSec ? `model decides (≤${d.typicalMaxSec}s)` : "model decides");
+    dur.disabled = true;
+  }
+
+  el("music-ref-row").hidden = !caps.referenceImage;
+  el("music-ref-from-frame-btn").hidden = !state.lastFirstFrameUrl;
+}
+
+function range(min, max, step) {
+  const out = [];
+  for (let v = min; v <= max; v += step) out.push(v);
+  return out;
+}
+
+/** Mirrors the catalog `pricing` block (per_song | per_second | per_minute
+ *  rounded up) — the authoritative number comes back as estimatedCostCU. */
+function updateMusicEstimate() {
+  const m = selectedMusicModel();
+  const box = el("music-estimate");
+  if (!m || !m.pricing) {
+    box.textContent = quotaSuffix("estimate: server-side");
+    return;
+  }
+  const p = m.pricing;
+  const caps = m.capabilities || {};
+  const sec = Number(el("music-duration").value) || (caps.duration && caps.duration.default) || 0;
+  let cu = null;
+  if (p.unit === "per_song") cu = p.cuPerSong;
+  else if (p.unit === "per_second" && sec) cu = p.cuPerSecond * Math.max(sec, p.minBilledSeconds || 0);
+  else if (p.unit === "per_minute" && sec) cu = p.cuPerMinute * Math.max(Math.ceil(sec / 60), 1);
+  const unitNote = p.unit === "per_minute" ? " (billed per whole minute)" : p.unit === "per_song" ? " per song" : "";
+  box.textContent = quotaSuffix(cu != null ? `estimate: ~${cu} CU${unitNote}` : "estimate: server-side");
+}
+
+function collectMusicArgs(extra = {}) {
+  const args = { prompt: el("music-prompt").value.trim(), ...extra };
+  if (!args.prompt) throw Object.assign(new Error("Enter a music prompt first."), { code: "ui" });
+  const m = selectedMusicModel();
+  if (el("music-model").value) args.model = el("music-model").value;
+  const caps = (m && m.capabilities) || {};
+  const instrumental = el("music-instrumental").checked;
+  if (!caps.instrumentalOnly) args.instrumental = instrumental;
+  const lyrics = el("music-lyrics").value.trim();
+  if (lyrics && !instrumental && !el("music-lyrics-row").hidden) args.lyrics = lyrics;
+  if (!el("music-duration").disabled && el("music-duration").value) args.durationSec = Number(el("music-duration").value);
+  const ref = el("music-ref").value.trim();
+  if (ref && !el("music-ref-row").hidden) args.referenceImageUrl = ref;
+  const idem = el("music-idem").value.trim();
+  if (idem) args.idempotencyKey = idem;
+  args.clientTag = `media-studio-score-${Date.now()}`;
+  return args;
+}
+
+async function onMusicGenerate(extraArgs = {}) {
+  let args;
+  try {
+    args = collectMusicArgs(extraArgs);
+  } catch (e) {
+    setStatus(e.message, "warn");
+    return;
+  }
+  state.musicAbort = new AbortController();
+  setMusicBusy(true);
+  el("music-box").hidden = false;
+  el("music-alternatives").hidden = true;
+  el("music-meta-replay").hidden = true;
+  showMusicProgress({ state: "queued" });
+  setStatus("Submitting music job…");
+  try {
+    const view = await anna.music.generateAwait(args, {
+      signal: state.musicAbort.signal,
+      onProgress: (p) => {
+        showMusicProgress(p);
+        setStatus(p.state === "running" || p.phase === "IN_PROGRESS" ? "Composing…" : "Queued at provider…");
+      },
+    });
+    state.musicJob = view;
+    renderMusic(view);
+    setStatus(
+      view.idempotentReplay
+        ? "Idempotent replay — existing job returned, nothing charged."
+        : `Done — billed ${view.billedCostCU ?? "?"} CU.`,
+      "ok"
+    );
+    pushHistory(view, `♪ ${args.prompt}`).catch(() => {});
+  } catch (e) {
+    hideMusicProgress();
+    if (e.code === "cancelled") {
+      setStatus("Music job cancelled — queued cancels are fully refunded.", "warn");
+    } else if (e.code === "MUSIC_FEATURE_UNSUPPORTED") {
+      setStatus(`Not supported by this model: ${e.message}`, "err");
+      renderMusicAlternatives(e);
+    } else {
+      setStatus(`Music generation failed: ${describeError(e)}`, "err");
+    }
+    if (e.jobId) state.musicJob = { jobId: e.jobId, state: e.state || "failed" };
+  } finally {
+    state.musicAbort = null;
+    setMusicBusy(false);
+    refreshQuota();
+  }
+}
+
+function onMusicCancel() {
+  if (state.musicAbort) {
+    state.musicAbort.abort(); // → music.cancelJob under the hood
+    setStatus("Cancel requested…", "warn");
+  }
+}
+
+/** -32165 arrives with `details.feature` / `details.alternatives` (facade
+ *  computes them from the same catalog) — render as one-click model switch. */
+function renderMusicAlternatives(e) {
+  const d = (e.details && (e.details.data || e.details)) || {};
+  const alts = Array.isArray(d.alternatives) ? d.alternatives : [];
+  const box = el("music-alternatives");
+  box.innerHTML = "";
+  if (!alts.length) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  box.append(`Models that support "${d.feature || "this"}": `);
+  for (const name of alts) {
+    const b = document.createElement("button");
+    b.textContent = name;
+    b.addEventListener("click", () => {
+      el("music-model").value = name;
+      syncMusicParamSpace();
+      updateMusicEstimate();
+      setStatus(`Switched to ${name} — form inputs kept.`, "ok");
+      box.hidden = true;
+    });
+    box.appendChild(b);
+  }
+}
+
+function showMusicProgress(p) {
+  el("music-progress-row").hidden = false;
+  const fill = el("music-progress-fill");
+  const running = p.state === "running" || p.phase === "IN_PROGRESS";
+  fill.style.width = running ? "100%" : "10%";
+  fill.classList.toggle("indeterminate", running);
+  let label = running ? "composing" : p.state || "queued";
+  if (!running && p.queuePosition != null) label += ` — position ${p.queuePosition} in queue`;
+  el("music-progress-text").textContent = label;
+}
+
+function hideMusicProgress() {
+  el("music-progress-row").hidden = true;
+}
+
+function renderMusic(view) {
+  hideMusicProgress();
+  const r = view.result || {};
+  const player = el("music-player");
+  if (r.url) {
+    player.src = r.url;
+    // 403 after the ~30 min TTL → re-sign through getJob
+    player.onerror = () => onMusicResign();
+    player.play().catch(() => {});
+  }
+  el("music-meta-model").textContent = `model: ${view.model || "default"}`;
+  el("music-meta-duration").textContent = `length: ${r.durationSec != null ? `${r.durationSec}s` : "n/a"} · ${r.mimeType || ""}`;
+  el("music-meta-cost").textContent = `cost: ${view.billedCostCU ?? "—"} CU`;
+  el("music-meta-job").textContent = `job: ${view.jobId}`;
+  el("music-meta-replay").hidden = !view.idempotentReplay;
+  el("music-lyrics-out").hidden = !r.lyrics;
+  el("music-lyrics-text").textContent = r.lyrics || "";
+  el("persist-music-btn").disabled = !r.url;
+}
+
+async function onMusicResign() {
+  if (!state.musicJob) return;
+  try {
+    const fresh = await anna.music.getJob({ jobId: state.musicJob.jobId });
+    state.musicJob = fresh;
+    if (fresh.state === "succeeded") renderMusic(fresh);
+    setStatus("Music URL re-signed via music.getJob.", "ok");
+  } catch (e) {
+    setStatus(`music.getJob failed: ${describeError(e)}`, "err");
+  }
+}
+
+async function onPersistMusic() {
+  const r = state.musicJob && state.musicJob.result;
+  if (!r || !r.url) return;
+  setStatus("Fetching audio bytes for upload…");
+  try {
+    const resp = await fetch(r.url);
+    if (!resp.ok) throw new Error(`fetch ${resp.status} — URL may have expired; it re-signs automatically on next play`);
+    const ext = (r.mimeType || "").includes("wav") ? "wav" : "mp3";
+    const uploaded = await persistBlob(await resp.blob(), {
+      filename: `media-studio-${state.musicJob.jobId}.${ext}`,
+      mime: r.mimeType || "audio/mpeg",
+      metadata: { job_id: state.musicJob.jobId, kind: "music" },
+    });
+    setStatus(`Persisted → ${uploaded.r2_key || uploaded.download_url}`, "ok");
+  } catch (e) {
+    setStatus(`Persist failed: ${describeError(e)}`, "err");
+  }
+}
+
+/** Error demo: lyrics sent to an instrumental-only model → -32165 with
+ *  `alternatives`; the chips switch models without losing the prompt. */
+async function onErrMusicFeature() {
+  const instOnly = state.musicCatalog.find((m) => m.capabilities && m.capabilities.instrumentalOnly);
+  if (!instOnly) {
+    setStatus("No instrumental-only model in catalog — demo skipped.", "warn");
+    return;
+  }
+  el("music-box").hidden = false;
+  try {
+    await anna.music.generate({ prompt: "demo", lyrics: "la la la", model: instOnly.modelName });
+    setStatus("Unexpected: provider accepted lyrics.", "warn");
+  } catch (e) {
+    setStatus(`Expected error: ${describeError(e)}`, "ok");
+    renderMusicAlternatives(e);
+  }
+}
+
+/** Error demo: two generate calls with the same idempotencyKey — the second
+ *  returns the first job (`idempotentReplay: true`) and holds no CU. */
+async function onErrMusicReplay() {
+  const key = `demo-replay-${Date.now()}`;
+  const base = { prompt: "ambient pad for idempotency demo", instrumental: true, idempotencyKey: key };
+  const cheapest = [...state.musicCatalog]
+    .filter((m) => m.pricing && (m.pricing.cuPerSong != null || m.pricing.cuPerSecond != null))
+    .sort((a, b) => (a.pricing.cuPerSong ?? a.pricing.cuPerSecond * 30) - (b.pricing.cuPerSong ?? b.pricing.cuPerSecond * 30))[0];
+  if (cheapest) base.model = cheapest.modelName;
+  if (cheapest && cheapest.capabilities.duration && cheapest.capabilities.duration.type === "range") base.durationSec = cheapest.capabilities.duration.min;
+  try {
+    const first = await anna.music.generate(base);
+    const second = await anna.music.generate(base);
+    setStatus(
+      `first ${first.jobId} (held ${first.estimatedCostCU} CU) → second ${second.jobId} idempotentReplay=${second.idempotentReplay}`,
+      second.idempotentReplay && second.jobId === first.jobId ? "ok" : "warn"
+    );
+    el("music-box").hidden = false;
+    el("music-meta-job").textContent = `job: ${first.jobId}`;
+    el("music-meta-replay").hidden = !second.idempotentReplay;
+    // tidy up: cancel the demo job (queued → full refund)
+    anna.music.cancelJob({ jobId: first.jobId }).catch(() => {});
+  } catch (e) {
+    setStatus(`Replay demo failed: ${describeError(e)}`, "err");
+  } finally {
+    refreshQuota();
+  }
+}
+
+function setMusicBusy(busy) {
+  el("music-generate-btn").disabled = busy;
+  el("music-cancel-btn").disabled = !busy;
 }
 
 // ─── rendering / progress ───────────────────────────────────────────
@@ -669,7 +1080,14 @@ function renderHistory() {
     }`;
     item.title = `${h.jobId} (${h.model || "?"})`;
     // Recover any past job purely from its id — getJob re-signs the URL.
+    // `mjob_` ids belong to the music namespace (video.getJob would 404).
     item.addEventListener("click", async () => {
+      if (String(h.jobId).startsWith("mjob_")) {
+        state.musicJob = { jobId: h.jobId };
+        el("music-box").hidden = false;
+        await onMusicResign();
+        return;
+      }
       state.currentJob = { jobId: h.jobId };
       await onResign();
     });
@@ -776,6 +1194,28 @@ function bindUi() {
   el("err-voice-btn").addEventListener("click", onErrVoice);
   el("err-quota-btn").addEventListener("click", onQuotaProbe);
   el("persist-audio-btn").addEventListener("click", onPersistAudio);
+  // music panel
+  el("music-generate-btn").addEventListener("click", () => onMusicGenerate());
+  el("music-cancel-btn").addEventListener("click", onMusicCancel);
+  el("persist-music-btn").addEventListener("click", onPersistMusic);
+  el("err-music-feature-btn").addEventListener("click", onErrMusicFeature);
+  el("err-music-replay-btn").addEventListener("click", onErrMusicReplay);
+  el("music-model").addEventListener("change", () => {
+    syncMusicParamSpace();
+    updateMusicEstimate();
+  });
+  el("music-duration").addEventListener("change", updateMusicEstimate);
+  el("music-instrumental").addEventListener("change", () => {
+    const on = el("music-instrumental").checked;
+    el("music-lyrics").disabled = on;
+    if (on) el("music-lyrics").value = "";
+  });
+  el("music-idem-gen-btn").addEventListener("click", () => {
+    el("music-idem").value = `ms-${Math.random().toString(16).slice(2, 10)}`;
+  });
+  el("music-ref-from-frame-btn").addEventListener("click", () => {
+    if (state.lastFirstFrameUrl) el("music-ref").value = state.lastFirstFrameUrl;
+  });
   el("tts-model").addEventListener("change", () => {
     syncTtsParamSpace();
     updateTtsEstimate();

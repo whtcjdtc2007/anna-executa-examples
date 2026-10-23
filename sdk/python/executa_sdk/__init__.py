@@ -38,8 +38,14 @@ from .agent import (  # noqa: F401
 from .image import (  # noqa: F401
     ImageClient,
     ImageError,
+    ImageJobTimeout,
     METHOD_IMAGE_GENERATE,
     METHOD_IMAGE_EDIT,
+    METHOD_IMAGE_GENERATE_ASYNC,
+    METHOD_IMAGE_EDIT_ASYNC,
+    METHOD_IMAGE_GET_JOB,
+    METHOD_IMAGE_CANCEL_JOB,
+    METHOD_IMAGE_RESIGN,
 )
 from .host_upload import (  # noqa: F401
     HostUploadClient,
@@ -67,9 +73,13 @@ from .media import (  # noqa: F401
     MediaClient,
     MediaError,
     VideoJobTimeout,
+    MusicJobTimeout,
     METHOD_VIDEO_GENERATE,
     METHOD_VIDEO_GET_JOB,
     METHOD_VIDEO_CANCEL_JOB,
+    METHOD_MUSIC_GENERATE,
+    METHOD_MUSIC_GET_JOB,
+    METHOD_MUSIC_CANCEL_JOB,
     METHOD_AUDIO_SPEAK,
 )
 from .context import (  # noqa: F401
@@ -97,7 +107,9 @@ __all__ = [
     "MediaClient",
     "MediaError",
     "VideoJobTimeout",
+    "MusicJobTimeout",
     "ImageError",
+    "ImageJobTimeout",
     "HostUploadClient",
     "UploadError",
     "EmbeddingsClient",

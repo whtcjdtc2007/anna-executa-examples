@@ -1,8 +1,15 @@
 /**
- * ImageClient — issue reverse `image/generate` and `image/edit` JSON-RPC
- * requests to the host Agent (Anna), which proxies to Nexus's
+ * ImageClient — issue reverse `image/generate` / `image/edit` (sync) and the
+ * async-job family `image/{generate_async, edit_async, get_job, cancel_job,
+ * resign}` JSON-RPC requests to the host Agent (Anna), which proxies to Nexus's
  * `/api/v1/copilot/image/*` endpoints using a short-lived `image_token`
  * (aud=executa-image) the host minted at invoke time.
+ *
+ * Async jobs (`imageGenerateAsync` / `imageEditAsync` → `ijob_…`) mirror the
+ * music job surface: submit returns at once, poll `imageGetJob` (or use
+ * `imageGenerateAwait` / `imageEditAwait`), `result.images[].url` is re-signed
+ * on every get_job, and `imageResign` re-signs any already-paid artifact by
+ * `r2Key` for up to 7 days. Prefer jobs for 2K/4K or quality=high renders.
  *
  * The plugin never sees the LLM API key — it just pays in image counts,
  * gated by the user's grant (`image_grant` block on UserExecuta.custom_config).
@@ -33,6 +40,11 @@
  *   IMAGE_ERR_USER_DENIED            = -32108
  *   IMAGE_ERR_NO_MODEL_AVAILABLE     = -32109
  *   IMAGE_ERR_STORAGE_ERROR          = -32110
+ *   IMAGE_ERR_JOB_NOT_FOUND          = -32113
+ *   IMAGE_ERR_JOB_NOT_CANCELLABLE    = -32114
+ *   IMAGE_ERR_CONTENT_REJECTED       = -32115
+ *   IMAGE_ERR_JOB_EXPIRED            = -32116
+ *   IMAGE_ERR_ASSET_NOT_FOUND        = -32117
  *   IMAGE_ERR_EDIT_NOT_SUPPORTED     = -32311
  *   IMAGE_ERR_MASK_UNSUPPORTED       = -32312
  *   IMAGE_ERR_N_UNSUPPORTED          = -32313
@@ -47,6 +59,14 @@ const { attachInvokeContext } = require("./context");
 
 const METHOD_IMAGE_GENERATE = "image/generate";
 const METHOD_IMAGE_EDIT = "image/edit";
+// Async jobs + re-sign (platform-media-generation-image-jobs.md §11)
+const METHOD_IMAGE_GENERATE_ASYNC = "image/generate_async";
+const METHOD_IMAGE_EDIT_ASYNC = "image/edit_async";
+const METHOD_IMAGE_GET_JOB = "image/get_job";
+const METHOD_IMAGE_CANCEL_JOB = "image/cancel_job";
+const METHOD_IMAGE_RESIGN = "image/resign";
+
+const TERMINAL_JOB_STATES = new Set(["succeeded", "failed", "cancelled", "expired"]);
 
 const IMAGE_ERR_NOT_GRANTED = -32101;
 const IMAGE_ERR_QUOTA_EXCEEDED = -32102;
@@ -58,6 +78,11 @@ const IMAGE_ERR_NOT_NEGOTIATED = -32107;
 const IMAGE_ERR_USER_DENIED = -32108;
 const IMAGE_ERR_NO_MODEL_AVAILABLE = -32109;
 const IMAGE_ERR_STORAGE_ERROR = -32110;
+const IMAGE_ERR_JOB_NOT_FOUND = -32113;
+const IMAGE_ERR_JOB_NOT_CANCELLABLE = -32114;
+const IMAGE_ERR_CONTENT_REJECTED = -32115;
+const IMAGE_ERR_JOB_EXPIRED = -32116;
+const IMAGE_ERR_ASSET_NOT_FOUND = -32117;
 const IMAGE_ERR_EDIT_NOT_SUPPORTED = -32311;
 const IMAGE_ERR_MASK_UNSUPPORTED = -32312;
 const IMAGE_ERR_N_UNSUPPORTED = -32313;
@@ -70,6 +95,42 @@ class ImageError extends Error {
     this.code = code;
     this.data = data || {};
   }
+}
+
+/** imageGenerateAwait / imageEditAwait wall clock elapsed — job may still be
+ *  rendering; carries `.jobId` so the plugin can resume with `imageGetJob`. */
+class ImageJobTimeout extends ImageError {
+  constructor(jobId, waitedMs) {
+    super(
+      IMAGE_ERR_PROVIDER_ERROR,
+      `image job ${jobId} still rendering after ${Math.round(waitedMs / 1000)}s`,
+      { jobId }
+    );
+    this.name = "ImageJobTimeout";
+    this.jobId = jobId;
+  }
+}
+
+function jobParams({
+  prompt,
+  n = 1,
+  size,
+  aspectRatio,
+  model,
+  params,
+  fit = "nearest",
+  clientTag,
+  idempotencyKey,
+}) {
+  const out = { prompt, n: Number(n) };
+  if (size != null) out.size = size;
+  if (aspectRatio != null) out.aspect_ratio = aspectRatio;
+  if (model != null) out.model = model;
+  if (params && Object.keys(params).length) out.params = { ...params };
+  if (fit != null) out.fit = fit;
+  if (clientTag != null) out.clientTag = clientTag;
+  if (idempotencyKey != null) out.idempotencyKey = idempotencyKey;
+  return out;
 }
 
 class ImageClient {
@@ -192,6 +253,109 @@ class ImageClient {
     return this._call(METHOD_IMAGE_EDIT, params, timeoutMs);
   }
 
+  // ---- async jobs + re-sign (image-jobs §11.5) ----
+
+  /**
+   * Submit an async text-to-image / reference-image job. Resolves with
+   * `{jobId:"ijob_…", kind:"image", state:"queued", estimatedCostCU, deadlineAt, idempotentReplay}`.
+   * One job = n images (billed up-front, settled on actual output). Pass
+   * `idempotencyKey` (e.g. `${invokeId}:${attempt}`) so retries never double-charge.
+   */
+  imageGenerateAsync(opts) {
+    const { referenceImageUrls, timeoutMs = 60_000, ...rest } = opts;
+    const params = jobParams(rest);
+    if (referenceImageUrls && referenceImageUrls.length) {
+      params.reference_image_urls = [...referenceImageUrls];
+    }
+    return this._call(METHOD_IMAGE_GENERATE_ASYNC, params, timeoutMs);
+  }
+
+  /** Submit an async edit job (optionally mask-based; -32312 when the model cannot mask). */
+  imageEditAsync(opts) {
+    const { imageUrl, maskUrl, timeoutMs = 60_000, ...rest } = opts;
+    const params = jobParams(rest);
+    params.image_url = imageUrl;
+    if (maskUrl != null) params.mask_url = maskUrl;
+    return this._call(METHOD_IMAGE_EDIT_ASYNC, params, timeoutMs);
+  }
+
+  /** Authoritative job view; `result.images[].url` is re-signed on every call (~30 min). */
+  imageGetJob(jobId, { timeoutMs = 60_000 } = {}) {
+    return this._call(METHOD_IMAGE_GET_JOB, { jobId }, timeoutMs);
+  }
+
+  /** queued = guaranteed + full refund; running = best-effort (provider may refuse). */
+  imageCancelJob(jobId, { timeoutMs = 60_000 } = {}) {
+    return this._call(METHOD_IMAGE_CANCEL_JOB, { jobId }, timeoutMs);
+  }
+
+  /** Re-sign already-paid artifacts by r2Key (1–20). Resolves `{urls:[{r2Key,url,expiresIn}]}`
+   *  in input order; a key that is not yours fails the whole call with -32117. */
+  imageResign(r2Keys, { timeoutMs = 60_000 } = {}) {
+    return this._call(METHOD_IMAGE_RESIGN, { r2Keys: [...r2Keys] }, timeoutMs);
+  }
+
+  async _awaitJob(created, { pollIntervalMs, awaitTimeoutMs, onProgress }) {
+    const jobId = created.jobId;
+    const terminalError = (view) => {
+      const err = view.error || {};
+      const code =
+        err.code === "IMAGE_CONTENT_REJECTED"
+          ? IMAGE_ERR_CONTENT_REJECTED
+          : err.code === "IMAGE_JOB_EXPIRED"
+            ? IMAGE_ERR_JOB_EXPIRED
+            : IMAGE_ERR_PROVIDER_ERROR;
+      return new ImageError(
+        code,
+        `image job ${jobId} ended as ${view.state}: ${err.message || err.code || "unknown"}`,
+        { jobId, state: view.state, error: err }
+      );
+    };
+    if (TERMINAL_JOB_STATES.has(created.state)) {
+      if (created.state === "succeeded") return created;
+      throw terminalError(created);
+    }
+    let waited = 0;
+    while (waited < awaitTimeoutMs) {
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+      waited += pollIntervalMs;
+      const view = await this.imageGetJob(jobId);
+      if (onProgress && view.progress) {
+        try {
+          onProgress(view.progress);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      if (TERMINAL_JOB_STATES.has(view.state)) {
+        if (view.state === "succeeded") return view;
+        throw terminalError(view);
+      }
+    }
+    throw new ImageJobTimeout(jobId, waited);
+  }
+
+  /**
+   * imageGenerateAsync + poll until terminal (pure polling; same cadence as
+   * musicGenerateAwait: 5 s / 9 min). Resolves the terminal job view; rejects
+   * with ImageError on failed / cancelled / expired and ImageJobTimeout
+   * (carrying `.jobId`) when the wall clock elapses first. Keep awaitTimeoutMs
+   * within the invoke budget — for longer renders return `jobId` as the invoke
+   * result and resume with imageGetJob.
+   */
+  async imageGenerateAwait(opts) {
+    const { pollIntervalMs = 5000, awaitTimeoutMs = 540_000, onProgress, ...genOpts } = opts;
+    const created = await this.imageGenerateAsync(genOpts);
+    return this._awaitJob(created, { pollIntervalMs, awaitTimeoutMs, onProgress });
+  }
+
+  /** imageEditAsync + poll until terminal (see imageGenerateAwait). */
+  async imageEditAwait(opts) {
+    const { pollIntervalMs = 5000, awaitTimeoutMs = 540_000, onProgress, ...editOpts } = opts;
+    const created = await this.imageEditAsync(editOpts);
+    return this._awaitJob(created, { pollIntervalMs, awaitTimeoutMs, onProgress });
+  }
+
   dispatchResponse(msg) {
     if (!msg || typeof msg !== "object" || "method" in msg) return false;
     const id = msg.id;
@@ -252,8 +416,14 @@ class ImageClient {
 module.exports = {
   ImageClient,
   ImageError,
+  ImageJobTimeout,
   METHOD_IMAGE_GENERATE,
   METHOD_IMAGE_EDIT,
+  METHOD_IMAGE_GENERATE_ASYNC,
+  METHOD_IMAGE_EDIT_ASYNC,
+  METHOD_IMAGE_GET_JOB,
+  METHOD_IMAGE_CANCEL_JOB,
+  METHOD_IMAGE_RESIGN,
   IMAGE_ERR_NOT_GRANTED,
   IMAGE_ERR_QUOTA_EXCEEDED,
   IMAGE_ERR_PROVIDER_ERROR,
@@ -264,6 +434,11 @@ module.exports = {
   IMAGE_ERR_USER_DENIED,
   IMAGE_ERR_NO_MODEL_AVAILABLE,
   IMAGE_ERR_STORAGE_ERROR,
+  IMAGE_ERR_JOB_NOT_FOUND,
+  IMAGE_ERR_JOB_NOT_CANCELLABLE,
+  IMAGE_ERR_CONTENT_REJECTED,
+  IMAGE_ERR_JOB_EXPIRED,
+  IMAGE_ERR_ASSET_NOT_FOUND,
   IMAGE_ERR_EDIT_NOT_SUPPORTED,
   IMAGE_ERR_MASK_UNSUPPORTED,
   IMAGE_ERR_N_UNSUPPORTED,

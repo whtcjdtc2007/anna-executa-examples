@@ -210,3 +210,14 @@ body {
   .shell { flex-direction: column; }
   .sidebar { width: auto; flex: none; border-right: none; border-bottom: 1px solid var(--border); }
 }
+
+/* ─── Music panel (platform-media-generation-music.md §12.2) ─── */
+.caps { font-size: 11px; color: var(--muted); margin: -4px 0 8px; line-height: 1.4; }
+.hint { font-size: 11px; color: #d97706; font-weight: 400; }
+.grid2.tight { align-items: center; }
+.grid2.tight input { min-width: 0; }
+button.link { background: transparent; color: var(--accent, #2563eb); border: 0; padding: 2px 0; font-size: 11px; text-decoration: underline; }
+.narration.music pre { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow: auto; margin: 6px 0 0; padding: 8px; background: rgba(0,0,0,0.04); border-radius: 6px; }
+.alternatives { font-size: 12px; margin-top: 8px; }
+.alternatives button { margin: 2px 4px 2px 0; padding: 2px 8px; font-size: 11px; font-family: ui-monospace, monospace; }
+.meta #music-meta-replay { color: #16a34a; font-weight: 600; }

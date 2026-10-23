@@ -1,9 +1,17 @@
 """Anna Executa Python SDK — Image (Generate / Edit) support.
 
 `ImageClient` lets an Executa plugin issue reverse JSON-RPC requests for
-``image/generate`` and ``image/edit`` to its host Agent — the Agent proxies
-to Nexus's `/api/v1/copilot/image/{generate,edit}` endpoints using a
+``image/generate`` and ``image/edit`` (synchronous) and the async-job family
+``image/{generate_async, edit_async, get_job, cancel_job, resign}`` to its host
+Agent — the Agent proxies to Nexus's `/api/v1/copilot/image/*` endpoints using a
 short-lived ``image_token`` (aud=executa-image) the host minted at invoke time.
+
+Async jobs (``generate_async`` / ``edit_async`` → ``ijob_…``) mirror the music
+job surface: submit returns immediately, the plugin polls ``get_job`` (or uses
+``generate_await`` / ``edit_await``), ``result.images[].url`` is re-signed on
+every ``get_job``, and ``resign`` re-signs any already-paid artifact by
+``r2Key`` for up to 7 days. Prefer jobs for 2K/4K or ``quality=high`` renders
+(60–120 s) so the synchronous call does not eat the invoke timeout budget.
 
 The plugin never sees the LLM API key or the user's billing context — it
 only pays in image counts, gated by the user's grant
@@ -38,6 +46,11 @@ Error codes — keep in sync with ``matrix/src/executa/protocol.py``::
     IMAGE_ERR_USER_DENIED          = -32108
     IMAGE_ERR_NO_MODEL_AVAILABLE   = -32109
     IMAGE_ERR_STORAGE_ERROR        = -32110
+    IMAGE_ERR_JOB_NOT_FOUND        = -32113
+    IMAGE_ERR_JOB_NOT_CANCELLABLE  = -32114
+    IMAGE_ERR_CONTENT_REJECTED     = -32115
+    IMAGE_ERR_JOB_EXPIRED          = -32116
+    IMAGE_ERR_ASSET_NOT_FOUND      = -32117
     IMAGE_ERR_EDIT_NOT_SUPPORTED   = -32311
     IMAGE_ERR_MASK_UNSUPPORTED     = -32312
     IMAGE_ERR_N_UNSUPPORTED        = -32313
@@ -60,6 +73,17 @@ from .sampling import _write_frame
 
 METHOD_IMAGE_GENERATE = "image/generate"
 METHOD_IMAGE_EDIT = "image/edit"
+# Async jobs + re-sign (platform-media-generation-image-jobs.md §11)
+METHOD_IMAGE_GENERATE_ASYNC = "image/generate_async"
+METHOD_IMAGE_EDIT_ASYNC = "image/edit_async"
+METHOD_IMAGE_GET_JOB = "image/get_job"
+METHOD_IMAGE_CANCEL_JOB = "image/cancel_job"
+METHOD_IMAGE_RESIGN = "image/resign"
+
+# Polling defaults for ``generate_await`` / ``edit_await`` (same as music).
+DEFAULT_POLL_INTERVAL_S = 5.0
+DEFAULT_AWAIT_TIMEOUT_S = 540.0
+_TERMINAL_JOB_STATES = frozenset({"succeeded", "failed", "cancelled", "expired"})
 
 
 # ─── Error codes ──────────────────────────────────────────────────────
@@ -74,6 +98,11 @@ IMAGE_ERR_NOT_NEGOTIATED = -32107
 IMAGE_ERR_USER_DENIED = -32108
 IMAGE_ERR_NO_MODEL_AVAILABLE = -32109
 IMAGE_ERR_STORAGE_ERROR = -32110
+IMAGE_ERR_JOB_NOT_FOUND = -32113
+IMAGE_ERR_JOB_NOT_CANCELLABLE = -32114
+IMAGE_ERR_CONTENT_REJECTED = -32115
+IMAGE_ERR_JOB_EXPIRED = -32116
+IMAGE_ERR_ASSET_NOT_FOUND = -32117
 IMAGE_ERR_EDIT_NOT_SUPPORTED = -32311
 IMAGE_ERR_MASK_UNSUPPORTED = -32312
 IMAGE_ERR_N_UNSUPPORTED = -32313
@@ -88,6 +117,17 @@ class ImageError(Exception):
         self.code = code
         self.message = message
         self.data = data or {}
+
+
+class ImageJobTimeout(TimeoutError):
+    """``generate_await`` / ``edit_await`` wall clock elapsed; the job may still
+    be rendering. Recover it with :meth:`ImageClient.get_job` (e.g. in the next
+    invoke — return ``job_id`` as the tool result)."""
+
+    def __init__(self, job_id: str, waited_s: float):
+        super().__init__(f"image job {job_id} still rendering after {waited_s:.1f}s")
+        self.job_id = job_id
+        self.waited_s = waited_s
 
 
 # ─── Internal plumbing ────────────────────────────────────────────────
@@ -299,6 +339,223 @@ class ImageClient:
             params["output_format"] = output_format
         return await self._call(METHOD_IMAGE_EDIT, params, timeout)
 
+    # — async jobs + re-sign (image-jobs §11.5) —
+
+    @staticmethod
+    def _job_params(
+        *,
+        prompt: str,
+        n: int,
+        size: Optional[str],
+        aspect_ratio: Optional[str],
+        model: Optional[str],
+        params: Optional[dict],
+        fit: Optional[str],
+        client_tag: Optional[str],
+        idempotency_key: Optional[str],
+    ) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"prompt": prompt, "n": int(n)}
+        if size is not None:
+            out["size"] = size
+        if aspect_ratio is not None:
+            out["aspect_ratio"] = aspect_ratio
+        if model is not None:
+            out["model"] = model
+        if params:
+            out["params"] = dict(params)
+        if fit is not None:
+            out["fit"] = fit
+        if client_tag is not None:
+            out["clientTag"] = client_tag
+        if idempotency_key is not None:
+            out["idempotencyKey"] = idempotency_key
+        return out
+
+    async def generate_async(
+        self,
+        prompt: str,
+        *,
+        n: int = 1,
+        size: Optional[str] = None,
+        aspect_ratio: Optional[str] = None,
+        model: Optional[str] = None,
+        params: Optional[dict] = None,
+        fit: str = "nearest",
+        reference_image_urls: Optional[List[str]] = None,
+        client_tag: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        timeout: float = 60.0,
+    ) -> dict:
+        """Submit an async text-to-image / reference-image job.
+
+        Returns ``ImageJobCreated``::
+
+            {"jobId": "ijob_…", "kind": "image", "state": "queued",
+             "estimatedCostCU": 24, "deadlineAt": "…", "idempotentReplay": false}
+
+        One job = one user action = ``n`` images (billed up-front, settled on
+        actual output, refunded on failure / cancel). Pass ``idempotency_key``
+        (e.g. ``f"{tool_invoke_id}:{attempt}"``) so retries never double-charge.
+        Per-invoke ``max_images`` is reserved by ``n`` at submit time and is not
+        released when the job later fails.
+        """
+        p = self._job_params(
+            prompt=prompt,
+            n=n,
+            size=size,
+            aspect_ratio=aspect_ratio,
+            model=model,
+            params=params,
+            fit=fit,
+            client_tag=client_tag,
+            idempotency_key=idempotency_key,
+        )
+        if reference_image_urls:
+            p["reference_image_urls"] = list(reference_image_urls)
+        return await self._call(METHOD_IMAGE_GENERATE_ASYNC, p, timeout)
+
+    async def edit_async(
+        self,
+        image_url: str,
+        prompt: str,
+        *,
+        n: int = 1,
+        size: Optional[str] = None,
+        aspect_ratio: Optional[str] = None,
+        model: Optional[str] = None,
+        params: Optional[dict] = None,
+        fit: str = "nearest",
+        mask_url: Optional[str] = None,
+        client_tag: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        timeout: float = 60.0,
+    ) -> dict:
+        """Submit an async edit job (optionally mask-based; -32312 when the
+        resolved model cannot mask). Returns ``ImageJobCreated``."""
+        p = self._job_params(
+            prompt=prompt,
+            n=n,
+            size=size,
+            aspect_ratio=aspect_ratio,
+            model=model,
+            params=params,
+            fit=fit,
+            client_tag=client_tag,
+            idempotency_key=idempotency_key,
+        )
+        p["image_url"] = image_url
+        if mask_url is not None:
+            p["mask_url"] = mask_url
+        return await self._call(METHOD_IMAGE_EDIT_ASYNC, p, timeout)
+
+    async def get_job(self, job_id: str, *, timeout: float = 60.0) -> dict:
+        """Authoritative job snapshot (``ImageJobView``); ``result.images[].url``
+        is re-signed on every call (~30 min TTL). Only jobs submitted by this
+        Executa are visible (App-side ``ijob_`` → -32113)."""
+        return await self._call(METHOD_IMAGE_GET_JOB, {"jobId": job_id}, timeout)
+
+    async def cancel_job(self, job_id: str, *, timeout: float = 60.0) -> dict:
+        """Cancel a job: ``queued`` = guaranteed + full refund; ``running`` =
+        best-effort (provider may refuse → job keeps running, no refund)."""
+        return await self._call(METHOD_IMAGE_CANCEL_JOB, {"jobId": job_id}, timeout)
+
+    async def resign(self, r2_keys: List[str], *, timeout: float = 60.0) -> dict:
+        """Re-sign already-paid artifacts by ``r2Key`` (1–20; from a sync
+        ``generate`` / ``edit`` response or a job view). Returns
+        ``{"urls": [{"r2Key", "url", "expiresIn"}]}`` in input order; any key
+        that is not yours → -32117 for the whole call."""
+        return await self._call(METHOD_IMAGE_RESIGN, {"r2Keys": list(r2_keys)}, timeout)
+
+    async def _await_job(
+        self,
+        created: dict,
+        *,
+        poll_interval_s: float,
+        await_timeout_s: float,
+        on_progress: Optional[Callable[[dict], None]],
+    ) -> dict:
+        job_id = created["jobId"]
+
+        def _terminal_error(view: dict) -> ImageError:
+            err = view.get("error") or {}
+            code_name = str(err.get("code") or "")
+            code = (
+                IMAGE_ERR_CONTENT_REJECTED
+                if code_name == "IMAGE_CONTENT_REJECTED"
+                else IMAGE_ERR_JOB_EXPIRED
+                if code_name == "IMAGE_JOB_EXPIRED"
+                else IMAGE_ERR_PROVIDER_ERROR
+            )
+            return ImageError(
+                code,
+                f"image job {job_id} ended as {view.get('state')}: "
+                f"{err.get('message') or code_name or 'unknown'}",
+                data={"jobId": job_id, "state": view.get("state"), "error": err},
+            )
+
+        if created.get("state") in _TERMINAL_JOB_STATES:
+            if created.get("state") == "succeeded":
+                return created
+            raise _terminal_error(created)
+        waited = 0.0
+        while waited < await_timeout_s:
+            await asyncio.sleep(poll_interval_s)
+            waited += poll_interval_s
+            view = await self.get_job(job_id)
+            if on_progress is not None and view.get("progress"):
+                try:
+                    on_progress(view["progress"])
+                except Exception:
+                    pass
+            state = view.get("state")
+            if state in _TERMINAL_JOB_STATES:
+                if state == "succeeded":
+                    return view
+                raise _terminal_error(view)
+        raise ImageJobTimeout(job_id, waited)
+
+    async def generate_await(
+        self,
+        prompt: str,
+        *,
+        poll_interval_s: float = DEFAULT_POLL_INTERVAL_S,
+        await_timeout_s: float = DEFAULT_AWAIT_TIMEOUT_S,
+        on_progress: Optional[Callable[[dict], None]] = None,
+        **kwargs: Any,
+    ) -> dict:
+        """``generate_async`` + poll until terminal (pure polling; same cadence as
+        ``music_generate_await``: 5 s / 9 min). Returns the terminal job view;
+        raises :class:`ImageError` on failed / cancelled / expired and
+        :class:`ImageJobTimeout` (carrying ``job_id``) when the wall clock elapses
+        first. Keep ``await_timeout_s`` within the invoke budget — for longer
+        renders return ``jobId`` as the invoke result and resume with ``get_job``."""
+        created = await self.generate_async(prompt, **kwargs)
+        return await self._await_job(
+            created,
+            poll_interval_s=poll_interval_s,
+            await_timeout_s=await_timeout_s,
+            on_progress=on_progress,
+        )
+
+    async def edit_await(
+        self,
+        image_url: str,
+        prompt: str,
+        *,
+        poll_interval_s: float = DEFAULT_POLL_INTERVAL_S,
+        await_timeout_s: float = DEFAULT_AWAIT_TIMEOUT_S,
+        on_progress: Optional[Callable[[dict], None]] = None,
+        **kwargs: Any,
+    ) -> dict:
+        """``edit_async`` + poll until terminal (see :meth:`generate_await`)."""
+        created = await self.edit_async(image_url, prompt, **kwargs)
+        return await self._await_job(
+            created,
+            poll_interval_s=poll_interval_s,
+            await_timeout_s=await_timeout_s,
+            on_progress=on_progress,
+        )
+
     # — internal —
 
     async def _call(self, method: str, params: dict, timeout: float) -> dict:
@@ -338,8 +595,16 @@ class ImageClient:
 __all__ = [
     "ImageClient",
     "ImageError",
+    "ImageJobTimeout",
     "METHOD_IMAGE_GENERATE",
     "METHOD_IMAGE_EDIT",
+    "METHOD_IMAGE_GENERATE_ASYNC",
+    "METHOD_IMAGE_EDIT_ASYNC",
+    "METHOD_IMAGE_GET_JOB",
+    "METHOD_IMAGE_CANCEL_JOB",
+    "METHOD_IMAGE_RESIGN",
+    "DEFAULT_POLL_INTERVAL_S",
+    "DEFAULT_AWAIT_TIMEOUT_S",
     "IMAGE_ERR_NOT_GRANTED",
     "IMAGE_ERR_QUOTA_EXCEEDED",
     "IMAGE_ERR_PROVIDER_ERROR",
@@ -350,6 +615,11 @@ __all__ = [
     "IMAGE_ERR_USER_DENIED",
     "IMAGE_ERR_NO_MODEL_AVAILABLE",
     "IMAGE_ERR_STORAGE_ERROR",
+    "IMAGE_ERR_JOB_NOT_FOUND",
+    "IMAGE_ERR_JOB_NOT_CANCELLABLE",
+    "IMAGE_ERR_CONTENT_REJECTED",
+    "IMAGE_ERR_JOB_EXPIRED",
+    "IMAGE_ERR_ASSET_NOT_FOUND",
     "IMAGE_ERR_EDIT_NOT_SUPPORTED",
     "IMAGE_ERR_MASK_UNSUPPORTED",
     "IMAGE_ERR_N_UNSUPPORTED",
