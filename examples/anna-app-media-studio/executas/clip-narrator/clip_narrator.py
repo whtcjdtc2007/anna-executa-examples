@@ -6,7 +6,9 @@ Demonstrates the plugin-side half of the platform media generation surface
 
 1. ``video/generate`` + polling ``video/get_job``   — async video jobs
    (wrapped by ``MediaClient.generate_await``);
-2. ``audio/speak``                                  — synchronous TTS.
+2. ``audio/speak``                                  — synchronous TTS;
+3. ``music/generate`` + ``music/get_job``           — async music score
+   (wrapped by ``MediaClient.music_generate_await``; platform-media-generation-music.md §11.2).
 
 The host (Nexus) owns provider selection, grant checks, quota, and billing;
 the Matrix relays each call with the invoke's short-lived ``media_token``
@@ -14,7 +16,7 @@ the Matrix relays each call with the invoke's short-lived ``media_token``
 
 Manifest declares both media host capabilities:
 
-    "host_capabilities": ["llm.video", "llm.audio.speak"]
+    "host_capabilities": ["llm.video", "llm.music", "llm.audio.speak"]
 
 If the user has not toggled the matching ``media_grant`` in their Anna Admin
 panel, Nexus rejects the reverse-RPC with VIDEO_NOT_GRANTED (-32120) /
@@ -67,7 +69,7 @@ MANIFEST = {
     # Declare every reverse media capability used by the plugin. Without
     # these entries, Nexus refuses the matching reverse-RPC with
     # NOT_NEGOTIATED / capability errors.
-    "host_capabilities": ["llm.video", "llm.audio.speak"],
+    "host_capabilities": ["llm.video", "llm.music", "llm.audio.speak"],
     "tools": [
         {
             "name": "clip_create",
@@ -86,6 +88,16 @@ MANIFEST = {
                 {"name": "script", "type": "string", "description": "Narration text", "required": True},
                 {"name": "voice", "type": "string", "description": "Optional voice id from the model's catalog voices", "required": False, "default": ""},
                 {"name": "speed", "type": "number", "description": "Speech speed multiplier", "required": False, "default": 1.0},
+            ],
+        },
+        {
+            "name": "clip_score",
+            "description": "Compose a background score for `scene` via music/generate and await the result. Instrumental by default; pass `lyrics` for a sung track (model must support lyrics — otherwise MUSIC_FEATURE_UNSUPPORTED lists alternatives).",
+            "parameters": [
+                {"name": "scene", "type": "string", "description": "Mood / genre / tempo description of the score", "required": True},
+                {"name": "lyrics", "type": "string", "description": "Optional lyrics (vocal track); leave empty for instrumental", "required": False, "default": ""},
+                {"name": "duration_sec", "type": "number", "description": "Only for range-length models (ElevenLabs / Stable Audio / ACE-Step); omit for model-decided length", "required": False, "default": 0},
+                {"name": "model", "type": "string", "description": "Optional music-model hint (catalog music_gen)", "required": False, "default": ""},
             ],
         },
         {
@@ -175,6 +187,54 @@ async def _clip_narrate(
     }
 
 
+async def _clip_score(
+    scene: str,
+    lyrics: str = "",
+    duration_sec: float = 0,
+    model: str = "",
+    *,
+    invoke_id: str,
+) -> dict:
+    """music/generate → music/get_job (polled). The same invoke's
+    ``idempotency_key`` makes a retried tool call return the first job
+    instead of charging twice."""
+    if not scene or not scene.strip():
+        return {"ok": False, "note": "empty scene"}
+    try:
+        view = await media.music_generate_await(
+            prompt=scene.strip(),
+            lyrics=lyrics.strip() or None,
+            instrumental=not lyrics.strip(),
+            duration_sec=int(duration_sec) if duration_sec else None,
+            model=model.strip() or None,
+            client_tag=f"clip-narrator-score-{invoke_id}",
+            idempotency_key=f"clip-score-{invoke_id}"[:64],
+            on_progress=_progress_logger("clip_score"),
+        )
+    except MediaError as e:
+        # -32165: surface the alternatives so the agent can pick another model
+        return {
+            "ok": False,
+            "code": e.code,
+            "error": e.message,
+            "feature": (e.data or {}).get("feature"),
+            "alternatives": (e.data or {}).get("alternatives") or [],
+        }
+    result = view.get("result") or {}
+    return {
+        "ok": True,
+        "job_id": view.get("jobId"),
+        "audio_url": result.get("url"),
+        "mime_type": result.get("mimeType"),
+        "duration_sec": result.get("durationSec"),
+        "lyrics": result.get("lyrics"),
+        "model": view.get("model"),
+        "billed_cost_cu": view.get("billedCostCU"),
+        "idempotent_replay": bool(view.get("idempotentReplay")),
+        "url_expires_in": result.get("expiresIn"),
+    }
+
+
 async def _clip_story(scene: str, script: str = "", *, invoke_id: str) -> dict:
     """Video + narration in one invoke — both calls share the same
     media_token; the per-invoke gate meters them independently."""
@@ -211,7 +271,7 @@ def _handle_initialize(req_id, params: dict) -> dict:
             "protocolVersion": proto if proto in ("1.1", "2.0") else "2.0",
             "serverInfo": {"name": MANIFEST["display_name"], "version": MANIFEST["version"]},
             "client_capabilities": (
-                {"video": {}, "audio.speak": {}} if proto == PROTOCOL_VERSION_V2 else {}
+                {"video": {}, "music": {}, "audio.speak": {}} if proto == PROTOCOL_VERSION_V2 else {}
             ),
             "capabilities": {},
         },
@@ -243,6 +303,7 @@ _loop_thread.start()
 _TOOLS = {
     "clip_create": _clip_create,
     "clip_narrate": _clip_narrate,
+    "clip_score": _clip_score,
     "clip_story": _clip_story,
 }
 

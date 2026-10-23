@@ -1,7 +1,8 @@
 // Package media implements the Executa v2 reverse JSON-RPC
-// `video/generate` / `video/get_job` / `video/cancel_job` and
-// `audio/speak` requests that let a plugin ask its host (Anna) to
-// generate video / synthesize speech on its behalf.
+// `video/generate` / `video/get_job` / `video/cancel_job`,
+// `music/generate` / `music/get_job` / `music/cancel_job` and
+// `audio/speak` / `audio/transcribe` requests that let a plugin ask its
+// host (Anna) to generate video / music / speech on its behalf.
 // Design: matrix-nexus docs/design/platform-media-generation-video-audio.md §11.2.
 //
 // Why reverse RPC?
@@ -51,6 +52,10 @@ const (
 	MethodVideoCancelJob  = "video/cancel_job"
 	MethodAudioSpeak      = "audio/speak"
 	MethodAudioTranscribe = "audio/transcribe"
+	// music (matrix-nexus docs/design/platform-media-generation-music.md §11.2)
+	MethodMusicGenerate  = "music/generate"
+	MethodMusicGetJob    = "music/get_job"
+	MethodMusicCancelJob = "music/cancel_job"
 
 	ErrCodeVideoNotGranted          = -32120
 	ErrCodeVideoQuotaExceeded       = -32121
@@ -71,6 +76,16 @@ const (
 	ErrCodeAudioContentRejected     = -32147
 	// audio/transcribe per-invoke seconds budget exceeded (host gate).
 	ErrCodeAudioInvokeBudgetExceeded = -32148
+	ErrCodeMusicNotGranted           = -32160
+	ErrCodeMusicProviderError        = -32161
+	ErrCodeMusicInvalidRequest       = -32162
+	ErrCodeMusicModelUnavailable     = -32163
+	ErrCodeMusicJobNotFound          = -32164
+	ErrCodeMusicFeatureUnsupported   = -32165 // Data = {feature, model, alternatives}
+	ErrCodeMusicLyricsTooLong        = -32166 // Data = {maxChars, actualChars}
+	ErrCodeMusicJobNotCancellable    = -32167
+	ErrCodeMusicContentRejected      = -32168
+	ErrCodeMusicQuotaExceeded        = -32169
 )
 
 // MediaError wraps a JSON-RPC error returned by the host.
@@ -95,6 +110,58 @@ type GenerateRequest struct {
 	GenerateAudio *bool  `json:"generateAudio,omitempty"`
 	Model         string `json:"model,omitempty"`
 	ClientTag     string `json:"clientTag,omitempty"`
+}
+
+// MusicGenerateRequest mirrors `music/generate` params. Capability
+// differences are not papered over by the host: a field the selected model
+// does not support fails with ErrCodeMusicFeatureUnsupported whose
+// Data["alternatives"] lists models that do. DurationSec is only accepted by
+// range-length models; Lyrics and Instrumental=true are mutually exclusive;
+// MiniMax needs Lyrics for vocals unless Options["lyrics_optimizer"]=true.
+// IdempotencyKey (≤64 chars): replay within 24h returns the existing job
+// without a second CU hold.
+type MusicGenerateRequest struct {
+	Prompt            string         `json:"prompt"`
+	Lyrics            string         `json:"lyrics,omitempty"`
+	Instrumental      *bool          `json:"instrumental,omitempty"`
+	DurationSec       int            `json:"durationSec,omitempty"`
+	Format            string         `json:"format,omitempty"` // catalog formats (mp3|wav, model-dependent)
+	ReferenceImageURL string         `json:"referenceImageUrl,omitempty"`
+	Options           map[string]any `json:"options,omitempty"` // model knobs declared in catalog options
+	Model             string         `json:"model,omitempty"`
+	ClientTag         string         `json:"clientTag,omitempty"`
+	IdempotencyKey    string         `json:"idempotencyKey,omitempty"`
+}
+
+// MusicResult is the terminal `result` object of a succeeded music job.
+type MusicResult struct {
+	URL         string `json:"url"`
+	MimeType    string `json:"mimeType,omitempty"`
+	DurationSec *int   `json:"durationSec,omitempty"` // nil when the model-decided length could not be parsed
+	Lyrics      string `json:"lyrics,omitempty"`      // model-returned lyrics (Lyria / ACE-Step)
+	Seed        int64  `json:"seed,omitempty"`
+	ExpiresIn   int    `json:"expiresIn,omitempty"`
+}
+
+// MusicJobView is the response shape of music/generate (partial) and
+// music/get_job (full).
+type MusicJobView struct {
+	JobID            string         `json:"jobId"`
+	Kind             string         `json:"kind,omitempty"`
+	State            string         `json:"state"`
+	EstimatedCostCU  int            `json:"estimatedCostCU,omitempty"`
+	BilledCostCU     int            `json:"billedCostCU,omitempty"`
+	DeadlineAt       string         `json:"deadlineAt,omitempty"`
+	ClientTag        string         `json:"clientTag,omitempty"`
+	IdempotencyKey   string         `json:"idempotencyKey,omitempty"`
+	IdempotentReplay bool           `json:"idempotentReplay,omitempty"`
+	Model            string         `json:"model,omitempty"`
+	Progress         map[string]any `json:"progress,omitempty"`
+	Request          map[string]any `json:"request,omitempty"`
+	Result           *MusicResult   `json:"result,omitempty"`
+	Error            map[string]any `json:"error,omitempty"`
+	Refunded         bool           `json:"refunded,omitempty"`
+	CancelPending    *bool          `json:"cancelPending,omitempty"`
 }
 
 // SpeakRequest mirrors `audio/speak` params (synchronous TTS).
@@ -311,6 +378,102 @@ func (c *Client) GenerateAwait(
 	return nil, &MediaError{
 		Code:    ErrCodeVideoProviderError,
 		Message: fmt.Sprintf("video job %s still rendering after %s", created.JobID, awaitTimeout),
+		Data:    map[string]any{"jobId": created.JobID, "state": "running"},
+	}
+}
+
+// MusicGenerate submits an async music generation job; poll with
+// MusicGetJob. timeout = 0 uses the default (120s).
+func (c *Client) MusicGenerate(req MusicGenerateRequest, timeout time.Duration) (*MusicJobView, error) {
+	if req.Prompt == "" {
+		return nil, errors.New("prompt must be non-empty")
+	}
+	var out MusicJobView
+	if err := c.call(MethodMusicGenerate, req, timeout, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// MusicGetJob fetches the authoritative music job snapshot (re-signs result.url).
+func (c *Client) MusicGetJob(jobID string, timeout time.Duration) (*MusicJobView, error) {
+	if jobID == "" {
+		return nil, errors.New("jobID must be non-empty")
+	}
+	var out MusicJobView
+	if err := c.call(MethodMusicGetJob, map[string]any{"jobId": jobID}, timeout, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// MusicCancelJob cancels a music job (queued = guaranteed + full refund;
+// running = best-effort).
+func (c *Client) MusicCancelJob(jobID string, timeout time.Duration) (*MusicJobView, error) {
+	if jobID == "" {
+		return nil, errors.New("jobID must be non-empty")
+	}
+	var out MusicJobView
+	if err := c.call(MethodMusicCancelJob, map[string]any{"jobId": jobID}, timeout, &out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+// MusicGenerateAwait submits and polls until terminal (music twin of
+// GenerateAwait). An idempotent replay that is already terminal returns at
+// once. On await timeout the error carries Data["jobId"] for recovery via
+// MusicGetJob.
+func (c *Client) MusicGenerateAwait(
+	req MusicGenerateRequest,
+	pollInterval, awaitTimeout time.Duration,
+) (*MusicJobView, error) {
+	if pollInterval <= 0 {
+		pollInterval = 5 * time.Second
+	}
+	if awaitTimeout <= 0 {
+		awaitTimeout = 9 * time.Minute
+	}
+	created, err := c.MusicGenerate(req, 0)
+	if err != nil {
+		return nil, err
+	}
+	terminal := func(view *MusicJobView) (*MusicJobView, error, bool) {
+		switch view.State {
+		case "succeeded":
+			return view, nil, true
+		case "failed", "cancelled", "expired":
+			msg := view.State
+			if view.Error != nil {
+				if m, ok := view.Error["message"].(string); ok && m != "" {
+					msg = fmt.Sprintf("%s: %s", view.State, m)
+				}
+			}
+			return nil, &MediaError{
+				Code:    ErrCodeMusicProviderError,
+				Message: fmt.Sprintf("music job %s ended as %s", created.JobID, msg),
+				Data:    map[string]any{"jobId": created.JobID, "state": view.State},
+			}, true
+		}
+		return nil, nil, false
+	}
+	if v, e, done := terminal(created); done {
+		return v, e
+	}
+	deadline := time.Now().Add(awaitTimeout)
+	for time.Now().Before(deadline) {
+		time.Sleep(pollInterval)
+		view, err := c.MusicGetJob(created.JobID, 0)
+		if err != nil {
+			return nil, err
+		}
+		if v, e, done := terminal(view); done {
+			return v, e
+		}
+	}
+	return nil, &MediaError{
+		Code:    ErrCodeMusicProviderError,
+		Message: fmt.Sprintf("music job %s still rendering after %s", created.JobID, awaitTimeout),
 		Data:    map[string]any{"jobId": created.JobID, "state": "running"},
 	}
 }

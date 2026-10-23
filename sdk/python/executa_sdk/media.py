@@ -1,8 +1,9 @@
-"""Anna Executa Python SDK — Media (Video generation / TTS) support.
+"""Anna Executa Python SDK — Media (Video / Music generation, TTS / STT) support.
 
 `MediaClient` lets an Executa plugin issue reverse JSON-RPC requests for
-``video/generate`` / ``video/get_job`` / ``video/cancel_job`` and
-``audio/speak`` to its host Agent — the Agent proxies to Nexus's
+``video/generate`` / ``video/get_job`` / ``video/cancel_job``,
+``music/generate`` / ``music/get_job`` / ``music/cancel_job`` and
+``audio/speak`` / ``audio/transcribe`` to its host Agent — the Agent proxies to Nexus's
 ``/api/v1/copilot/media/*`` endpoints using a short-lived ``media_token``
 (aud=executa-media) the host minted at invoke time.
 
@@ -50,6 +51,16 @@ Error codes — keep in sync with ``matrix/src/executa/protocol.py`` and
     AUDIO_ERR_VOICE_INVALID        = -32145
     AUDIO_ERR_MODEL_UNAVAILABLE    = -32146
     AUDIO_ERR_CONTENT_REJECTED     = -32147
+    MUSIC_ERR_NOT_GRANTED          = -32160
+    MUSIC_ERR_PROVIDER_ERROR       = -32161
+    MUSIC_ERR_INVALID_REQUEST      = -32162
+    MUSIC_ERR_MODEL_UNAVAILABLE    = -32163
+    MUSIC_ERR_JOB_NOT_FOUND        = -32164
+    MUSIC_ERR_FEATURE_UNSUPPORTED  = -32165   # .data = {feature, model, alternatives}
+    MUSIC_ERR_LYRICS_TOO_LONG      = -32166   # .data = {maxChars, actualChars}
+    MUSIC_ERR_JOB_NOT_CANCELLABLE  = -32167
+    MUSIC_ERR_CONTENT_REJECTED     = -32168
+    MUSIC_ERR_QUOTA_EXCEEDED       = -32169
 """
 
 from __future__ import annotations
@@ -71,6 +82,10 @@ METHOD_VIDEO_GET_JOB = "video/get_job"
 METHOD_VIDEO_CANCEL_JOB = "video/cancel_job"
 METHOD_AUDIO_SPEAK = "audio/speak"
 METHOD_AUDIO_TRANSCRIBE = "audio/transcribe"
+# music (matrix-nexus docs/design/platform-media-generation-music.md §11.2)
+METHOD_MUSIC_GENERATE = "music/generate"
+METHOD_MUSIC_GET_JOB = "music/get_job"
+METHOD_MUSIC_CANCEL_JOB = "music/cancel_job"
 
 # ─── Error codes ──────────────────────────────────────────────────────
 
@@ -92,6 +107,16 @@ AUDIO_ERR_VOICE_INVALID = -32145
 AUDIO_ERR_MODEL_UNAVAILABLE = -32146
 AUDIO_ERR_CONTENT_REJECTED = -32147
 AUDIO_ERR_INVOKE_BUDGET_EXCEEDED = -32148  # audio/transcribe per-invoke seconds budget
+MUSIC_ERR_NOT_GRANTED = -32160
+MUSIC_ERR_PROVIDER_ERROR = -32161
+MUSIC_ERR_INVALID_REQUEST = -32162
+MUSIC_ERR_MODEL_UNAVAILABLE = -32163
+MUSIC_ERR_JOB_NOT_FOUND = -32164
+MUSIC_ERR_FEATURE_UNSUPPORTED = -32165
+MUSIC_ERR_LYRICS_TOO_LONG = -32166
+MUSIC_ERR_JOB_NOT_CANCELLABLE = -32167
+MUSIC_ERR_CONTENT_REJECTED = -32168
+MUSIC_ERR_QUOTA_EXCEEDED = -32169
 
 _TERMINAL_JOB_STATES = frozenset({"succeeded", "failed", "cancelled", "expired"})
 
@@ -122,6 +147,22 @@ class VideoJobTimeout(MediaError):
         self.job_id = job_id
 
 
+class MusicJobTimeout(MediaError):
+    """`music_generate_await` wall clock elapsed; the job may still be rendering.
+
+    Carries ``job_id`` — recover the result later via
+    :meth:`MediaClient.music_get_job`.
+    """
+
+    def __init__(self, job_id: str, waited_s: float):
+        super().__init__(
+            MUSIC_ERR_PROVIDER_ERROR,
+            f"music job {job_id} still rendering after {waited_s:.0f}s",
+            data={"jobId": job_id},
+        )
+        self.job_id = job_id
+
+
 # ─── Internal plumbing ────────────────────────────────────────────────
 
 
@@ -131,7 +172,7 @@ class _Pending:
 
 
 class MediaClient:
-    """Reverse-RPC client for ``video/*`` and ``audio/speak``.
+    """Reverse-RPC client for ``video/*``, ``music/*``, ``audio/speak`` and ``audio/transcribe``.
 
     Usage::
 
@@ -146,6 +187,14 @@ class MediaClient:
             resolution="768p",
         )
         print(job["result"]["url"])          # presigned GET, ~30 min TTL
+
+        # Music: submit + poll (lyrics sung verbatim only on lyricsMode=field models)
+        song = await media.music_generate_await(
+            prompt="melancholic cinematic piano, slow ~70 BPM",
+            instrumental=True,
+            idempotency_key="scene-3-v1",   # replay within 24h → same job, no re-charge
+        )
+        print(song["result"]["url"], song["result"].get("durationSec"))
 
         # Sync TTS
         speech = await media.speak(text="Welcome!")  # voice omitted → model default
@@ -330,6 +379,142 @@ class MediaClient:
                     data={"jobId": job_id, "state": state},
                 )
         raise VideoJobTimeout(job_id, waited)
+
+    # — public API: music(platform-media-generation-music.md §7.2 契约)—
+
+    async def music_generate(
+        self,
+        *,
+        prompt: str,
+        lyrics: Optional[str] = None,
+        instrumental: Optional[bool] = None,
+        duration_sec: Optional[int] = None,
+        format: Optional[str] = None,
+        reference_image_url: Optional[str] = None,
+        options: Optional[dict] = None,
+        model: Optional[str] = None,
+        client_tag: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        timeout: float = DEFAULT_TIMEOUT,
+    ) -> dict:
+        """Submit an async music generation job.
+
+        Capability differences are **not** silently papered over: a parameter
+        the selected model does not support raises :class:`MediaError`
+        ``-32165 MUSIC_FEATURE_UNSUPPORTED`` whose ``.data`` carries
+        ``feature`` and ``alternatives`` (model names that do support it).
+        ``duration_sec`` is only accepted by range-length models; ``lyrics``
+        and ``instrumental=True`` are mutually exclusive; MiniMax requires
+        ``lyrics`` for vocal tracks unless ``options={"lyrics_optimizer": True}``.
+
+        ``idempotency_key`` (≤64 chars): re-submitting with the same key within
+        24 h returns the existing job (``idempotentReplay: true``) without a
+        second CU hold.
+
+        Returns immediately::
+
+            {"jobId": "mjob_…", "kind": "music", "state": "queued",
+             "estimatedCostCU": 259, "deadlineAt": "…", "idempotentReplay": false}
+        """
+        params: Dict[str, Any] = {"prompt": prompt}
+        if lyrics is not None:
+            params["lyrics"] = lyrics
+        if instrumental is not None:
+            params["instrumental"] = bool(instrumental)
+        if duration_sec is not None:
+            params["durationSec"] = int(duration_sec)
+        if format is not None:
+            params["format"] = format
+        if reference_image_url is not None:
+            params["referenceImageUrl"] = reference_image_url
+        if options:
+            params["options"] = dict(options)
+        if model is not None:
+            params["model"] = model
+        if client_tag is not None:
+            params["clientTag"] = client_tag
+        if idempotency_key is not None:
+            params["idempotencyKey"] = idempotency_key
+        return await self._call(METHOD_MUSIC_GENERATE, params, timeout)
+
+    async def music_get_job(self, job_id: str, *, timeout: float = 60.0) -> dict:
+        """Authoritative music job snapshot; ``result.url`` is re-signed on each
+        call (~30 min TTL) and ``result.lyrics`` carries model-returned lyrics
+        when the provider emits them (Lyria / ACE-Step)."""
+        return await self._call(METHOD_MUSIC_GET_JOB, {"jobId": job_id}, timeout)
+
+    async def music_cancel_job(self, job_id: str, *, timeout: float = 60.0) -> dict:
+        """Cancel a music job (queued = guaranteed + full refund; running =
+        best-effort, provider may refuse)."""
+        return await self._call(METHOD_MUSIC_CANCEL_JOB, {"jobId": job_id}, timeout)
+
+    async def music_generate_await(
+        self,
+        *,
+        prompt: str,
+        lyrics: Optional[str] = None,
+        instrumental: Optional[bool] = None,
+        duration_sec: Optional[int] = None,
+        format: Optional[str] = None,
+        reference_image_url: Optional[str] = None,
+        options: Optional[dict] = None,
+        model: Optional[str] = None,
+        client_tag: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
+        poll_interval_s: float = DEFAULT_POLL_INTERVAL_S,
+        await_timeout_s: float = DEFAULT_AWAIT_TIMEOUT_S,
+        on_progress: Optional[Callable[[dict], None]] = None,
+    ) -> dict:
+        """Submit + poll until terminal. Returns the terminal job view on
+        success; raises :class:`MediaError` on failed / cancelled / expired and
+        :class:`MusicJobTimeout` (carrying ``job_id``) when ``await_timeout_s``
+        elapses first. An idempotent replay that is already terminal returns
+        at once without polling."""
+        created = await self.music_generate(
+            prompt=prompt,
+            lyrics=lyrics,
+            instrumental=instrumental,
+            duration_sec=duration_sec,
+            format=format,
+            reference_image_url=reference_image_url,
+            options=options,
+            model=model,
+            client_tag=client_tag,
+            idempotency_key=idempotency_key,
+        )
+        job_id = created["jobId"]
+        if created.get("state") in _TERMINAL_JOB_STATES:
+            if created.get("state") == "succeeded":
+                return created
+            err = created.get("error") or {}
+            raise MediaError(
+                MUSIC_ERR_PROVIDER_ERROR,
+                f"music job {job_id} ended as {created.get('state')}: "
+                f"{err.get('message') or err.get('code') or 'unknown'}",
+                data={"jobId": job_id, "state": created.get("state")},
+            )
+        waited = 0.0
+        while waited < await_timeout_s:
+            await asyncio.sleep(poll_interval_s)
+            waited += poll_interval_s
+            view = await self.music_get_job(job_id)
+            if on_progress is not None and view.get("progress"):
+                try:
+                    on_progress(view["progress"])
+                except Exception:
+                    pass
+            state = view.get("state")
+            if state in _TERMINAL_JOB_STATES:
+                if state == "succeeded":
+                    return view
+                err = view.get("error") or {}
+                raise MediaError(
+                    MUSIC_ERR_PROVIDER_ERROR,
+                    f"music job {job_id} ended as {state}: "
+                    f"{err.get('message') or err.get('code') or 'unknown'}",
+                    data={"jobId": job_id, "state": state},
+                )
+        raise MusicJobTimeout(job_id, waited)
 
     # — public API: audio —
 

@@ -1,5 +1,6 @@
 /**
- * MediaClient — issue reverse `video/*` and `audio/speak` JSON-RPC requests
+ * MediaClient — issue reverse `video/*`, `music/*`, `audio/speak` and
+ * `audio/transcribe` JSON-RPC requests
  * to the host Agent (Anna), which proxies to Nexus's
  * `/api/v1/copilot/media/*` endpoints using a short-lived `media_token`
  * (aud=executa-media) the host minted at invoke time.
@@ -63,6 +64,10 @@ const METHOD_VIDEO_GET_JOB = "video/get_job";
 const METHOD_VIDEO_CANCEL_JOB = "video/cancel_job";
 const METHOD_AUDIO_SPEAK = "audio/speak";
 const METHOD_AUDIO_TRANSCRIBE = "audio/transcribe";
+// music (matrix-nexus docs/design/platform-media-generation-music.md §11.2)
+const METHOD_MUSIC_GENERATE = "music/generate";
+const METHOD_MUSIC_GET_JOB = "music/get_job";
+const METHOD_MUSIC_CANCEL_JOB = "music/cancel_job";
 
 const VIDEO_ERR_NOT_GRANTED = -32120;
 const VIDEO_ERR_QUOTA_EXCEEDED = -32121;
@@ -82,6 +87,16 @@ const AUDIO_ERR_VOICE_INVALID = -32145;
 const AUDIO_ERR_MODEL_UNAVAILABLE = -32146;
 const AUDIO_ERR_CONTENT_REJECTED = -32147;
 const AUDIO_ERR_INVOKE_BUDGET_EXCEEDED = -32148; // audio/transcribe per-invoke seconds budget
+const MUSIC_ERR_NOT_GRANTED = -32160;
+const MUSIC_ERR_PROVIDER_ERROR = -32161;
+const MUSIC_ERR_INVALID_REQUEST = -32162;
+const MUSIC_ERR_MODEL_UNAVAILABLE = -32163;
+const MUSIC_ERR_JOB_NOT_FOUND = -32164;
+const MUSIC_ERR_FEATURE_UNSUPPORTED = -32165; // .data = {feature, model, alternatives}
+const MUSIC_ERR_LYRICS_TOO_LONG = -32166; // .data = {maxChars, actualChars}
+const MUSIC_ERR_JOB_NOT_CANCELLABLE = -32167;
+const MUSIC_ERR_CONTENT_REJECTED = -32168;
+const MUSIC_ERR_QUOTA_EXCEEDED = -32169;
 
 const TERMINAL_JOB_STATES = new Set([
   "succeeded",
@@ -100,6 +115,18 @@ class MediaError extends Error {
 }
 
 /** generateAwait wall clock elapsed — job may still be rendering; carries `.jobId`. */
+class MusicJobTimeout extends MediaError {
+  constructor(jobId, waitedMs) {
+    super(
+      MUSIC_ERR_PROVIDER_ERROR,
+      `music job ${jobId} still rendering after ${Math.round(waitedMs / 1000)}s`,
+      { jobId }
+    );
+    this.name = "MusicJobTimeout";
+    this.jobId = jobId;
+  }
+}
+
 class VideoJobTimeout extends MediaError {
   constructor(jobId, waitedMs) {
     super(
@@ -227,6 +254,115 @@ class MediaClient {
       }
     }
     throw new VideoJobTimeout(jobId, waited);
+  }
+
+  /**
+   * Submit an async music generation job (`music/generate`). Capability
+   * differences are NOT papered over: a parameter the selected model does not
+   * support rejects with MediaError -32165 MUSIC_FEATURE_UNSUPPORTED whose
+   * `.data.alternatives` lists models that do. `durationSec` is only accepted
+   * by range-length models; `lyrics` and `instrumental:true` are mutually
+   * exclusive; MiniMax needs `lyrics` for vocals unless
+   * `options.lyrics_optimizer === true`. `idempotencyKey` (≤64 chars):
+   * replay within 24 h returns the existing job without a second CU hold.
+   * Resolves to `{jobId:"mjob_…", kind:"music", state, estimatedCostCU, deadlineAt, idempotentReplay}`.
+   *
+   * @param {{
+   *   prompt: string,
+   *   lyrics?: string,
+   *   instrumental?: boolean,
+   *   durationSec?: number,       // range-length models only
+   *   format?: string,            // catalog `formats` (mp3|wav, model-dependent)
+   *   referenceImageUrl?: string, // Lyria only
+   *   options?: object,           // model-specific knobs declared in catalog `options`
+   *   model?: string,
+   *   clientTag?: string,
+   *   idempotencyKey?: string,
+   *   timeoutMs?: number,         // default 120_000
+   * }} opts
+   */
+  musicGenerate(opts) {
+    const {
+      prompt,
+      lyrics,
+      instrumental,
+      durationSec,
+      format,
+      referenceImageUrl,
+      options,
+      model,
+      clientTag,
+      idempotencyKey,
+      timeoutMs = 120_000,
+    } = opts;
+    const params = { prompt };
+    if (lyrics != null) params.lyrics = lyrics;
+    if (instrumental != null) params.instrumental = Boolean(instrumental);
+    if (durationSec != null) params.durationSec = Number(durationSec);
+    if (format != null) params.format = format;
+    if (referenceImageUrl != null) params.referenceImageUrl = referenceImageUrl;
+    if (options && Object.keys(options).length) params.options = { ...options };
+    if (model != null) params.model = model;
+    if (clientTag != null) params.clientTag = clientTag;
+    if (idempotencyKey != null) params.idempotencyKey = idempotencyKey;
+    return this._call(METHOD_MUSIC_GENERATE, params, timeoutMs);
+  }
+
+  /** Authoritative music job snapshot; `result.url` re-signed per call, `result.lyrics` when the model returns them. */
+  musicGetJob(jobId, { timeoutMs = 60_000 } = {}) {
+    return this._call(METHOD_MUSIC_GET_JOB, { jobId }, timeoutMs);
+  }
+
+  /** Cancel a music job (queued = guaranteed + full refund; running = best-effort). */
+  musicCancelJob(jobId, { timeoutMs = 60_000 } = {}) {
+    return this._call(METHOD_MUSIC_CANCEL_JOB, { jobId }, timeoutMs);
+  }
+
+  /**
+   * Submit + poll until terminal (music twin of `generateAwait`). An
+   * idempotent replay that is already terminal resolves without polling.
+   * Rejects with MediaError on failed/cancelled/expired and MusicJobTimeout
+   * (carrying `.jobId`) when `awaitTimeoutMs` elapses.
+   */
+  async musicGenerateAwait(opts) {
+    const {
+      pollIntervalMs = 5000,
+      awaitTimeoutMs = 540_000,
+      onProgress,
+      ...genOpts
+    } = opts;
+    const created = await this.musicGenerate(genOpts);
+    const jobId = created.jobId;
+    const terminalError = (view) => {
+      const err = view.error || {};
+      return new MediaError(
+        MUSIC_ERR_PROVIDER_ERROR,
+        `music job ${jobId} ended as ${view.state}: ${err.message || err.code || "unknown"}`,
+        { jobId, state: view.state }
+      );
+    };
+    if (TERMINAL_JOB_STATES.has(created.state)) {
+      if (created.state === "succeeded") return created;
+      throw terminalError(created);
+    }
+    let waited = 0;
+    while (waited < awaitTimeoutMs) {
+      await new Promise((r) => setTimeout(r, pollIntervalMs));
+      waited += pollIntervalMs;
+      const view = await this.musicGetJob(jobId);
+      if (onProgress && view.progress) {
+        try {
+          onProgress(view.progress);
+        } catch (_) {
+          /* ignore */
+        }
+      }
+      if (TERMINAL_JOB_STATES.has(view.state)) {
+        if (view.state === "succeeded") return view;
+        throw terminalError(view);
+      }
+    }
+    throw new MusicJobTimeout(jobId, waited);
   }
 
   /**
@@ -372,11 +508,25 @@ module.exports = {
   MediaClient,
   MediaError,
   VideoJobTimeout,
+  MusicJobTimeout,
   METHOD_VIDEO_GENERATE,
   METHOD_VIDEO_GET_JOB,
   METHOD_VIDEO_CANCEL_JOB,
+  METHOD_MUSIC_GENERATE,
+  METHOD_MUSIC_GET_JOB,
+  METHOD_MUSIC_CANCEL_JOB,
   METHOD_AUDIO_SPEAK,
   METHOD_AUDIO_TRANSCRIBE,
+  MUSIC_ERR_NOT_GRANTED,
+  MUSIC_ERR_PROVIDER_ERROR,
+  MUSIC_ERR_INVALID_REQUEST,
+  MUSIC_ERR_MODEL_UNAVAILABLE,
+  MUSIC_ERR_JOB_NOT_FOUND,
+  MUSIC_ERR_FEATURE_UNSUPPORTED,
+  MUSIC_ERR_LYRICS_TOO_LONG,
+  MUSIC_ERR_JOB_NOT_CANCELLABLE,
+  MUSIC_ERR_CONTENT_REJECTED,
+  MUSIC_ERR_QUOTA_EXCEEDED,
   VIDEO_ERR_NOT_GRANTED,
   VIDEO_ERR_QUOTA_EXCEEDED,
   VIDEO_ERR_INVALID_REQUEST,

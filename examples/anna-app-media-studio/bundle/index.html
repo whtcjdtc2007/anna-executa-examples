@@ -59,6 +59,9 @@
           <button id="generate-btn">Generate video</button>
           <button id="cancel-btn" disabled>Cancel job</button>
           <button id="i2v-btn">Image → Video (first frame)</button>
+          <label class="inline" title="image.generateAwait: first frame as an async job (ijob_…) — survives reloads, cancellable, re-signable">
+            <input type="checkbox" id="image-as-job" /> Run first frame as job
+          </label>
 
           <hr />
           <label for="narration">Narration text</label>
@@ -102,8 +105,55 @@
           <button id="speak-btn">Speak (TTS)</button>
 
           <hr />
+          <label for="music-prompt">Music prompt</label>
+          <textarea
+            id="music-prompt"
+            rows="2"
+            placeholder="Melancholic cinematic piano, slow ~70 BPM, rainy night"
+          ></textarea>
+
+          <label for="music-model">Music model</label>
+          <select id="music-model"><option value="">Default (catalog)</option></select>
+          <div class="caps" id="music-caps">capabilities: —</div>
+
+          <div id="music-lyrics-row">
+            <label for="music-lyrics">Lyrics <span class="hint" id="music-lyrics-hint"></span></label>
+            <textarea id="music-lyrics" rows="3" placeholder="[Verse 1]&#10;…&#10;[Chorus]&#10;…"></textarea>
+          </div>
+
+          <div class="grid2">
+            <div>
+              <label class="check" id="music-instrumental-row">
+                <input id="music-instrumental" type="checkbox" /> Instrumental
+              </label>
+            </div>
+            <div>
+              <label for="music-duration">Duration</label>
+              <select id="music-duration"></select>
+            </div>
+          </div>
+
+          <div id="music-ref-row" hidden>
+            <label for="music-ref">Reference image URL (storyboard frame → score)</label>
+            <input id="music-ref" type="url" placeholder="https://…" />
+            <button id="music-ref-from-frame-btn" class="link">Use last generated first frame</button>
+          </div>
+
+          <label for="music-idem">Idempotency key</label>
+          <div class="grid2 tight">
+            <input id="music-idem" maxlength="64" placeholder="canvas-node-8f3a-v2" />
+            <button id="music-idem-gen-btn">Generate key</button>
+          </div>
+
+          <div class="estimate" id="music-estimate">estimate: —</div>
+
+          <button id="music-generate-btn">Generate music</button>
+          <button id="music-cancel-btn" disabled>Cancel music job</button>
+
+          <hr />
           <button id="persist-btn" disabled>Persist video to host storage</button>
           <button id="persist-audio-btn" disabled>Persist narration to host storage</button>
+          <button id="persist-music-btn" disabled>Persist music to host storage</button>
           <button id="chat-btn" disabled>Send video to chat</button>
           <button id="refresh-btn" disabled>Re-sign expired URL</button>
 
@@ -112,6 +162,8 @@
             <button id="err-invalid-btn">-32122 invalid duration</button>
             <button id="err-voice-btn">-32145 invalid voice</button>
             <button id="err-quota-btn">Catalog &amp; quota probe</button>
+            <button id="err-music-feature-btn">-32165 lyrics on instrumental-only model</button>
+            <button id="err-music-replay-btn">Idempotent replay (same key twice)</button>
           </details>
 
           <div id="status" class="status" aria-live="polite">Not connected.</div>
@@ -143,6 +195,26 @@
             <span id="tts-meta-chars">chars: —</span>
             <span id="tts-meta-cost">cost: —</span>
           </div>
+        </div>
+
+        <div class="narration music" id="music-box" hidden>
+          <div class="progress" id="music-progress-row" hidden>
+            <div class="progress__bar"><div id="music-progress-fill"></div></div>
+            <span id="music-progress-text">queued…</span>
+          </div>
+          <audio id="music-player" controls></audio>
+          <div class="meta">
+            <span id="music-meta-model">model: —</span>
+            <span id="music-meta-duration">length: —</span>
+            <span id="music-meta-cost">cost: —</span>
+            <span id="music-meta-job">job: —</span>
+            <span id="music-meta-replay" hidden>↩ idempotent replay · 0 CU charged</span>
+          </div>
+          <details id="music-lyrics-out" hidden>
+            <summary>Lyrics returned by model</summary>
+            <pre id="music-lyrics-text"></pre>
+          </details>
+          <div class="alternatives" id="music-alternatives" hidden></div>
         </div>
 
         <div class="history" id="history"></div>
