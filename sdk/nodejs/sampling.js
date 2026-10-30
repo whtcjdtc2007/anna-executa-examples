@@ -107,6 +107,19 @@ class SamplingClient {
    *   `_meta.responseFormat.structuredValid`. Schema hard limits: ≤32KB,
    *   depth ≤8, ≤512 nodes, name `^[a-zA-Z0-9_-]{1,64}$`.
    * @param {"error"|"json_object"|"text"} [params.onUnsupported]   — default "error".
+   * @param {boolean|{enabled?:boolean, effort?:"minimal"|"low"|"medium"|"high"|"xhigh"|"max", budgetTokens?:number, includeReasoning?:boolean}} [params.thinking]
+   *   — optional thinking / reasoning control for reasoning-capable models.
+   *   `true` enables at the model default level, `false` disables (when the
+   *   model allows). **Platform default for sampling is thinking OFF** when
+   *   the model can disable it — reasoning tokens are invisible to the caller
+   *   but billed and counted against `maxTokens` (DashScope/Qwen). Mandatory
+   *   reasoning models cannot be disabled (`_meta.thinking.reason ===
+   *   "mandatory"`). The reply echoes `_meta.thinking = {requested, effective:
+   *   {enabled, effort?, budgetTokens?}, applied, reason, warning?, reasoning?,
+   *   reasoningTruncated?}` and `usage.reasoningTokens` (only when the
+   *   provider reports it). Truncation check: `stopReason === "maxTokens" &&
+   *   usage.outputTokens - (usage.reasoningTokens ?? 0) <= 0` ⇒ reasoning ate
+   *   the budget → retry with `thinking: false` or a larger `maxTokens`.
    * @param {number} [params.timeoutMs]             — default 90 000 ms.
    * @returns {Promise<object>}
    */
@@ -127,6 +140,7 @@ class SamplingClient {
       metadata,
       responseFormat,
       onUnsupported,
+      thinking,
       timeoutMs = 90_000,
     } = params || {};
 
@@ -146,6 +160,7 @@ class SamplingClient {
     if (metadata) rpcParams.metadata = metadata;
     if (responseFormat != null) rpcParams.responseFormat = responseFormat;
     if (onUnsupported != null) rpcParams.onUnsupported = onUnsupported;
+    if (thinking != null) rpcParams.thinking = thinking;
 
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {

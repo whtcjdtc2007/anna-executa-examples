@@ -107,6 +107,7 @@ async function handleSummarize(args, invokeId) {
     maxTokens,
     systemPrompt: "You are a concise editorial assistant.",
     // No modelPreferences → host uses the user's preferred_model.
+    // Thinking is OFF by default for sampling; pass `thinking: true` to opt in.
     metadata: { executa_invoke_id: invokeId, tool: "summarize" },
     timeoutMs: 60_000,
   });

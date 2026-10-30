@@ -66,6 +66,30 @@
       <pre id="sync-log" class="log"></pre>
     </section>
 
+    <section>
+      <h2>4. Concurrency burst (quota &amp; queue, forum #474)</h2>
+      <p class="muted">
+        Fires <em>N</em> <code>invokeAsyncAwait</code> calls at once. Watch
+        the three platform layers: create-time <code>job_quota_exceeded</code>
+        (per-user active cap, 50), agent-side <strong>queueing</strong> past
+        30 running slots (progress event <code>{type:"queued", data:{position}}</code>),
+        and the terminal <code>long_job_capacity</code> (admitted cap 100 —
+        normally unreachable). Try 12 → all run; 40 → 30 run + 10 queue;
+        51 → the 51st is rejected at create.
+      </p>
+      <div class="row">
+        <label>jobs <input id="burst-n" type="number" value="12" min="1" max="200" /></label>
+        <label>steps <input id="burst-steps" type="number" value="3" min="1" max="100" /></label>
+        <label>step_seconds <input id="burst-step-seconds" type="number" value="1" min="0" max="60" step="0.5" /></label>
+      </div>
+      <div class="row">
+        <button id="burst-run">Fire N jobs</button>
+        <button id="burst-cancel" disabled>Cancel all</button>
+      </div>
+      <p id="burst-stats" class="muted">idle</p>
+      <pre id="burst-log" class="log"></pre>
+    </section>
+
     <footer class="muted">
       Decision table: &lt;90s → <code>tools.invoke</code> · &ge;90s or
       "don't block my UI" → <code>tools.invokeAsync</code>. Progress events

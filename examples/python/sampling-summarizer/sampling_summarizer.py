@@ -134,6 +134,8 @@ async def _summarize(text: str, max_words: int = 80, *, invoke_id: str) -> dict:
         system_prompt="You are a concise editorial assistant.",
         # No `model_preferences` → host falls back to the user's
         # `preferred_model` saved in their Anna account.
+        # Thinking is OFF by default for sampling; pass `thinking=True` or
+        # `thinking={"effort": "low"}` to opt in (costs reasoning tokens).
         metadata={"executa_invoke_id": invoke_id, "tool": "summarize"},
         timeout=60.0,
     )

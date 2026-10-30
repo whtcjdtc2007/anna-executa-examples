@@ -73,8 +73,45 @@ def handle_invoke(req_id, params):
   `min(job 时长 + 5min, 1h)` TTL 签发,更长的 job 由 Agent 自动续期
   —— 插件侧无需处理。
 - 调用次数配额随 job 时长线性放大(×小时数,封顶 ×10)。
-- 每用户活跃 job 配额:5;每 Agent 长 job 并发:3(超限返回
-  `long_job_capacity`,可稍后重试)。
+- 每用户活跃 job 配额:**50**(`job_quota_exceeded`;按用户计,跨 app / 窗口 /
+  Agent 共享,queued + running 都算)。
+- 每 Agent 长 job 运行席位:**30**;席位满时 job 在 Agent 侧**排队**——你会收到
+  `{type: "queued", data: {position}}` 进度事件,排队时长计入 `timeoutMs`——最多
+  100 个 admitted,超出才返回 `long_job_capacity`(可重试,`details.retry_after_ms`)。
+  实际上每用户配额会先命中。
+- 进度预算:每 job 50 条/s、每用户 200 条/s,超出丢弃(心跳、`queued`、终态永不丢)。
+- 并发 ≠ 速度:席位只保证 burst 不被拒绝。重资源(无头浏览器、GPU)跑在 Agent 沙箱里
+  (云端 4 vCPU / 4 GB),平台不会替你限流——请在 executa 内部自行限制并发。
+
+## 并发 burst(第 4 区)—— 复现 forum #474 的限制
+
+第 4 区一次性发起 *N* 个 `invokeAsyncAwait`(独立 `clientTag`
+`long-task-demo-burst`,reload 恢复会忽略它们),实时统计三层平台限制:
+
+| N   | 预期                                                                   |
+| --- | ---------------------------------------------------------------------- |
+| 12  | 全部立即 `running`,无 `queued` 事件,全部成功                          |
+| 40  | 30 个 `running` + 10 个在 Agent 侧 `queued`(`{type:"queued", data:{position}}`),全部成功 |
+| 51  | 创建 50 个,第 51 个在创建时被拒 `job_quota_exceeded {active:50, max_active:50, scope:"user"}` |
+
+`long_job_capacity`(Agent admitted 上限 100)不应出现——每用户配额会先命中。
+`steps × step_seconds` 保持很小(默认 3 × 1 s),40 个 job 一分钟内跑完;排队时长
+计入每个 job 的 `timeoutMs`。
+
+**插件内部并发由你决定。**捆绑的引擎用 `ThreadPoolExecutor(max_workers=32)` 跑每个
+invoke,因此 burst 测的是平台限制而不是插件。驱动无头浏览器 / GPU 的插件必须把线程池
+限制在沙箱能承受的范围——平台的 30 个席位不会保护 4 GB 沙箱免于 30 个 Chrome 标签页。
+
+不用 UI 也可以:在 App iframe 上打开 DevTools(demo 暴露了 `window.anna`):
+
+```js
+const tool_id = window.__ANNA_TOOL_IDS__["long-task-engine"];
+await Promise.allSettled(Array.from({ length: 40 }, () =>
+  anna.tools.invokeAsync({ tool_id, method: "run_steps",
+    args: { steps: 3, step_seconds: 1 }, timeoutMs: 120000, clientTag: "burst" })));
+(await anna.tools.listJobs({ clientTag: "burst", state: ["queued","running"], limit: 100 })).jobs
+  .reduce((m, j) => (m[j.state] = (m[j.state] || 0) + 1, m), {});
+```
 
 ## 目录结构
 

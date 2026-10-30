@@ -117,6 +117,7 @@ func handleSummarize(args map[string]any, invokeID string) (map[string]any, erro
 		MaxTokens:    maxTokens,
 		SystemPrompt: "You are a concise editorial assistant.",
 		// No ModelPreferences → host falls back to user's preferred_model.
+		// Thinking is OFF by default for sampling; set Thinking: true to opt in.
 		Metadata: map[string]string{"executa_invoke_id": invokeID, "tool": "summarize"},
 	}, 60*time.Second)
 	if err != nil {
