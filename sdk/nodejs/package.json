@@ -1,6 +1,6 @@
 {
   "name": "@anna/executa-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Anna Executa SDK — Node.js helpers (sampling, etc.)",
   "main": "index.js",
   "license": "MIT",

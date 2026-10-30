@@ -112,6 +112,30 @@ type ResponseFormat struct {
 	JSONSchema *JSONSchemaSpec `json:"json_schema,omitempty"`
 }
 
+// Thinking is the optional thinking / reasoning control for
+// reasoning-capable models. Set CreateMessageRequest.Thinking to a plain
+// bool (`true` / `false`) or to a *Thinking object. Enabled defaults to true when Effort
+// or BudgetTokens is set; BudgetTokens wins over Effort on providers where
+// the two are mutually exclusive; IncludeReasoning asks the host to return
+// the reasoning text in `_meta.thinking.reasoning`.
+//
+// Platform default for sampling is thinking OFF when the model can disable
+// it — reasoning tokens are invisible to the caller but billed and counted
+// against MaxTokens (DashScope/Qwen). Mandatory reasoning models cannot be
+// disabled (`_meta.thinking.reason == "mandatory"`). The reply echoes
+// `_meta.thinking = {requested, effective:{enabled, effort?, budgetTokens?},
+// applied, reason, warning?, reasoning?, reasoningTruncated?}` and
+// Usage.ReasoningTokens (only when the provider reports it). Truncation
+// check: StopReason == "maxTokens" && OutputTokens - ReasoningTokens <= 0 ⇒
+// reasoning ate the budget → retry with thinking disabled or a larger
+// MaxTokens.
+type Thinking struct {
+	Enabled          *bool  `json:"enabled,omitempty"`
+	Effort           string `json:"effort,omitempty"` // "minimal"|"low"|"medium"|"high"|"xhigh"|"max"
+	BudgetTokens     int    `json:"budgetTokens,omitempty"`
+	IncludeReasoning *bool  `json:"includeReasoning,omitempty"`
+}
+
 // CreateMessageRequest mirrors the params of `sampling/createMessage`.
 type CreateMessageRequest struct {
 	Messages         []Message         `json:"messages"`
@@ -127,6 +151,9 @@ type CreateMessageRequest struct {
 	// "text" (drop the constraint) when the selected model lacks the
 	// requested ResponseFormat level.
 	OnUnsupported string `json:"onUnsupported,omitempty"`
+	// Thinking: nil (host default — OFF for sampling), a bool (`false` /
+	// `true`) or *Thinking. Forwarded verbatim.
+	Thinking any `json:"thinking,omitempty"`
 }
 
 // Usage mirrors the MCP usage block.
@@ -134,6 +161,8 @@ type Usage struct {
 	InputTokens  int `json:"inputTokens"`
 	OutputTokens int `json:"outputTokens"`
 	TotalTokens  int `json:"totalTokens"`
+	// ReasoningTokens is present only when the provider reports it.
+	ReasoningTokens int `json:"reasoningTokens,omitempty"`
 }
 
 // CreateMessageResult is the parsed result returned by the host.

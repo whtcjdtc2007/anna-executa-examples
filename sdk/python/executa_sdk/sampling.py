@@ -149,6 +149,7 @@ class SamplingClient:
         metadata: Optional[dict] = None,
         response_format: Optional[dict] = None,
         on_unsupported: Optional[str] = None,
+        thinking: bool | dict | None = None,
         timeout: float = 90.0,
     ) -> dict:
         """Ask the host to run an LLM completion. Returns the host result dict.
@@ -188,6 +189,41 @@ class SamplingClient:
                 ``"error"`` (default — fail with -32010), ``"json_object"``
                 (downgrade to L1 JSON mode) or ``"text"`` (drop the constraint).
                 Check ``_meta.responseFormat.downgraded`` to detect a downgrade.
+            thinking:          Optional thinking / reasoning control for
+                reasoning-capable models (Qwen3, DeepSeek-R1, GPT-5.x, Claude
+                extended thinking …). Shape: ``bool`` or
+                ``{"enabled"?: bool, "effort"?: "minimal"|"low"|"medium"|
+                "high"|"xhigh"|"max", "budgetTokens"?: int,
+                "includeReasoning"?: bool}``. ``True`` enables thinking at the
+                model's default level; ``False`` disables it (when the model
+                allows). In an object, ``enabled`` defaults to ``True`` when
+                ``effort`` or ``budgetTokens`` is present; ``budgetTokens`` wins
+                over ``effort`` on providers where the two are mutually
+                exclusive; ``includeReasoning=True`` asks the host to return the
+                reasoning text in ``_meta.thinking.reasoning``.
+                **Platform default for sampling is thinking OFF** when the model
+                can disable it — programmatic callers usually pass a small
+                ``max_tokens`` and want text/JSON, and reasoning tokens are
+                invisible to them but still billed and counted against
+                ``max_tokens`` (DashScope/Qwen). Models with mandatory
+                reasoning cannot be disabled; the host leaves them untouched
+                and reports ``reason="mandatory"``.
+                The response echoes ``_meta.thinking = {requested, effective:
+                {enabled, effort?, budgetTokens?}, applied, reason, warning?,
+                reasoning?, reasoningTruncated?}`` and, when the provider
+                reports it, ``usage.reasoningTokens`` (omitted otherwise — not
+                ``0``). Programmatic truncation check::
+
+                    usage = result.get("usage", {})
+                    if (
+                        result.get("stopReason") == "maxTokens"
+                        and usage.get("outputTokens", 0)
+                        - usage.get("reasoningTokens", 0) <= 0
+                    ):
+                        # reasoning consumed the whole budget → retry with
+                        # thinking=False or a larger max_tokens
+                        ...
+
             timeout:           Client-side wall-clock seconds before raising
                 ``asyncio.TimeoutError``. Also propagated to the host on the
                 wire as ``_clientTimeoutS`` so that matrix-agent (HTTP) and
@@ -235,6 +271,8 @@ class SamplingClient:
             params["responseFormat"] = response_format
         if on_unsupported is not None:
             params["onUnsupported"] = on_unsupported
+        if thinking is not None:
+            params["thinking"] = thinking
 
         future: asyncio.Future[dict] = loop.create_future()
         with self._lock:

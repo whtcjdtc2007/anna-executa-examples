@@ -223,4 +223,118 @@ runBtn.onclick = runAsync;
 cancelBtn.onclick = () => abortCtl && abortCtl.abort();
 $("run-sync").onclick = runSyncContrast;
 
+// ── 4. Concurrency burst (forum #474) ─────────────────────────────────
+// N parallel invokeAsyncAwait calls under a separate clientTag so section 2's
+// reload recovery ignores them. Three outcomes are tallied live:
+//   • create rejected  → err.code === "job_quota_exceeded" (details.active/max_active)
+//   • queued on agent  → progress event type "queued" (data.position)
+//   • terminal         → succeeded | failed(code) | cancelled | expired
+// listJobs is polled every 2s for the host-side queued/running split.
+const BURST_TAG = "long-task-demo-burst";
+const burstLog = $("burst-log");
+const burstStats = $("burst-stats");
+let burstAbort = null;
+
+function renderBurstStats(s) {
+  burstStats.textContent =
+    `created ${s.created}/${s.total} · quota_exceeded ${s.quota} · ` +
+    `host queued ${s.hostQueued} running ${s.hostRunning} · ` +
+    `agent-queued events ${s.queuedEvents} · ` +
+    `succeeded ${s.succeeded} failed ${s.failed} cancelled ${s.cancelled} ` +
+    `(long_job_capacity ${s.capacity}) · ${s.elapsed}s`;
+}
+
+async function runBurst() {
+  const anna = await annaReady;
+  const n = Math.max(1, Number($("burst-n").value) || 12);
+  const steps = Number($("burst-steps").value) || 3;
+  const stepSeconds = Number($("burst-step-seconds").value) || 1;
+  burstLog.textContent = "";
+  $("burst-run").disabled = true;
+  $("burst-cancel").disabled = false;
+  burstAbort = new AbortController();
+  const t0 = Date.now();
+  const s = {
+    total: n, created: 0, quota: 0, hostQueued: 0, hostRunning: 0,
+    queuedEvents: 0, succeeded: 0, failed: 0, cancelled: 0, capacity: 0,
+    elapsed: 0,
+  };
+  renderBurstStats(s);
+
+  // Host-side split via listJobs (authoritative; the SDK's own polling is
+  // per job, this is one call for the whole batch).
+  const poll = setInterval(async () => {
+    try {
+      const { jobs } = await anna.tools.listJobs({
+        clientTag: BURST_TAG, state: ["queued", "running"], limit: 100,
+      });
+      s.hostQueued = jobs.filter((j) => j.state === "queued").length;
+      s.hostRunning = jobs.filter((j) => j.state === "running").length;
+    } catch (_) {}
+    s.elapsed = Math.round((Date.now() - t0) / 1000);
+    renderBurstStats(s);
+  }, 2000);
+
+  const one = async (i) => {
+    try {
+      await anna.tools.invokeAsyncAwait(
+        {
+          tool_id: EXECUTA_TOOL_ID,
+          method: "run_steps",
+          args: { steps, step_seconds: stepSeconds },
+          // Queue time counts against the deadline — give the whole batch
+          // room: N jobs / 30 slots rounds, min 60s.
+          timeoutMs: Math.max(60_000, Math.ceil(steps * stepSeconds * 1000 * (Math.ceil(n / 30) + 1) * 1.5)),
+          clientTag: BURST_TAG,
+        },
+        {
+          signal: burstAbort.signal,
+          onProgress: (ev) => {
+            if (ev.type === "queued") {
+              s.queuedEvents += 1;
+              log(burstLog, `#${i} queued on agent — position ${ev.data && ev.data.position} / slots ${ev.data && ev.data.max_concurrent}`);
+            }
+          },
+        },
+      );
+      s.succeeded += 1;
+    } catch (err) {
+      if (err.code === "job_quota_exceeded") {
+        s.quota += 1;
+        log(burstLog, `#${i} create rejected: job_quota_exceeded ${JSON.stringify(err.details || {})}`, "err");
+        return; // never created
+      }
+      if (err.code === "cancelled") s.cancelled += 1;
+      else {
+        s.failed += 1;
+        if (err.code === "long_job_capacity") s.capacity += 1;
+        log(burstLog, `#${i} ${err.code}: ${err.message} ${JSON.stringify(err.details || {})}`, "err");
+      }
+    }
+  };
+
+  // invokeAsyncAwait creates the job synchronously inside; count creations
+  // as the calls settle (a rejected create never increments).
+  const tasks = Array.from({ length: n }, (_, i) =>
+    one(i + 1).then(() => { /* settled */ }),
+  );
+  // Rough "created" = total − quota rejections, refreshed as they come in.
+  const tick = setInterval(() => { s.created = n - s.quota; renderBurstStats(s); }, 500);
+  await Promise.allSettled(tasks);
+  clearInterval(tick);
+  clearInterval(poll);
+  s.created = n - s.quota;
+  s.hostQueued = 0;
+  s.hostRunning = 0;
+  s.elapsed = Math.round((Date.now() - t0) / 1000);
+  renderBurstStats(s);
+  log(burstLog, `done in ${s.elapsed}s — ${JSON.stringify(s)}`, "ok");
+  $("burst-run").disabled = false;
+  $("burst-cancel").disabled = true;
+  burstAbort = null;
+}
+
+$("burst-run").onclick = () => runBurst().catch((err) => log(burstLog, `burst failed: ${err.message}`, "err"));
+$("burst-cancel").onclick = () => burstAbort && burstAbort.abort();
+
 recover().catch((err) => log(recoverLog, `recover failed: ${err.message}`, "err"));

@@ -222,10 +222,14 @@ def _handle_message(line: str) -> None:
 def main() -> None:
     print("🔌 long-task-engine plugin started", file=sys.stderr)
     # Each invoke runs on its own thread so a long-running run_steps does
-    # not block health checks or concurrent invokes.
+    # not block health checks or concurrent invokes. 32 ≥ the agent's long-job
+    # running slots (30, forum #474) so a concurrency burst exercises the
+    # platform limits rather than this pool. Real plugins with heavy per-invoke
+    # resources (headless browsers, GPU) should size this to what the sandbox
+    # can actually sustain — the platform does not throttle below its slots.
     from concurrent.futures import ThreadPoolExecutor
 
-    pool = ThreadPoolExecutor(max_workers=4, thread_name_prefix="invoke")
+    pool = ThreadPoolExecutor(max_workers=32, thread_name_prefix="invoke")
     try:
         for raw in sys.stdin:
             line = raw.strip()
