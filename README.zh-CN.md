@@ -39,6 +39,10 @@ anna-executa-examples/
 │                                        #     Tool 插件提供三种语言实现：
 │                                        #     focus-session-{python,node,go}；
 │                                        #     通过 `executa.json` 或 `--executa` CLI flag 切换。
+│   └── anna-app-platform-runtime-demo/  # ⭐ Anna App — 平台共享运行时（forum #490）：探测
+│                                        #     ANNA_CHROME_*/ANNA_NODE_* 发现契约、预演
+│                                        #     runtime.requires 安装预检、用平台 Chrome 渲染
+│                                        #     HTML→PNG/PDF、≈5 MiB 轻量 binary 打包
 ├── sdk/                                 # Sampling 示例所使用的参考 SDK
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

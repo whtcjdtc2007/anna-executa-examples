@@ -1,0 +1,29 @@
+{
+  "name": "tool-test-runtime-probe-12345678",
+  "version": "1.0.0",
+  "description": "Platform Runtime Probe — Executa stdio tool plugin (forum #490 demo)",
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "tool-test-runtime-probe-12345678": "runtime_probe_plugin.js"
+  },
+  "main": "runtime_probe_plugin.js",
+  "scripts": {
+    "start": "node runtime_probe_plugin.js",
+    "test": "node --test test/",
+    "build": "./build.sh"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  },
+  "puppeteer": {
+    "skipDownload": true
+  },
+  "executa": {
+    "tool_id": "tool-test-runtime-probe-12345678"
+  }
+}
