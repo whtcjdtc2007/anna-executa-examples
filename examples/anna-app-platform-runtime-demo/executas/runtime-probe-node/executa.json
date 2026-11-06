@@ -1,0 +1,61 @@
+{
+  "tool_id": "tool-test-runtime-probe-12345678",
+  "slug": "runtime-probe",
+  "name": "Platform Runtime Probe",
+  "version": "1.0.0",
+  "executa_type": "tool",
+  "type": "node",
+  "enabled": true,
+  "description": "Probe the Anna platform shared runtimes (Node.js / Chrome), preview runtime.requires install prechecks, and render HTML to PNG/PDF with the platform Chrome — shipping zero browser bytes (forum #490).",
+
+  "_comment_runtime": "Platform shared-runtime requirements (forum #490). The Agent prechecks these at install time (pure check — never installs anything); missing runtimes are provisioned at agent level (console 'Platform' row / install_runtime shared-node; baked into Cloud Agent images). Old Agents ignore the block.",
+  "runtime": {
+    "requires": { "node": ">=22 <23", "chrome": ">=140" },
+    "fallback": "fail"
+  },
+
+  "_comment_distribution": "active=local for development; flip to \"binary\" (or publish with `--profile binary`) once the Phase 2 Agents are rolled out. The five platform keys all point at byte-identical archives (pure JS, no native code) — server-side content addressing dedupes the upload automatically.",
+  "distribution": {
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true,
+        "capabilities": ["probe_runtimes", "check_requires", "render_html"]
+      },
+      "binary": {
+        "type": "binary",
+        "executable_name": "tool-test-runtime-probe-12345678",
+        "supports_protocol": true,
+        "capabilities": ["probe_runtimes", "check_requires", "render_html"],
+        "binary_urls": {
+          "linux-x86_64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/runtime-probe-v{version}/runtime-probe-{version}-linux-x86_64.tar.gz",
+            "entrypoint": "bin/runtime-probe",
+            "format": "tar.gz"
+          },
+          "linux-aarch64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/runtime-probe-v{version}/runtime-probe-{version}-linux-aarch64.tar.gz",
+            "entrypoint": "bin/runtime-probe",
+            "format": "tar.gz"
+          },
+          "darwin-arm64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/runtime-probe-v{version}/runtime-probe-{version}-darwin-arm64.tar.gz",
+            "entrypoint": "bin/runtime-probe",
+            "format": "tar.gz"
+          },
+          "darwin-x86_64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/runtime-probe-v{version}/runtime-probe-{version}-darwin-x86_64.tar.gz",
+            "entrypoint": "bin/runtime-probe",
+            "format": "tar.gz"
+          },
+          "windows-x86_64": {
+            "url": "https://github.com/whtcjdtc2007/anna-executa-examples/releases/download/runtime-probe-v{version}/runtime-probe-{version}-windows-x86_64.tar.gz",
+            "entrypoint": "bin/runtime-probe.cmd",
+            "format": "tar.gz"
+          }
+        }
+      }
+    }
+  }
+}

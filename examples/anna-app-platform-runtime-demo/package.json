@@ -1,0 +1,17 @@
+{
+  "name": "anna-app-platform-runtime-demo",
+  "version": "1.0.0",
+  "description": "Anna App — probe / precheck / use the platform shared Node.js & Chrome (forum #490 demo)",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "postinstall": "cd executas/runtime-probe-node && npm install --no-audit --no-fund",
+    "dev": "anna-app dev",
+    "validate": "anna-app validate --strict",
+    "test": "node --test executas/runtime-probe-node/test/",
+    "build:executa": "cd executas/runtime-probe-node && ./build.sh"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.63"
+  }
+}

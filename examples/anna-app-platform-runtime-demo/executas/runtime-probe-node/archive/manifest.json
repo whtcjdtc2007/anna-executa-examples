@@ -1,0 +1,15 @@
+{
+  "_comment": "Archive-root manifest for the binary profile. build.sh copies this file to the archive root as `manifest.json`. It is NOT named manifest.json inside the executa dir because the CLI would load a sibling manifest.json as the PROTOCOL manifest.",
+  "name": "runtime-probe",
+  "version": "1.0.0",
+  "runtime": {
+    "requires": { "node": ">=22 <23", "chrome": ">=140" },
+    "fallback": "fail",
+    "binary": {
+      "entrypoint": {
+        "default": "bin/runtime-probe",
+        "windows-x86_64": "bin/runtime-probe.cmd"
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "slug": "platform-runtime-demo",
+  "name": "Platform Runtime Demo",
+  "version": "1.0.0",
+  "tagline": "Probe, precheck and use the Anna platform's shared Node.js & Chrome — ship a 5 MiB Executa instead of 316 MiB.",
+  "description": "The official companion app for the platform shared-runtime contract (forum #490).\n\n**What it demonstrates**\n\n- **Probe** — which runtimes your Agent provides (`ANNA_CHROME_EXECUTABLE`, `ANNA_NODE_EXECUTABLE`, …), how they were discovered (contract vs legacy-scan vs none), and upgrade advice.\n- **Precheck** — preview exactly what an install-time `runtime.requires` check would report on this Agent, including the structured `missing_runtimes` map.\n- **Render** — HTML → PNG / PDF through the PLATFORM Chrome via `puppeteer-core` + `executablePath`, with zero browser bytes in the package.\n- **Ship it light** — the bundled Executa's binary profile is ≈5 MiB (incl. puppeteer-core) instead of the 316 MiB a bundled-everything build would weigh.\n\nAlso useful as a support / triage tool: on not-yet-upgraded Agents it degrades gracefully and explains what is missing.",
+  "category": "developer-tools",
+  "_comment_logo": "\"\" = clear any stale server value on push (absent key = leave unchanged). Replace with a real hosted URL or a logo_file once the demo has an icon.",
+  "logo_url": "",
+  "homepage_url": "https://github.com/whtcjdtc2007/anna-executa-examples/tree/main/examples/anna-app-platform-runtime-demo",
+  "support_url": "https://github.com/whtcjdtc2007/anna-executa-examples/issues",
+
+  "_comment_bundled_executas": "Executas that ship inside this app. `anna-app apps publish` publishes each one first, then substitutes its server-minted tool_id into every `bundled:<handle>` reference in manifest.json (in memory) and writes bundle/anna-tool-ids.js so the UI bundle can read the same ids.",
+  "bundled_executas": {
+    "runtime-probe": { "path": "./executas/runtime-probe-node" }
+  }
+}

@@ -51,6 +51,7 @@ on:
           - anna-app-llm-demo
           - anna-app-focus-flow
           - anna-app-media-studio
+          - anna-app-platform-runtime-demo
       lifecycle:
         description: "build = assets only · push = + working draft · cut = + freeze & R2 mirror"
         type: choice
@@ -85,6 +86,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       apps: ${{ steps.select.outputs.apps }}
+      node_apps: ${{ steps.select.outputs.node_apps }}
+      publish_apps: ${{ steps.select.outputs.publish_apps }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -133,25 +136,69 @@ jobs:
                       "version": version,
                       "entry": f"{module}.py",
                       "tag": f"{slug}-v{version}",
+                      "build_type": "pyinstaller",
+                  })
+              return out
+
+          def discover_node():
+              # node-lightweight branch (forum #490): node executas that ship a
+              # build.sh produce ONE set of byte-identical, platform-keyed
+              # tar.gz archives (no Node/Chrome inside — the platform provides
+              # both), built on a single Linux runner. Dev-only node executas
+              # without a build.sh (e.g. focus-session-node) are skipped.
+              out = []
+              for ej_path in sorted(glob.glob("examples/anna-app-*/executas/*/executa.json")):
+                  exe_dir = Path(ej_path).parent
+                  meta = json.loads(Path(ej_path).read_text("utf-8"))
+                  if meta.get("type") != "node":
+                      continue
+                  if not (exe_dir / "build.sh").exists():
+                      continue
+                  pkg_path = exe_dir / "package.json"
+                  if not pkg_path.exists():
+                      continue
+                  pkg = json.loads(pkg_path.read_text("utf-8"))
+                  tool_id = pkg.get("name")
+                  slug = meta.get("slug")
+                  version = str(meta.get("version") or pkg.get("version") or "")
+                  if not (tool_id and slug and version):
+                      print(f"::warning::{exe_dir} missing tool_id/slug/version; skipped", file=sys.stderr)
+                      continue
+                  app_dir = exe_dir.parents[1].name
+                  out.append({
+                      "app": app_dir,
+                      "app_dir": app_dir,
+                      "executa_dir": exe_dir.name,
+                      "tool_id": tool_id,
+                      "slug": slug,
+                      "version": version,
+                      "tag": f"{slug}-v{version}",
+                      "build_type": "node-lightweight",
                   })
               return out
 
           apps = discover()
+          node_apps = discover_node()
           if event == "release":
               sel = [a for a in apps if a["tag"] == ref_name]
-              if not sel:
-                  print(f"::warning::release tag '{ref_name}' matches no anna-app python executa", file=sys.stderr)
+              node_sel = [a for a in node_apps if a["tag"] == ref_name]
+              if not sel and not node_sel:
+                  print(f"::warning::release tag '{ref_name}' matches no anna-app executa", file=sys.stderr)
           elif app_input in ("", "all"):
               sel = apps
+              node_sel = node_apps
           else:
               sel = [a for a in apps if a["app_dir"] == app_input]
-              if not sel:
-                  print(f"::error::app '{app_input}' has no python executa under examples/", file=sys.stderr)
+              node_sel = [a for a in node_apps if a["app_dir"] == app_input]
+              if not sel and not node_sel:
+                  print(f"::error::app '{app_input}' has no buildable executa under examples/", file=sys.stderr)
                   sys.exit(1)
 
           with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
               fh.write("apps=" + json.dumps(sel) + "\n")
-          print(json.dumps(sel, indent=2))
+              fh.write("node_apps=" + json.dumps(node_sel) + "\n")
+              fh.write("publish_apps=" + json.dumps(sel + node_sel) + "\n")
+          print(json.dumps({"pyinstaller": sel, "node-lightweight": node_sel}, indent=2))
           PY
 
   # ──────────────────────────────────────────────────────────
@@ -243,17 +290,86 @@ jobs:
             ${{ env.ASSET_DIR }}/${{ env.ASSET }}.sha256
 
   # ──────────────────────────────────────────────────────────
+  # node-lightweight (forum #490): one Linux runner builds the five
+  # platform-keyed, byte-identical tar.gz archives — no Node / Chrome inside,
+  # the platform provides both (entrypoint shim execs $ANNA_NODE_EXECUTABLE).
+  # ──────────────────────────────────────────────────────────
+  build-node:
+    needs: plan
+    if: ${{ needs.plan.outputs.node_apps != '' && needs.plan.outputs.node_apps != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJson(needs.plan.outputs.node_apps) }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Unit tests (node --test)
+        working-directory: examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}
+        run: |
+          if [ -d test ]; then node --test test/; fi
+
+      - name: Build lightweight archives
+        working-directory: examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}
+        run: ./build.sh
+
+      - name: Smoke test (describe via shim contract failure)
+        working-directory: examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}
+        run: |
+          # Without ANNA_NODE_EXECUTABLE the shim must exit 78 with a readable
+          # message (the degradation contract for pre-Phase-2 agents).
+          set +e
+          out="$(env -u ANNA_NODE_EXECUTABLE ./bin/runtime-probe 2>&1)"
+          code=$?
+          set -e
+          echo "shim → exit=$code: $out"
+          test "$code" = "78"
+          # With a node present the plugin must answer describe.
+          out="$(printf '%s\n' '{"jsonrpc":"2.0","method":"describe","id":1}' \
+            | ANNA_NODE_EXECUTABLE="$(command -v node)" ./bin/runtime-probe 2>/dev/null)"
+          echo "describe → $out"
+          printf '%s' "$out" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['result']['name']"
+          echo "✅ node-lightweight smoke test passed"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app.tool_id }}-lightweight
+          path: |
+            examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}/dist-anna/*.tar.gz
+            examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}/dist-anna/*.sha256
+
+      - name: Attach to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ matrix.app.tag }}
+          name: ${{ matrix.app.slug }} v${{ matrix.app.version }}
+          body: "Executa binaries for `${{ matrix.app.tool_id }}` (built by anna-app-publish.yml, node-lightweight — platform runtimes, forum #490)."
+          files: |
+            examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}/dist-anna/*.tar.gz
+            examples/${{ matrix.app.app_dir }}/executas/${{ matrix.app.executa_dir }}/dist-anna/*.sha256
+
+  # ──────────────────────────────────────────────────────────
   # Register the app: pin binary_urls at this repo + tag, validate, then
   # `apps push` (working draft) or `apps cut` (freeze → R2 mirror).
   # ──────────────────────────────────────────────────────────
   publish:
-    needs: [plan, build]
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.lifecycle != 'build' }}
+    needs: [plan, build, build-node]
+    if: >-
+      ${{ !cancelled()
+          && github.event_name == 'workflow_dispatch'
+          && github.event.inputs.lifecycle != 'build'
+          && (needs.build.result == 'success' || needs.build.result == 'skipped')
+          && (needs['build-node'].result == 'success' || needs['build-node'].result == 'skipped') }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.plan.outputs.apps) }}
+        app: ${{ fromJson(needs.plan.outputs.publish_apps) }}
     env:
       ANNA_APP_HOST: ${{ vars.ANNA_APP_HOST }}
       ANNA_APP_PAT: ${{ secrets.ANNA_APP_PAT }}
@@ -275,10 +391,19 @@ jobs:
           from pathlib import Path
           repo, tag, ej = os.environ["REPO"], os.environ["TAG"], os.environ["EJ"]
           p = Path(ej); m = json.loads(p.read_text("utf-8"))
-          bu = m.get("distribution", {}).get("binary_urls", {})
-          for asset in bu.values():
-              fname = asset["url"].rsplit("/", 1)[-1]
-              asset["url"] = f"https://github.com/{repo}/releases/download/{tag}/{fname}"
+          dist = m.get("distribution", {})
+          # Flat form AND the switchable profiles form (e.g. the platform
+          # runtime demo keeps local(active) + binary side by side).
+          maps = []
+          if isinstance(dist.get("binary_urls"), dict):
+              maps.append(dist["binary_urls"])
+          for prof in (dist.get("profiles") or {}).values():
+              if isinstance(prof, dict) and isinstance(prof.get("binary_urls"), dict):
+                  maps.append(prof["binary_urls"])
+          for bu in maps:
+              for asset in bu.values():
+                  fname = asset["url"].rsplit("/", 1)[-1]
+                  asset["url"] = f"https://github.com/{repo}/releases/download/{tag}/{fname}"
           p.write_text(json.dumps(m, indent=2) + "\n", "utf-8")
           print(f"pinned {ej} → https://github.com/{repo}/releases/download/{tag}/")
           PY

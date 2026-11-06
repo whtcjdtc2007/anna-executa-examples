@@ -1,0 +1,14 @@
+#!/bin/sh
+# Lightweight entrypoint shim (forum #490 ④): the archive ships ZERO Node
+# bytes — the platform provides Node via ANNA_NODE_EXECUTABLE. Exit 78
+# (EX_CONFIG) with a readable message when the contract is absent so the
+# Agent surfaces an actionable error instead of a crash loop.
+set -eu
+if [ -z "${ANNA_NODE_EXECUTABLE:-}" ]; then
+  echo "runtime-probe: ANNA_NODE_EXECUTABLE is not set." >&2
+  echo "This Executa requires the Anna platform Node.js runtime (declared" >&2
+  echo "via runtime.requires.node in executa.json). Upgrade the Matrix" >&2
+  echo "Agent to a release that provides the shared Node 22 runtime." >&2
+  exit 78
+fi
+exec "$ANNA_NODE_EXECUTABLE" --enable-source-maps "${EXECUTA_HOME:-$(dirname "$0")/..}/runtime_probe_plugin.js" "$@"

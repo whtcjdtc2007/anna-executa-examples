@@ -53,6 +53,10 @@ anna-executa-examples/
 │                                        #     cancel/re-sign, idempotent replay, -32165 alternatives) +
 │                                        #     audio.speak TTS + llm.catalog pricing discovery, bundles the
 │                                        #     clip-narrator media reverse-RPC executa (video/music/speak)
+│   └── anna-app-platform-runtime-demo/  # ⭐ Anna App — platform shared runtimes (forum #490): probe the
+│                                        #     ANNA_CHROME_*/ANNA_NODE_* discovery contract, preview
+│                                        #     runtime.requires install prechecks, render HTML→PNG/PDF via
+│                                        #     the platform Chrome, ≈5 MiB lightweight binary packaging
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

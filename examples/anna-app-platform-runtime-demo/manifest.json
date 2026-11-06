@@ -1,0 +1,43 @@
+{
+  "schema": 4,
+  "required_executas": [
+    {
+      "tool_id": "bundled:runtime-probe",
+      "min_version": "1.0.0",
+      "version": "latest"
+    }
+  ],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Platform Runtime Demo app open. It probes the Anna platform shared runtimes (Node.js / Chrome). When the user asks what runtimes their Agent provides, call the runtime-probe Executa with method='probe_runtimes'; to preview an install-time requirement check use method='check_requires' with {node, chrome} semver ranges; to demonstrate rendering with the platform Chrome use method='render_html'.",
+  "tags": ["developer-tools", "executa", "runtime", "chrome", "nodejs"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Platform Runtime Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 420, "h": 560 },
+        "default_size": { "w": 560, "h": 760 },
+        "max_size": { "w": 900, "h": 1200 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      }
+    ],
+    "csp_overrides": {
+      "img-src": ["'self'", "data:"],
+      "style-src": ["'self'"],
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "user_id": 1
+  }
+}
