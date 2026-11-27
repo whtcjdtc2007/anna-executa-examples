@@ -112,6 +112,12 @@ const toolMode = {
     rawBox.textContent = JSON.stringify(reply, null, 2);
     return unwrap(reply).items || [];
   },
+  async quota() {
+    // Executa → storage/quota_status. User-global: no scope argument.
+    const reply = await invoke("quota", {});
+    rawBox.textContent = JSON.stringify(reply, null, 2);
+    return unwrap(reply);
+  },
   async download(path) {
     // "Executa generated a file — how does the app download it?" — the
     // canonical answer depends on the scope the note was saved in:
@@ -202,6 +208,12 @@ const hostMode = {
     const res = await anna.files.list({ prefix });
     rawBox.textContent = JSON.stringify(res, null, 2);
     return res.items || [];
+  },
+  async quota() {
+    const anna = await annaReady;
+    const res = await anna.storage.quota();
+    rawBox.textContent = JSON.stringify(res, null, 2);
+    return res; // { used_bytes, quota_bytes, entries_count, percent, plan_name, plan_label }
   },
   async download(path) {
     const anna = await annaReady;
@@ -328,6 +340,53 @@ $("list-btn").addEventListener("click", async () => {
     showStatus(`list · ${modeLabel()}`, err, true);
   } finally {
     $("list-btn").disabled = false;
+  }
+});
+
+// The harness without `--storage aps` has no APS backend: both channels
+// answer `not_implemented` (the Executa's -32004 arrives wrapped in a
+// tool failure, hence the message check).
+function isNotImplemented(err) {
+  return Boolean(
+    err && (err.code === "not_implemented" || /not_implemented|--storage aps/.test(String(err.message))),
+  );
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let value = n / 1024;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(1)} ${units[unit]}`;
+}
+
+$("quota-btn").addEventListener("click", async () => {
+  $("quota-btn").disabled = true;
+  try {
+    const q = await activeImpl().quota();
+    const unlimited = q.quota_bytes === -1;
+    $("quota-out").textContent =
+      `used:    ${formatBytes(q.used_bytes ?? 0)}\n`
+      + `quota:   ${unlimited ? "unlimited" : formatBytes(q.quota_bytes ?? 0)}\n`
+      + `objects: ${q.entries_count ?? "—"}\n`
+      + `plan:    ${q.plan_label || q.plan_name || "—"}`
+      + (unlimited ? "" : `\nusage:   ${((q.percent ?? 0) * 100).toFixed(1)}%`);
+    showStatus(`quota · ${modeLabel()}`, "read ✓", false);
+  } catch (err) {
+    if (isNotImplemented(err)) {
+      $("quota-out").textContent =
+        "Not enabled locally — run `anna-app dev --storage aps` (signed in) to read the real quota.";
+      showStatus(`quota · ${modeLabel()}`, "not enabled in this harness mode", false);
+    } else {
+      $("quota-out").textContent = "(failed)";
+      showStatus(`quota · ${modeLabel()}`, err, true);
+    }
+  } finally {
+    $("quota-btn").disabled = false;
   }
 });
 

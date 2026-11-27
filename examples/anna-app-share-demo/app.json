@@ -1,0 +1,8 @@
+{
+  "slug": "share-demo",
+  "name": "Share Demo",
+  "version": "0.1.0",
+  "tagline": "Publish rendered HTML to a long-lived public link with the share.* Host API — publish, republish, update, revoke.",
+  "description": "Share Demo exercises the full lifecycle of Anna's public share links (matrix-nexus docs/design/app-public-share-static-hosting.md): the app renders a tiny self-contained HTML document, uploads it to its own APS object space (`anna.files.upload_init` → presigned PUT → `upload_finalize`), then publishes it as a platform-hosted public URL via `anna.share.publish`. The resulting link opens in any browser — no Anna account, no app install.\n\n**What's inside**\n\n- A static single-window UI (`static-spa`) that generates a demo document, publishes it, lists this app's publications, and drives republish (same URL, version + 1), metadata update and revoke (immediate tombstone, ≤ 5 min CDN residue).\n- The `ui.host_api.share: true` capability declaration — share.* is one of the four second-principal declarations (publishing to the open internet).\n\n**How to use**\n\nRun with real object storage: `anna-app dev --storage aps`. Click Generate & upload, then Publish — the local harness serves the snapshot at `http://localhost:<port>/s/<pub_id>/` exactly like production serves it from the share domain. Without `--storage aps` the share stub cannot read your objects and publish fails with a clear error — that is expected.",
+  "category": "developer-tools"
+}

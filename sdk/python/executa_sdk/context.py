@@ -98,6 +98,17 @@ class InvokeContext:
 # own binding. NOTE: contextvars do NOT flow across raw threads — if you
 # hop threads (e.g. ``run_coroutine_threadsafe``), re-bind inside the
 # target coroutine.
+#
+# Outside any invoke. A reverse RPC issued with nothing bound carries no
+# ``invoke_id``; the host serves it with the Executa's background
+# credentials (process start, timers, work that continues after an invoke
+# returned). An asyncio task created inside a handler INHERITS that
+# handler's binding, so a task meant to outlive its invoke must detach
+# explicitly::
+#
+#     async def long_running_work():
+#         with bind_invoke(None):
+#             ...  # reverse RPCs here are background, not the old invoke
 
 _CURRENT_INVOKE_ID: ContextVar[Optional[str]] = ContextVar(
     "executa_sdk_current_invoke_id", default=None

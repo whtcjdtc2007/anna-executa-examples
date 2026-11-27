@@ -331,11 +331,14 @@ function renderImageResults(payload, channelLabel) {
     const grabBtn = document.createElement("button");
     grabBtn.className = "tiny";
     grabBtn.textContent = "grab";
-    grabBtn.title =
-      "Download host-side into APS file storage via anna.web.image_fetch";
+    // Download over the channel that found the image — the Executa that
+    // searched is the one that grabs.
+    const fetchChannel =
+      channelLabel === "Reverse RPC" ? IMAGE_FETCH.rpc : IMAGE_FETCH.host;
+    grabBtn.title = `Download host-side into APS file storage via ${fetchChannel.label}`;
     grabBtn.addEventListener("click", () => {
       $("image-url-input").value = r.image_url;
-      hostImageFetch(r.image_url);
+      imageFetch(fetchChannel, r.image_url);
     });
 
     cap.append(a, dims, grabBtn);
@@ -418,31 +421,54 @@ async function rpcImageSearch() {
   }
 }
 
-async function hostImageFetch(rawUrl) {
+// web.image_fetch over either channel: same request, same artifact
+// reference back. Only the owner of the stored object differs.
+const IMAGE_FETCH = {
+  host: {
+    label: "anna.web.image_fetch",
+    button: "image-fetch-btn",
+    scope: "app self-scope",
+    async call(url) {
+      const anna = await annaReady;
+      return anna.web.image_fetch(
+        { url, purpose: "web-search-demo" },
+        { timeoutMs: 90000 }
+      );
+    },
+  },
+  rpc: {
+    label: "tools.invoke(web_image_grab)",
+    button: "rpc-image-fetch-btn",
+    scope: "Executa tool-scope in production",
+    async call(url) {
+      return unwrap(
+        await invokeExecuta("web_image_grab", { url, purpose: "web-search-demo" })
+      );
+    },
+  },
+};
+
+async function imageFetch(channel, rawUrl) {
   const url = (rawUrl || $("image-url-input").value).trim();
   if (!url) {
-    showStatus("anna.web.image_fetch", "paste an image URL first", true);
+    showStatus(channel.label, "paste an image URL first", true);
     return;
   }
-  const btn = $("image-fetch-btn");
+  const btn = $(channel.button);
   btn.disabled = true;
-  showStatus("anna.web.image_fetch", "downloading host-side…");
+  showStatus(channel.label, "downloading host-side…");
   $("image-fetch-out").textContent = "(downloading…)";
   $("image-fetch-preview").innerHTML = "";
   try {
-    const anna = await annaReady;
-    const res = await anna.web.image_fetch(
-      { url, purpose: "web-search-demo" },
-      { timeoutMs: 90000 }
-    );
-    showRaw("anna.web.image_fetch", res);
+    const res = await channel.call(url);
+    showRaw(channel.label, res);
     // Artifact REFERENCE — render the short-lived get_url directly.
     const img = document.createElement("img");
     img.src = res.get_url;
     img.alt = res.path;
     $("image-fetch-preview").appendChild(img);
     $("image-fetch-out").textContent = [
-      `path:       ${res.path}   (APS files, app self-scope)`,
+      `path:       ${res.path}   (APS files, ${channel.scope})`,
       `mime_type:  ${res.mime_type}`,
       `bytes_size: ${res.bytes_size}`,
       `sha256:     ${res.sha256}`,
@@ -450,15 +476,16 @@ async function hostImageFetch(rawUrl) {
       `quota:      ${res.quota_consumed} CU (+ storage quota)`,
     ].join("\n");
     showStatus(
-      "anna.web.image_fetch",
+      channel.label,
       `ok — stored as ${res.path} (${res.bytes_size} bytes ${res.mime_type})`
     );
   } catch (err) {
     // SSRF-blocked / non-image / oversized URLs are rejected without
     // billing: APP_INVALID_REQUEST (SSRF/params) or APP_PROVIDER_ERROR
     // (download failed). allowImageFetch defaults OFF → APP_NOT_GRANTED.
-    showStatus("anna.web.image_fetch", err, true);
-    showRaw("anna.web.image_fetch error", err);
+    $("image-fetch-out").textContent = "(failed)";
+    showStatus(channel.label, err, true);
+    showRaw(`${channel.label} error`, err);
   } finally {
     btn.disabled = false;
   }
@@ -476,7 +503,8 @@ $("fetch-btn").addEventListener("click", () => hostFetch());
 $("research-btn").addEventListener("click", rpcResearch);
 $("host-image-search-btn").addEventListener("click", hostImageSearch);
 $("rpc-image-search-btn").addEventListener("click", rpcImageSearch);
-$("image-fetch-btn").addEventListener("click", () => hostImageFetch());
+$("image-fetch-btn").addEventListener("click", () => imageFetch(IMAGE_FETCH.host));
+$("rpc-image-fetch-btn").addEventListener("click", () => imageFetch(IMAGE_FETCH.rpc));
 
 annaReady.then((anna) => {
   anna.window.set_title({ title: "Web Search Demo" }).catch(() => {});

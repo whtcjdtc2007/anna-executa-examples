@@ -1,0 +1,15 @@
+{
+  "name": "anna-app-background-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Reference anna-app for backend-owned tasks: an Executa that runs every reverse RPC outside any invoke and keeps its own task state.",
+  "scripts": {
+    "dev": "anna-app dev",
+    "dev:aps": "anna-app dev --storage aps",
+    "validate": "anna-app validate",
+    "test": "cd executas/background-check-python && uv run --with pytest pytest ../../tests/plugin -v"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.68"
+  }
+}

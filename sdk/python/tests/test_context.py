@@ -124,6 +124,36 @@ def test_host_upload_client_unbound_frame_has_no_context():
     assert "context" not in frames[0]["params"]
 
 
+def test_task_started_in_a_handler_detaches_with_bind_invoke_none():
+    """A task created inside a handler inherits its binding; work meant to
+    outlive the invoke detaches so the host treats it as background."""
+    frames: list[dict] = []
+    client = HostUploadClient(write_frame=frames.append)
+
+    async def confirm(r2_key: str):
+        task = asyncio.ensure_future(client.confirm(r2_key=r2_key, timeout=1.0))
+        await asyncio.sleep(0)
+        frame = next(f for f in frames if f["params"]["r2_key"] == r2_key)
+        client.dispatch_response(
+            {"jsonrpc": "2.0", "id": frame["id"], "result": {"r2_key": r2_key}}
+        )
+        await task
+
+    async def detached():
+        with bind_invoke(None):
+            await confirm("detached")
+
+    async def handler():
+        with bind_invoke("iv-1"):
+            inherited = asyncio.ensure_future(confirm("inherited"))
+            background = asyncio.ensure_future(detached())
+        await asyncio.gather(inherited, background)
+
+    asyncio.run(handler())
+    by_key = {f["params"]["r2_key"]: f["params"].get("context") for f in frames}
+    assert by_key == {"inherited": {"invoke_id": "iv-1"}, "detached": None}
+
+
 def test_two_concurrent_uploads_carry_distinct_invoke_ids():
     """The forum #188 scenario: overlapping invokes → each reverse RPC
     must carry ITS OWN parent invoke_id."""

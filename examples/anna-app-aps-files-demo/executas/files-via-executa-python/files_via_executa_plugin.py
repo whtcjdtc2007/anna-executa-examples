@@ -26,6 +26,9 @@ Tools exposed:
 - ``get_link``     — mint a short-lived presigned ``download_url`` for a
                      previously-saved path.
 - ``list_notes``   — list objects under an optional prefix.
+- ``quota``        — the user's storage usage, via ``storage/quota_status``.
+                     Quota is enforced per user across every scope, so this
+                     is the only correct "used / available" figure.
 
 To run this end-to-end you need real APS:
 
@@ -59,6 +62,7 @@ except ModuleNotFoundError:
 from executa_sdk import (  # noqa: E402
     PROTOCOL_VERSION_V2,
     FilesClient,
+    StorageClient,
     StorageError,
     make_response_router,
 )
@@ -151,6 +155,14 @@ MANIFEST = {
                 },
             ],
         },
+        {
+            "name": "quota",
+            "description": (
+                "The user's storage usage across every scope: used_bytes, "
+                "quota_bytes (-1 = unlimited), entries_count and percent."
+            ),
+            "parameters": [],
+        },
     ],
     "runtime": {"type": "uv", "min_version": "0.1.0"},
 }
@@ -168,7 +180,8 @@ def _write_frame(msg: dict) -> None:
 
 
 _files = FilesClient(write_frame=_write_frame)
-_route_response = make_response_router(_files)
+_storage = StorageClient(write_frame=_write_frame)
+_route_response = make_response_router(_files, _storage)
 
 # This Executa is bundled inside an Anna App. Notes default to the *user's*
 # namespace (so the user can find them again from the Anna chat UI), but every
@@ -279,6 +292,8 @@ def _handle_invoke(req_id: Any, params: dict) -> None:
         coro = _get_link(str(args.get("path")), scope)
     elif tool == "list_notes":
         coro = _list_notes(str(args.get("prefix", "")), scope)
+    elif tool == "quota":
+        coro = _storage.quota_status()
     else:
         _err(req_id, -32601, f"Unknown tool: {tool}")
         return

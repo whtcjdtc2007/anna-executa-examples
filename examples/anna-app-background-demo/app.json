@@ -1,0 +1,15 @@
+{
+  "slug": "background-demo",
+  "name": "Background Demo",
+  "version": "0.1.0",
+  "tagline": "A task the backend owns: start it, close the window, come back to its complete current state.",
+  "description": "Background Demo is the reference example for **backend-owned tasks** — work that an Executa runs outside any invoke.\n\nThe page only triggers and reads:\n\n1. **Start** — one `tools.invoke` registers a task and returns its id at once.\n2. **Leave** — close the window or switch to another app. The Executa keeps going: every step is a reverse RPC issued outside any invoke, served with the Executa's background credentials.\n3. **Come back** — the page asks the Executa for its tasks and renders their complete current state, including rows that are still running.\n\nThe task doubles as a **capability health check**: each row exercises one family of reverse RPCs in the background — storage, object storage, web search / fetch / image search / image fetch, LLM sampling, an agent session, embeddings, image generation, text to speech and host upload (video and music are off by default).\n\nThe Executa also writes a storage heartbeat when its process starts and every five minutes: work that no user action triggers.\n\nEvery check spends a small amount of your CU.",
+  "category": "developer-tools",
+  "homepage_url": "https://github.com/whtcjdtc2007/anna-executa-examples/tree/main/examples/anna-app-background-demo",
+  "support_url": "https://github.com/whtcjdtc2007/anna-executa-examples/issues",
+
+  "_comment_bundled_executas": "Executas that ship inside this app. `anna-app apps publish` publishes each one first, then substitutes its server-minted tool_id into every `bundled:<handle>` reference in manifest.json (in memory — the file on disk is never mutated). The `background-check` handle maps to ./executas/background-check-python.",
+  "bundled_executas": {
+    "background-check": { "path": "./executas/background-check-python" }
+  }
+}

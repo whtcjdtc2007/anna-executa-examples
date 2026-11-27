@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Share Demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Share Demo</h1>
+    <p class="sub">share.* Host API — publish static snapshots to long-lived public links</p>
+  </header>
+
+  <section class="card">
+    <h2>1 · Generate &amp; upload</h2>
+    <p>Renders a tiny self-contained HTML document and uploads it (plus a stylesheet)
+       to this app's own APS object space via <code>anna.files.*</code>.</p>
+    <label>Document headline
+      <input id="headline" type="text" value="Hello from Anna Share Demo" maxlength="120" />
+    </label>
+    <button id="btn-upload">Generate &amp; upload</button>
+    <div id="upload-status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Publish</h2>
+    <p>Snapshots the uploaded objects into a public URL via <code>anna.share.publish</code>
+       (requires <code>ui.host_api.share: true</code>).</p>
+    <label>Title <input id="pub-title" type="text" value="Share Demo Document" maxlength="200" /></label>
+    <button id="btn-publish" disabled>Publish</button>
+    <div id="publish-status" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>3 · Publications</h2>
+    <button id="btn-refresh">Refresh list</button>
+    <div id="pub-list"></div>
+  </section>
+
+  <section class="card">
+    <h2>Raw RPC</h2>
+    <pre id="raw">—</pre>
+  </section>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

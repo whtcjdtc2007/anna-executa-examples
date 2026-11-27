@@ -1,6 +1,5 @@
 {
   "schema": 3,
-  "_comment_storage": "Structured schema-3 storage declaration. scopes.user 'r' lets the app-side files.download with scope:'user' READ the user-scope objects the bundled Executa wrote (APS rows are always filtered by user_id — this never exposes another user's data). Schema 3 requires the app decl to normalize EQUAL to the bundled Executa's ['aps.files', 'aps.scope.user.read'] — hence files:true (the Executa's files/* surface) and kv:true (legacy aps.scope.* caps imply kv).",
   "storage": {
     "kv": true,
     "files": true,

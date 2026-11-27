@@ -1,0 +1,14 @@
+{
+  "name": "anna-app-share-demo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Anna App demonstrating the share.* Host API — publish static snapshots to long-lived public links (publish / republish / update / revoke).",
+  "scripts": {
+    "dev:aps": "anna-app dev --storage aps",
+    "dev:off": "anna-app dev --no-llm",
+    "validate": "anna-app validate"
+  },
+  "devDependencies": {
+    "@anna-ai/cli": "^0.1.65"
+  }
+}

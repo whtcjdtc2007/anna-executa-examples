@@ -27,7 +27,16 @@ App 必备的四件事:
 | --- | --- |
 | 工具 < 90s 完成 | `tools.invoke`(最简单) |
 | 可能超 90s,或不想阻塞 UI | `tools.invokeAsync` / `invokeAsyncAwait` |
-| 需要进度 UI / 取消 / 刷新后恢复 | 只能用 `tools.invokeAsync` 族 |
+| 需要宿主提供的进度推送 / 取消 / 超时,以及刷新后恢复 | 只能用 `tools.invokeAsync` 族 |
+| **后端拥有的任务**:页面只触发;关闭窗口后继续;重新打开时看到任务当下的完整状态 | 用 `tools.invoke` 触发和读取,工作在调用之外进行 —— 见 [`anna-app-background-demo`](../anna-app-background-demo) |
+| 无人触发的工作(定时同步、备份、启动自检) | 后台,从进程启动起可用 —— 同一个示例 |
+
+`tools.invokeAsync` 是**宿主托管**的 job,不能替代后端拥有的任务:
+
+- 重新打开时,宿主返回的是 job 的状态、最多 500 条每条 8 KB 的进度,以及不超过
+  256 KB 的结果 —— 是工具上报过的内容,不是 App 自己的完整状态。
+- job 的生命周期绑在一次调用上:有截止时间(至多 24 小时),Agent 离线超过 180 秒
+  即判失败。Executa 不能自己暂停、续跑,也不能跨多个用户步骤推进同一个任务。
 
 ## 运行
 
@@ -72,7 +81,6 @@ def handle_invoke(req_id, params):
 - 反向 RPC token(storage/image/upload/credentials/sampling)按
   `min(job 时长 + 5min, 1h)` TTL 签发,更长的 job 由 Agent 自动续期
   —— 插件侧无需处理。
-- 调用次数配额随 job 时长线性放大(×小时数,封顶 ×10)。
 - 每用户活跃 job 配额:**50**(`job_quota_exceeded`;按用户计,跨 app / 窗口 /
   Agent 共享,queued + running 都算)。
 - 每 Agent 长 job 运行席位:**30**;席位满时 job 在 Agent 侧**排队**——你会收到

@@ -56,12 +56,20 @@ cd examples/anna-app-credentials-demo
 anna-app dev            # real host; mock fixtures only cover the happy path
 ```
 
-Note: the Reverse RPC path requires a real host (`credentials/*` is not
-served by the offline harness); the HOST API path replays
-`fixtures/happy-path.jsonl` in mock mode. The Gmail section needs a real
-host + a really authorized account either way — in mock mode the HOST API
-path gets a fake token that the Gmail API rejects, while the Reverse RPC
-path replays a canned two-message fixture.
+Locally the two transports are **not symmetric**:
+
+- **Reverse RPC** works under a signed-in `anna-app dev`
+  (`@anna-ai/cli` ≥ 0.1.68): `credentials/listAccounts` and
+  `credentials/getToken` return your really authorized accounts and a
+  short-lived access token. The providers the Executa may query come from
+  the `credentials[].name` entries of the manifest it returns from
+  `describe` (`GOOGLE_ACCESS_TOKEN` → `google`) — remove the entry and the
+  calls answer `APP_NOT_GRANTED`, exactly as they would once published.
+  Restart `anna-app dev` after changing the declaration.
+- **HOST API** (`anna.credentials.*`) is not served by the local harness —
+  it answers `not_implemented`. Test that transport on a real host.
+
+The Gmail section needs a really authorized account either way.
 
 ## Security notes baked in
 

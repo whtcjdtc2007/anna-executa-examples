@@ -56,7 +56,8 @@ executa                    Anna Agent                    Anna Server
   │                              │── POST /copilot/app/agent ──►│
   │                              │     Bearer = app_session_token
   │                              │◄── SSE stream                │
-  │◄── {frames: [...], final} ───│  (frames buffered)           │
+  │◄── agent/session.frame ──────│  (each frame, live)          │
+  │◄── {frames: [...], final} ───│  (complete, authoritative)   │
 ```
 
 Executa code is symmetric with the anna-app iframe SDK:
@@ -180,9 +181,11 @@ executa:
 
 ## Limitations (v2)
 
-* `agent/session.run` is **buffered** — Anna Agent waits until the run completes
-  and returns all frames in a list. The SDK API (`async for frame`) is identical
-  to true streaming, so a future protocol bump (PROTOCOL_VERSION_V3) won't
-  require code changes.
+* `agent/session.run` delivers frames **live** (SDK ≥ 0.4.0): Anna Agent pushes
+  each frame as an `agent/session.frame` notification while the run is in
+  flight and still returns the complete `frames` list, which stays
+  authoritative. The stdin loop must hand notifications to
+  `agent.dispatch_notification(msg)`; against an older Anna Agent the same
+  `async for frame` code simply receives every frame when the run completes.
 * `agent/session.history` returns an empty list pending a public GET endpoint.
 * Single run frame cap: 4096.

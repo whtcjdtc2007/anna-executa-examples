@@ -48,3 +48,23 @@ test("responseFormat forwarded verbatim", async () => {
   assert.deepEqual(params.responseFormat, { type: "json_object" });
   assert.equal(params.onUnsupported, "text");
 });
+
+// ─── invoke binding: what makes a reverse RPC "background" ───────────
+
+const { bindInvoke } = require("../context");
+
+test("request outside any invoke carries no context", async () => {
+  const params = await roundtrip({});
+  assert.equal("context" in params, false);
+});
+
+test("bindInvoke(null) detaches work started inside a handler", async () => {
+  let inherited;
+  let detached;
+  await bindInvoke("iv-1", async () => {
+    inherited = await roundtrip({});
+    detached = await bindInvoke(null, () => roundtrip({}));
+  });
+  assert.deepEqual(inherited.context, { invoke_id: "iv-1" });
+  assert.equal("context" in detached, false);
+});

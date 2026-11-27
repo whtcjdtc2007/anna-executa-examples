@@ -134,3 +134,23 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   background: #4682b433;
 }
 .session-list:empty { display: none; }
+
+.interfaces {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.74rem;
+  margin: 0.4rem 0;
+}
+.interfaces th,
+.interfaces td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.25rem 0.4rem;
+  border-bottom: 1px solid #8882;
+  word-break: break-word;
+}
+.interfaces td {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.interfaces .active { background: #4682b41f; }
+.interfaces .off { opacity: 0.45; }
