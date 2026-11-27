@@ -3,7 +3,7 @@
 `StorageClient` and `FilesClient` let an Executa plugin issue reverse
 JSON-RPC requests to its host Agent that proxy to **Anna Persistent
 Storage** (APS) — Anna's cross-Agent / cross-App / cross-Tool key-value
-+ object store with per-user 5GB default quota.
++ object store with a per-user, plan-based quota (enforced server-side).
 
 Wire protocol — Plugin → Agent → Nexus REST:
 
@@ -59,6 +59,7 @@ METHOD_STORAGE_GET = "storage/get"
 METHOD_STORAGE_SET = "storage/set"
 METHOD_STORAGE_DELETE = "storage/delete"
 METHOD_STORAGE_LIST = "storage/list"
+METHOD_STORAGE_QUOTA_STATUS = "storage/quota_status"
 
 METHOD_FILES_UPLOAD_BEGIN = "files/upload_begin"
 METHOD_FILES_UPLOAD_COMPLETE = "files/upload_complete"
@@ -74,7 +75,7 @@ STORAGE_ERR_NOT_FOUND = -32022
 STORAGE_ERR_PRECONDITION_FAILED = -32023
 STORAGE_ERR_QUOTA_EXCEEDED = -32024
 STORAGE_ERR_VALUE_TOO_LARGE = -32025
-STORAGE_ERR_RATE_LIMITED = -32026
+STORAGE_ERR_RATE_LIMITED = -32026  # reserved; no longer returned
 STORAGE_ERR_INVALID_PATH = -32027
 STORAGE_ERR_INVALID_REQUEST = -32028
 STORAGE_ERR_UPSTREAM = -32029
@@ -289,6 +290,19 @@ class StorageClient(_BaseRpcClient):
         if kind is not None:
             params["kind"] = kind
         return await self._call(METHOD_STORAGE_LIST, params, timeout)
+
+    async def quota_status(self, *, timeout: float = DEFAULT_TIMEOUT) -> dict:
+        """USER-global APS quota status — no parameters.
+
+        Returns ``{"used_bytes", "quota_bytes", "entries_count", "percent",
+        "plan_name", "plan_label"}``. ``quota_bytes == -1`` means unlimited.
+
+        Quota is enforced per user across every scope and bucket (user +
+        all apps + tools), so this is the only correct denominator for a
+        "storage used / available" display — do NOT derive remaining space
+        from a ``list``-based size sum of one bucket.
+        """
+        return await self._call(METHOD_STORAGE_QUOTA_STATUS, {}, timeout)
 
 
 class FilesClient(_BaseRpcClient):

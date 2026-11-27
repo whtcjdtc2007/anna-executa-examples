@@ -40,8 +40,13 @@ anna-executa-examples/
 │                                        #     focus-session-{python,node,go}; pick one via
 │                                        #     `executa.json` or `--executa` CLI flag.
 │   └── anna-app-visual-brand/           # ⭐ Anna App — host LLM image generate/edit + APS persistence
-│   └── anna-app-session-demo/           # ⭐ Anna App — agent.session workspace best practices
+│   └── anna-app-session-demo/           # ⭐ Anna App — THE agent.session reference: every session interface
+│                                        #     over both channels (Host API + Reverse RPC via a bundled Executa)
+│                                        #     with the same code, shared sessions, plus workspace best practices
 │                                        #     (fixed-client affinity, absolute paths, nonce-verified writes)
+│   └── anna-app-background-demo/        # ⭐ Anna App — backend-owned tasks: the page only triggers, the Executa
+│                                        #     runs every reverse RPC outside any invoke and keeps its own state;
+│                                        #     reopen the app to see the task's complete current state
 │   └── anna-app-mobile-demo/            # ⭐ Anna App — anna.mobile.* native bridge (share/haptics/camera),
 │                                        #     dual mobile_entry + desktop degradation + dev.mocks
 │   └── anna-app-frame-embed-demo/       # ⭐ Anna App — scoped csp_overrides[frame-src] third-party embeds
@@ -57,6 +62,10 @@ anna-executa-examples/
 │                                        #     ANNA_CHROME_*/ANNA_NODE_* discovery contract, preview
 │                                        #     runtime.requires install prechecks, render HTML→PNG/PDF via
 │                                        #     the platform Chrome, ≈5 MiB lightweight binary packaging
+│   └── anna-app-share-demo/             # ⭐ Anna App — public share links (share.* host API): upload
+│                                        #     rendered HTML via anna.files.*, publish to a long-lived
+│                                        #     public URL, republish (same URL, version += 1), update
+│                                        #     metadata, revoke (immediate tombstone); ui.host_api.share
 ├── sdk/                                 # Reference SDKs used by the sampling examples
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

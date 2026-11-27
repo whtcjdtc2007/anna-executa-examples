@@ -33,12 +33,27 @@
  * Errors arrive as standard RPC errors with `.code` set to the facade's
  * canonical name; the original numeric JSON-RPC code (-32120…-32147 for the
  * media segment) is preserved in `.details.jsonrpc_code`.
+ *
+ * Every generate / getJob / speak / transcribe goes through `channel`, one of
+ * two adapters with the same methods (see "channels" below): the Host API
+ * calls above, or the same operation issued as a reverse RPC by the bundled
+ * clip-narrator Executa. Catalog, uploads, history and the error demos are
+ * page-side concerns and always use the Host API.
  */
 
 import { AnnaAppRuntime } from "/static/anna-apps/_sdk/latest/index.js";
 
 const STORAGE_KEY_HISTORY = "media-studio:history";
 const MAX_HISTORY = 8;
+
+// Bundled-executa handle → tool_id. `anna-app dev` / publish write the
+// resolved id to anna-tool-ids.js; the fallback is the dev id in
+// executas/clip-narrator/executa.json.
+const EXECUTA_TOOL_ID =
+  (window.__ANNA_TOOL_IDS__ && window.__ANNA_TOOL_IDS__["clip-narrator"]) ||
+  "tool-dev-clip-narrator";
+const EXECUTA_POLL_MS = 5000;
+const JOB_TERMINAL_STATES = new Set(["succeeded", "failed", "cancelled", "expired"]);
 
 const state = {
   catalog: [], // video_gen models from anna.llm.catalog
@@ -55,9 +70,147 @@ const state = {
   lastFirstFrameR2Key: null, // → anna.image.resign after the 30-min URL TTL
   imageAbort: null, // AbortController for the in-flight image.generateAwait (job mode)
   imageJob: null, // last image job view (ijob_…) when "Run first frame as job" is on
+  jobChannel: {}, // jobId → id of the channel that created the job
 };
 
 let anna = null;
+
+// ─── channels: Host API ↔ Reverse RPC ───────────────────────────────
+//
+//   Host API     page ── anna.<kind>.* / anna.audio.* ──────────────────▶ host
+//   Reverse RPC  page ── anna.tools.invoke ─▶ clip-narrator ── <kind>/* ─▶ host
+//
+// Both adapters expose the same methods with the same arguments and return
+// shapes, so the panels below call `channel.<method>()` and never branch on
+// which one is active. `kind` is "video" | "music" | "image".
+
+const hostChannel = {
+  id: "host",
+  generateAwait: (kind, args, opts) => anna[kind].generateAwait(args, opts),
+  getJob: (kind, jobId) => anna[kind].getJob({ jobId }),
+  speak: (args) => anna.audio.speak(args),
+  transcribe: (args) => anna.audio.transcribe(args),
+};
+
+/** One `media_call(op)` on clip-narrator. The Executa answers in-band —
+ *  {ok: true, result} or {ok: false, error: {code, message, data}} — so a
+ *  host refusal keeps its code instead of collapsing into a tool failure. */
+async function mediaCall(op, args = {}) {
+  const reply = await anna.tools.invoke({
+    tool_id: EXECUTA_TOOL_ID,
+    method: "media_call",
+    args: { op, ...args },
+  });
+  // The host unwraps the plugin's {success, tool, data} envelope; tolerate
+  // one that does not.
+  const out = reply && reply.tool && reply.data ? reply.data : reply || {};
+  if (out.ok !== false) return out.result;
+  const e = out.error || {};
+  const data = e.data || {};
+  // Production answers with the numeric reverse-RPC code; `anna-app dev`
+  // with -32603 plus the canonical name in data.errorCode.
+  const name = data.errorCode || (e.code === -32165 ? "MUSIC_FEATURE_UNSUPPORTED" : null);
+  throw Object.assign(new Error(e.message || `media_call ${op} failed`), {
+    code: name || String(e.code),
+    details: name ? { ...data, jsonrpc_code: e.code } : data,
+  });
+}
+
+/** Same terminal-state → error mapping as the SDK's generateAwait. */
+function jobError(view, kind) {
+  const e = view.error || {};
+  const code =
+    e.code ||
+    (view.state === "expired" ? `${kind}_timeout` : view.state === "cancelled" ? "cancelled" : `${kind}_failed`);
+  return Object.assign(new Error(e.message || `media job ${view.jobId} ended as ${view.state}`), {
+    code,
+    jobId: view.jobId,
+    state: view.state,
+  });
+}
+
+/** Resolves after `ms`, or as soon as `signal` aborts. */
+function sleep(ms, signal) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    if (signal) {
+      signal.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timer);
+          resolve();
+        },
+        { once: true }
+      );
+    }
+  });
+}
+
+const executaChannel = {
+  id: "executa",
+  // The plugin exposes image generation as a job only (the synchronous
+  // image/generate is shown by anna-app-visual-brand).
+  imageJobOnly: true,
+  /** Submit in one invoke, then poll with short ones: a job outlives the
+   *  invoke that created it, and no `media_job` events reach this channel. */
+  async generateAwait(kind, args, { signal, onProgress } = {}) {
+    if (signal && signal.aborted) {
+      throw Object.assign(new Error(`${kind} job aborted before start`), { code: "cancelled" });
+    }
+    let view = await mediaCall("submit", { kind, request: args });
+    const jobId = view.jobId;
+    let cancelSent = false;
+    try {
+      while (!JOB_TERMINAL_STATES.has(view.state)) {
+        if (signal && signal.aborted && !cancelSent) {
+          cancelSent = true;
+          // Queued cancel = full refund; a running job may refuse and finish.
+          // Either way the next get_job reports what actually happened.
+          await mediaCall("cancel_job", { kind, job_id: jobId }).catch(() => {});
+        } else {
+          await sleep(EXECUTA_POLL_MS, cancelSent ? null : signal);
+          if (signal && signal.aborted && !cancelSent) continue;
+        }
+        view = await mediaCall("get_job", { kind, job_id: jobId });
+        if (onProgress) onProgress({ state: view.state, ...(view.progress || {}) });
+      }
+    } catch (e) {
+      if (!e.jobId) e.jobId = jobId;
+      throw e;
+    }
+    if (view.state === "succeeded") return view;
+    throw jobError(view, kind);
+  },
+  getJob: (kind, jobId) => mediaCall("get_job", { kind, job_id: jobId }),
+  speak: (args) => mediaCall("speak", { request: args }),
+  transcribe: (args) => mediaCall("transcribe", { request: args }),
+};
+
+const channels = { host: hostChannel, executa: executaChannel };
+let channel = hostChannel;
+
+const CHANNEL_HINTS = {
+  host:
+    "The page calls the host directly. Jobs report progress through media_job events. Billed to and owned by this App.",
+  executa:
+    "The page invokes clip-narrator's media_call tool and the Executa issues the reverse RPC — one tools.invoke per step: submit, then a get_job poll every 5 s (no media_job events on this channel). In production these calls are billed to and owned by the Executa, so a job is only visible on the channel that created it. A tool result is capped at 4 MiB (256 KB for an async tool job): return URLs, never bytes.",
+};
+
+function onChannelChange() {
+  channel = channels[el("channel").value] || hostChannel;
+  el("channel-hint").textContent = CHANNEL_HINTS[channel.id];
+  el("image-as-job").disabled = Boolean(channel.imageJobOnly);
+}
+
+/** In production the App and the Executa are different job owners: re-sign
+ *  a job through the channel that created it. */
+function rememberJob(jobId, ch) {
+  if (jobId) state.jobChannel[jobId] = ch.id;
+}
+
+function channelOf(jobId) {
+  return channels[state.jobChannel[jobId]] || channel;
+}
 
 // ─── boot ───────────────────────────────────────────────────────────
 
@@ -274,12 +427,13 @@ async function onGenerate(extraArgs = {}) {
     setStatus(e.message, "warn");
     return;
   }
+  const ch = channel;
   state.abort = new AbortController();
   setBusy(true);
   showProgress({ state: "queued" });
   setStatus("Submitting job…");
   try {
-    const view = await anna.video.generateAwait(args, {
+    const view = await ch.generateAwait("video", args, {
       signal: state.abort.signal,
       onProgress: (p) => {
         showProgress(p);
@@ -291,6 +445,7 @@ async function onGenerate(extraArgs = {}) {
       },
     });
     state.currentJob = view;
+    rememberJob(view.jobId, ch);
     renderJob(view);
     setStatus(`Done — billed ${view.billedCostCU ?? "?"} CU.`, "ok");
     // History persistence is cosmetic — never let it mask a successful job.
@@ -303,6 +458,7 @@ async function onGenerate(extraArgs = {}) {
     }
     if (e.jobId) {
       state.currentJob = { jobId: e.jobId, state: e.state || "failed" };
+      rememberJob(e.jobId, ch);
       el("refresh-btn").disabled = false;
     }
     hideProgress();
@@ -338,7 +494,9 @@ async function onImageToVideo() {
     setStatus("Enter a prompt first.", "warn");
     return;
   }
-  const asJob = el("image-as-job").checked && typeof anna.image.generateAwait === "function";
+  const asJob =
+    channel.imageJobOnly ||
+    (el("image-as-job").checked && typeof anna.image.generateAwait === "function");
   setBusy(true);
   setStatus(asJob ? "Submitting first frame as image job…" : "Generating first frame via image.generate…");
   try {
@@ -349,7 +507,8 @@ async function onImageToVideo() {
     let img;
     if (asJob) {
       state.imageAbort = new AbortController();
-      const view = await anna.image.generateAwait(
+      const view = await channel.generateAwait(
+        "image",
         { ...args, clientTag: "first-frame", idempotencyKey: `first-frame:${hashPrompt(prompt)}` },
         {
           signal: state.imageAbort.signal,
@@ -528,6 +687,7 @@ async function onMusicGenerate(extraArgs = {}) {
     setStatus(e.message, "warn");
     return;
   }
+  const ch = channel;
   state.musicAbort = new AbortController();
   setMusicBusy(true);
   el("music-box").hidden = false;
@@ -536,7 +696,7 @@ async function onMusicGenerate(extraArgs = {}) {
   showMusicProgress({ state: "queued" });
   setStatus("Submitting music job…");
   try {
-    const view = await anna.music.generateAwait(args, {
+    const view = await ch.generateAwait("music", args, {
       signal: state.musicAbort.signal,
       onProgress: (p) => {
         showMusicProgress(p);
@@ -544,6 +704,7 @@ async function onMusicGenerate(extraArgs = {}) {
       },
     });
     state.musicJob = view;
+    rememberJob(view.jobId, ch);
     renderMusic(view);
     setStatus(
       view.idempotentReplay
@@ -562,7 +723,10 @@ async function onMusicGenerate(extraArgs = {}) {
     } else {
       setStatus(`Music generation failed: ${describeError(e)}`, "err");
     }
-    if (e.jobId) state.musicJob = { jobId: e.jobId, state: e.state || "failed" };
+    if (e.jobId) {
+      state.musicJob = { jobId: e.jobId, state: e.state || "failed" };
+      rememberJob(e.jobId, ch);
+    }
   } finally {
     state.musicAbort = null;
     setMusicBusy(false);
@@ -642,7 +806,8 @@ function renderMusic(view) {
 async function onMusicResign() {
   if (!state.musicJob) return;
   try {
-    const fresh = await anna.music.getJob({ jobId: state.musicJob.jobId });
+    const jobId = state.musicJob.jobId;
+    const fresh = await channelOf(jobId).getJob("music", jobId);
     state.musicJob = fresh;
     if (fresh.state === "succeeded") renderMusic(fresh);
     setStatus("Music URL re-signed via music.getJob.", "ok");
@@ -890,7 +1055,7 @@ async function onSpeak(extraArgs = {}) {
   el("speak-btn").disabled = true;
   setStatus("Synthesizing narration…");
   try {
-    const res = await anna.audio.speak(args);
+    const res = await channel.speak(args);
     state.narration = { ...res, request: args };
     renderNarration(res, args);
     setStatus(
@@ -921,6 +1086,32 @@ function renderNarration(res, args) {
     `cost: ${res.billedCostCU ?? "—"} CU` +
     (res.timestamps ? ` · ${res.timestamps.length} word timestamps` : "");
   el("persist-audio-btn").disabled = !(res.url || res.audioBase64);
+  el("transcript").textContent = "";
+}
+
+/** Round trip: transcribe the narration that was just synthesized. By URL
+ *  when the result is a presigned link, inline otherwise. */
+async function onTranscribe() {
+  const n = state.narration;
+  if (!n || !(n.url || n.audioBase64)) return;
+  const args = n.url
+    ? { audioUrl: n.url }
+    : { audioBase64: n.audioBase64, format: (n.mimeType || "").includes("wav") ? "wav" : "mp3" };
+  el("transcribe-btn").disabled = true;
+  setStatus("Transcribing narration…");
+  try {
+    const res = await channel.transcribe(args);
+    el("transcript").textContent = `“${res.text}”`;
+    setStatus(
+      `Transcript ready — ${res.durationSec ?? "?"}s of audio, ${res.billedCostCU ?? "?"} CU.`,
+      "ok"
+    );
+  } catch (e) {
+    setStatus(`audio.transcribe failed: ${describeError(e)}`, "err");
+  } finally {
+    el("transcribe-btn").disabled = false;
+    refreshQuota();
+  }
 }
 
 // ─── persistence + URL recovery (step 5) ────────────────────────────
@@ -1022,7 +1213,7 @@ async function onResign() {
   if (!jobId) return;
   setStatus("Re-signing via video.getJob…");
   try {
-    const view = await anna.video.getJob({ jobId });
+    const view = await channelOf(jobId).getJob("video", jobId);
     state.currentJob = view;
     renderJob(view);
     setStatus(
@@ -1048,6 +1239,9 @@ async function restoreHistory() {
   } catch (_) {
     state.history = [];
   }
+  for (const h of state.history) {
+    if (h.channel) state.jobChannel[h.jobId] = h.channel;
+  }
   renderHistory();
 }
 
@@ -1058,6 +1252,7 @@ async function pushHistory(view, prompt) {
     prompt: (prompt || "").slice(0, 120),
     model: view.model,
     state: view.state,
+    channel: state.jobChannel[view.jobId],
   });
   state.history = state.history.slice(0, MAX_HISTORY);
   renderHistory();
@@ -1183,6 +1378,9 @@ function setBusy(busy) {
 }
 
 function bindUi() {
+  el("channel").addEventListener("change", onChannelChange);
+  onChannelChange();
+  el("transcribe-btn").addEventListener("click", onTranscribe);
   el("generate-btn").addEventListener("click", () => onGenerate());
   el("cancel-btn").addEventListener("click", onCancel);
   el("i2v-btn").addEventListener("click", onImageToVideo);

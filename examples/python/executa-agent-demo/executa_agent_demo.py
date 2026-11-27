@@ -271,6 +271,9 @@ def _handle_message(line: str) -> None:
             return
         print(f"⚠️  unmatched response id={msg.get('id')!r}", file=sys.stderr)
         return
+    # Live frame of an in-flight `agent/session.run` (host → plugin notification).
+    elif agent.dispatch_notification(msg):
+        return
 
     method = msg.get("method")
     req_id = msg.get("id")

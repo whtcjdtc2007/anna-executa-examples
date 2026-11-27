@@ -44,7 +44,6 @@ except ModuleNotFoundError:
 
 from executa_sdk import (  # noqa: E402
     PROTOCOL_VERSION_V2,
-    AgentSession,
     AgentSessionClient,
     AgentError,
     SamplingClient,
@@ -62,7 +61,7 @@ from executa_sdk import (  # noqa: E402
 
 MANIFEST = {
     "display_name": "LLM via Executa",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": (
         "Performs an LLM completion on behalf of the calling app by "
         "asking the host to sample (sampling/createMessage)."
@@ -164,8 +163,7 @@ MANIFEST = {
                 "Run N sequential sampling/createMessage calls inside a "
                 "SINGLE tool invoke, each step feeding the previous answer "
                 "back as context. Demonstrates multi-call sampling within "
-                "one invoke: it exercises the per-invoke max_calls / "
-                "max_tokens quota AND the host's automatic sampling-token "
+                "one invoke and the host's automatic sampling-token "
                 "renewal — a long chain outlives the short-lived token, so "
                 "later steps transparently run on a renewed token instead "
                 "of failing with 'Signature has expired'. Use 'delay_s' to "
@@ -545,8 +543,7 @@ async def _sample_chain(
         return {"text": "", "note": "empty prompt", "steps": []}
 
     steps = max(1, min(8, int(steps)))
-    # 8192 = host sampling per-call cap; the 32k per-invoke pool still gates
-    # the chain cumulatively (SAMPLING_MAX_TOKENS_EXCEEDED past it).
+    # 8192 = host sampling per-call cap.
     max_tokens = max(16, min(8192, int(max_tokens)))
     delay_s = max(0.0, float(delay_s))
     model_preferences = _build_model_preferences(
@@ -695,15 +692,9 @@ async def _agent_session(
     # The remaining ops act on an existing session handle.
     if not app_session_uuid:
         raise ValueError(f"op={op!r} requires 'app_session_uuid'")
-    handle = AgentSession(
-        uuid=app_session_uuid,
-        expires_in=0,
-        kind="agent",
-        agent_submode=submode or "auto",
-        fixed_client_id=None,
-        granted_tools=[],
-    )
-    handle._client = agent_client
+    # attach() refreshes first, so the host holds a ticket for the session —
+    # it works for a session created before a restart, or by the App's page.
+    handle = await agent_client.attach(app_session_uuid)
 
     if op == "run":
         # Per-run MCP modelPreferences — soft preference resolved host-side
@@ -738,9 +729,9 @@ async def _agent_session(
             "frames": frames,
             "modelPreferences": model_preferences,
             "attachment_count": len(attachments or []),
-            # Buffered transport: one number is all we can measure — the
-            # whole run (queue + agent loop + streaming) as seen from the
-            # plugin.
+            # The plugin sees frames live, but a tools.invoke answers once:
+            # the caller gets the whole run (queue + agent loop + streaming)
+            # as one number.
             "elapsed_ms": round((time.perf_counter() - t0) * 1000),
         }
 
@@ -866,6 +857,9 @@ def _handle_message(line: str) -> None:
         if agent_client.dispatch_response(msg):
             return
         print(f"⚠️  unmatched response id={msg.get('id')!r}", file=sys.stderr)
+        return
+    # Live frame of an in-flight agent/session.run (host → plugin notification).
+    elif agent_client.dispatch_notification(msg):
         return
 
     method = msg.get("method")

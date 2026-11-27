@@ -1,0 +1,86 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 1.25rem;
+  max-width: 820px;
+  line-height: 1.5;
+}
+
+h1 { margin: 0 0 0.25rem; font-size: 1.4rem; }
+h2 { margin: 1.5rem 0 0.5rem; font-size: 1.05rem; }
+.muted { color: #888; font-size: 0.9rem; }
+section { border-top: 1px solid #ddd2; padding-top: 0.5rem; }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.85em; }
+
+button {
+  font: inherit;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  border-radius: 6px;
+  border: 1px solid #8884;
+  background: #4682b422;
+}
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+input[type="number"] {
+  font: inherit;
+  width: 5rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid #8884;
+  background: transparent;
+}
+
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.controls { margin-top: 0.6rem; }
+
+.checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.15rem 1rem;
+  font-size: 0.9rem;
+}
+.checks label { display: flex; gap: 0.4rem; align-items: center; cursor: pointer; }
+
+.out {
+  background: #80808014;
+  border: 1px solid #8882;
+  border-radius: 6px;
+  padding: 0.6rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 0.82rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+.out.err, .err { color: #c0392b; }
+
+.task {
+  margin: 0.8rem 0;
+  border: 1px solid #8883;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+}
+.task-head { justify-content: space-between; }
+.task-head .id { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.82rem; }
+
+table { width: 100%; border-collapse: collapse; margin-top: 0.4rem; font-size: 0.85rem; }
+th, td { text-align: left; padding: 0.25rem 0.4rem; border-top: 1px solid #8882; vertical-align: top; }
+th { font-weight: 600; color: #888; border-top: none; }
+td.num { text-align: right; white-space: nowrap; }
+
+.badge {
+  display: inline-block;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  border: 1px solid #8884;
+  white-space: nowrap;
+}
+.badge.ok, .badge.done { color: #2e7d32; border-color: #2e7d3266; }
+.badge.failed { color: #c0392b; border-color: #c0392b66; }
+.badge.running { color: #4682b4; border-color: #4682b466; }
+.badge.cancelled, .badge.interrupted { color: #b26a00; border-color: #b26a0066; }

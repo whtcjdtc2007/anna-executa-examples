@@ -469,7 +469,7 @@ $("stream-btn").addEventListener("click", async () => {
 
 // ──────────────────────────────────────────────────────────
 // 1b. sample_chain — N sequential sampling/createMessage calls in ONE
-//     invoke. Exercises the host max_calls quota and the sampling-token
+//     invoke. Exercises multi-call sampling and the sampling-token
 //     renewal path (forum /t/83): a long enough chain outlives the 10-min
 //     token TTL, and the host transparently renews + retries mid-invoke.
 

@@ -26,6 +26,32 @@ Auth is the `app_session_token` minted by the AnnaApp runtime during
 handshake — the app holds zero long-lived credentials and never touches a
 provider API key.
 
+## Two channels
+
+The **Channel** selector at the top of the sidebar switches generate,
+re-sign, speak and transcribe between two adapters with the same methods
+(`hostChannel` / `executaChannel` in `bundle/app.js`); the panels call
+`channel.<method>()` and never branch on which one is active.
+
+| | **Host API** | **Reverse RPC** |
+| --- | --- | --- |
+| Path | page → `anna.video` / `music` / `image` / `audio` → host | page → `anna.tools.invoke` → clip-narrator `media_call` → `video/*` · `music/*` · `image/*` · `audio/*` → host |
+| Job progress | `media_job` events + adaptive polling inside `generateAwait` | one `tools.invoke` per step: `submit`, then a `get_job` poll every 5 s |
+| Cancel | `AbortController.abort()` → `cancelJob` | `AbortController.abort()` → `media_call(op=cancel_job)` |
+| First frame | sync `image.generate`, or a job when ticked | always a job (`image/generate_async`) |
+| Billing and ownership in production | this App | the Executa — a job is only visible on the channel that created it, so every job (and history entry) remembers its channel |
+| Result size | no tool-result limit | a tool result is capped at 4 MiB (256 KB for an async tool job): return URLs, never bytes |
+
+**Transcribe it back** (under the narration player) sends the synthesized
+audio to `audio.transcribe` / `audio/transcribe` on the active channel.
+Catalog discovery, uploads, history and the error demos are page-side and
+always use the Host API.
+
+Locally the Reverse RPC channel needs `@anna-ai/cli` ≥ 0.1.68 (earlier
+versions answer `-32601` for these reverse RPCs) and a signed-in
+`anna-app dev`; both channels then reach the real platform and are billed to
+your dev App.
+
 ## The async job model
 
 Unlike `image.generate` (synchronous, seconds), video renders for minutes.
@@ -131,7 +157,23 @@ each call with the invoke's short-lived `media_token`; manifest declares
 Tools: `clip_create` (await a clip), `clip_narrate` (TTS), `clip_score`
 (await a background score; `idempotency_key` = invoke id so a retried tool
 call never pays twice; -32165 alternatives are returned to the agent),
-`clip_story` (clip + narration concurrently on one invoke token).
+`clip_story` (clip + narration concurrently on one invoke token), and
+`media_call` — one reverse RPC per call, selected by `op`:
+
+| `op` | Reverse RPC |
+| --- | --- |
+| `submit` (`kind` = `image` / `video` / `music`) | `image/generate_async` (`image/edit_async` when `request.image_url` is set) · `video/generate` · `music/generate` |
+| `get_job` | `image/get_job` · `video/get_job` · `music/get_job` |
+| `cancel_job` | `image/cancel_job` · `video/cancel_job` · `music/cancel_job` |
+| `resign` | `image/resign` |
+| `speak` | `audio/speak` |
+| `transcribe` | `audio/transcribe` |
+
+`request` takes the arguments of the matching Host API call; the plugin maps
+them onto the SDK's keyword arguments. `media_call` never waits for a job
+and answers in-band (`{ok: true, result}` or
+`{ok: false, error: {code, message, data}}`), which is what lets the page
+drive it as the Reverse RPC channel.
 
 Image has the same plugin-side job surface in `executa_sdk.ImageClient`
 (`image/generate_async` · `edit_async` · `get_job` · `cancel_job` · `resign`,
@@ -140,9 +182,6 @@ wrapped by `generate_await` / `edit_await`; node `imageGenerateAwait`, go
 `await_timeout_s` inside the invoke budget — for longer renders return the
 `jobId` as the invoke result and resume with `get_job` on the next call;
 `resign([...r2_keys])` re-signs already-paid artifacts for up to 7 days.
-Per-invoke `max_images` is reserved by `n` at submit time and is **not**
-released if the job later fails (it is a guardrail, not billing; the CU hold
-is refunded).
 
 ## Grants
 
@@ -175,5 +214,5 @@ anna-app-media-studio/
 ├── manifest.json                 # schema 3 — host_capabilities + ui.host_api.{video,music,audio,…}
 ├── bundle/                       # static SPA (index.html / app.js / style.css)
 ├── fixtures/happy-path.jsonl     # catalog → generate → events → getJob → speak → upload → -32122 → music (replay, -32165)
-└── executas/clip-narrator/       # Executa v2 python plugin (MediaClient reverse RPC)
+└── executas/clip-narrator/       # Executa v2 python plugin (MediaClient + ImageClient reverse RPC)
 ```

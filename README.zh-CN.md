@@ -43,6 +43,12 @@ anna-executa-examples/
 │                                        #     ANNA_CHROME_*/ANNA_NODE_* 发现契约、预演
 │                                        #     runtime.requires 安装预检、用平台 Chrome 渲染
 │                                        #     HTML→PNG/PDF、≈5 MiB 轻量 binary 打包
+│   └── anna-app-background-demo/        # ⭐ Anna App — 后端拥有的任务：页面只触发，Executa 在调用之外
+│                                        #     发起全部反向 RPC 并自己保存状态；重新打开即可看到任务当下的完整状态
+│   └── anna-app-share-demo/             # ⭐ Anna App — 公开分享链接（share.* host API）：
+│                                        #     anna.files.* 上传渲染好的 HTML → publish 到长期
+│                                        #     有效的公开 URL → republish（URL 不变、版本 +1）/
+│                                        #     update 元数据 / revoke（即时墓碑）；ui.host_api.share
 ├── sdk/                                 # Sampling 示例所使用的参考 SDK
 │   ├── python/                          # executa_sdk
 │   ├── nodejs/                          # @anna/executa-sdk

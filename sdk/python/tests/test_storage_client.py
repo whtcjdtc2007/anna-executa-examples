@@ -18,6 +18,7 @@ from executa_sdk.storage import (
     METHOD_FILES_UPLOAD_BEGIN,
     METHOD_STORAGE_GET,
     METHOD_STORAGE_LIST,
+    METHOD_STORAGE_QUOTA_STATUS,
     METHOD_STORAGE_SET,
     STORAGE_ERR_QUOTA_EXCEEDED,
     StorageClient,
@@ -99,6 +100,27 @@ async def test_storage_list_passes_pagination():
         {"jsonrpc": "2.0", "id": env["id"], "result": {"items": [], "next_cursor": None}}
     )
     await task
+
+
+@pytest.mark.asyncio
+async def test_storage_quota_status_no_params():
+    host = _FakeHost()
+    client = StorageClient(write_frame=host.write)
+    task = asyncio.create_task(client.quota_status())
+    await asyncio.sleep(0)
+    env = host.frames[0]
+    assert env["method"] == METHOD_STORAGE_QUOTA_STATUS
+    assert env["params"] == {}
+    status = {
+        "used_bytes": 123,
+        "quota_bytes": 2 * 1024**3,
+        "entries_count": 4,
+        "percent": 0.0,
+        "plan_name": "free",
+        "plan_label": "Free",
+    }
+    client.dispatch_response({"jsonrpc": "2.0", "id": env["id"], "result": status})
+    assert (await task) == status
 
 
 @pytest.mark.asyncio

@@ -179,16 +179,30 @@
     </section>
 
     <section>
-      <h2>5. Image download &rarr; APS artifact (Phase 2)</h2>
+      <h2>5. Image download &rarr; APS artifact (Phase 2) &mdash; both channels</h2>
       <p class="muted">
-        <code>anna.web.image_fetch</code> downloads the image
+        <code>anna.web.image_fetch</code> (HOST API) and
+        <code>tools.invoke(web_image_grab)</code> (Reverse RPC:
+        <code>web/image_fetch</code>) download the image
         <strong>host-side</strong> (SSRF-guarded, MIME whitelist + magic-byte
-        sniffing) into the app's APS file storage &mdash; the response is an
-        artifact <em>reference</em> (<code>path</code> + short-lived
-        <code>get_url</code>), never bytes. The stored object counts against
-        your storage quota. Click <em>grab</em> on any image result above, or
-        paste an image URL. Requires <code>web_grant.allowImageFetch</code>
-        (defaults OFF in production).
+        sniffing) into APS file storage &mdash; the app's own scope on the HOST
+        API, the Executa's <code>tool</code> scope over Reverse RPC. The
+        response is an artifact <em>reference</em> (<code>path</code> +
+        short-lived <code>get_url</code>), never bytes. The stored object counts
+        against your storage quota. Click <em>grab</em> on any image result
+        above (it downloads over the channel that found the image), or paste an
+        image URL. Requires <code>web_grant.allowImageFetch</code> (defaults OFF
+        in production).
+      </p>
+      <p class="muted">
+        Under <code>anna-app dev</code> with the default
+        <code>--web local</code> the image is kept by the harness and
+        <code>get_url</code> is a short
+        <code>http://localhost:&hellip;/_dev/web-images/&hellip;</code> link
+        &mdash; a reference, like production, but only reachable from this
+        machine and gone when the harness stops. <code>path</code> is a
+        placeholder there; use <code>--web real</code> when you need a real
+        APS object.
       </p>
       <label class="muted" for="image-url-input">Image URL</label>
       <input
@@ -198,6 +212,9 @@
       />
       <div class="row">
         <button id="image-fetch-btn">Download via HOST API</button>
+        <button id="rpc-image-fetch-btn">
+          Download via Reverse RPC (Executa)
+        </button>
       </div>
       <div id="image-fetch-preview" class="image-fetch-preview"></div>
       <pre id="image-fetch-out" class="out">(no image downloaded yet)</pre>

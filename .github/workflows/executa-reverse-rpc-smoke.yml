@@ -1,0 +1,43 @@
+name: executa-reverse-rpc-smoke
+
+# Runs the bundled demo Executas on the published `anna-app dev` Python
+# runtime and checks that every reverse RPC they issue is served (forum #598:
+# a demo's "Reverse RPC" button answered -32601 for months because nothing
+# ran it). See examples/tests/harness/.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/tests/harness/**"
+      - "examples/anna-app-web-search-demo/executas/**"
+      - "examples/anna-app-media-studio/executas/**"
+      - "examples/anna-app-aps-files-demo/executas/**"
+      - "examples/anna-app-credentials-demo/executas/**"
+      - "sdk/python/**"
+      - ".github/workflows/executa-reverse-rpc-smoke.yml"
+  pull_request:
+    paths:
+      - "examples/tests/harness/**"
+      - "examples/anna-app-web-search-demo/executas/**"
+      - "examples/anna-app-media-studio/executas/**"
+      - "examples/anna-app-aps-files-demo/executas/**"
+      - "examples/anna-app-credentials-demo/executas/**"
+      - "sdk/python/**"
+      - ".github/workflows/executa-reverse-rpc-smoke.yml"
+
+defaults:
+  run:
+    working-directory: examples
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      # `anna-app-runtime-local` only publishes pre-releases.
+      - run: >
+          uv run --no-project --python 3.12 --prerelease allow
+          --with-requirements tests/harness/requirements.txt
+          pytest tests/harness -v

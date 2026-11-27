@@ -20,6 +20,13 @@
         </header>
 
         <section class="panel">
+          <label for="channel">Channel</label>
+          <select id="channel">
+            <option value="host" selected>Host API — anna.video / music / image / audio</option>
+            <option value="executa">Reverse RPC — tools.invoke → clip-narrator → video/* · music/* · image/* · audio/*</option>
+          </select>
+          <div class="caps" id="channel-hint"></div>
+
           <label for="prompt">Prompt</label>
           <textarea
             id="prompt"
@@ -158,7 +165,7 @@
           <button id="refresh-btn" disabled>Re-sign expired URL</button>
 
           <details class="errors">
-            <summary>Error demos</summary>
+            <summary>Error demos (Host API)</summary>
             <button id="err-invalid-btn">-32122 invalid duration</button>
             <button id="err-voice-btn">-32145 invalid voice</button>
             <button id="err-quota-btn">Catalog &amp; quota probe</button>
@@ -195,6 +202,8 @@
             <span id="tts-meta-chars">chars: —</span>
             <span id="tts-meta-cost">cost: —</span>
           </div>
+          <button id="transcribe-btn" class="link">Transcribe it back (audio.transcribe)</button>
+          <div class="caps" id="transcript"></div>
         </div>
 
         <div class="narration music" id="music-box" hidden>

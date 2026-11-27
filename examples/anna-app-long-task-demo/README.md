@@ -30,7 +30,19 @@ four things every long-task Anna App needs:
 | --- | --- |
 | Tool finishes in < 90s | `tools.invoke` (simplest) |
 | Tool may exceed 90s, or you don't want to block | `tools.invokeAsync` / `invokeAsyncAwait` |
-| Need progress UI / cancel / survive reloads | `tools.invokeAsync` family only |
+| Need the host's progress stream / cancel / timeout, and to survive reloads | `tools.invokeAsync` family only |
+| **Backend-owned task** — the page only triggers; work continues after the window closes; reopening shows the task's complete current state | `tools.invoke` to trigger and to read, work outside any invoke — see [`anna-app-background-demo`](../anna-app-background-demo) |
+| Work nobody triggers (periodic sync, backup, startup checks) | Background, from process start — same demo |
+
+`tools.invokeAsync` is a **host-managed** job; it does not replace a
+backend-owned task:
+
+- On reopen the host returns the job's status, at most 500 progress events of
+  8 KB each, and a result of at most 256 KB — what the tool reported, not your
+  app's own complete state.
+- The job's lifetime is tied to one invoke: it has a deadline (24 hours at
+  most) and fails once the Agent has been offline for 180 seconds. Your
+  Executa cannot pause it, resume it, or advance it across several user steps.
 
 ## Run it
 
@@ -77,7 +89,6 @@ Semantics (host side, silent-drop by design):
 - Reverse-RPC tokens (storage/image/upload/credentials/sampling) are minted
   with `min(job_timeout + 5min, 1h)` TTL and renewed automatically by the
   agent for longer jobs — nothing to do plugin-side.
-- Call-count quotas scale with the job length (×hours, capped ×10).
 - Per-user active job quota: **50** (`job_quota_exceeded`; per user, shared
   across apps/windows/agents, counts queued + running).
 - Per-agent long-job slots: **30 running**; further jobs **queue on the

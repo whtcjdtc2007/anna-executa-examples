@@ -1,7 +1,7 @@
 {
   "slug": "llm-via-executa",
   "name": "LLM via Executa",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "executa_type": "tool",
   "description": "Exposes a `complete` tool that wraps host sampling/createMessage via reverse-RPC, letting the LLM Demo app run completions through an Executa instead of calling anna.llm.complete directly.",
 

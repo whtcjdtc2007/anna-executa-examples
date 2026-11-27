@@ -1,0 +1,23 @@
+{
+  "slug": "session-via-executa",
+  "name": "Session via Executa",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Exposes one `agent_session` tool whose `op` argument selects any of the eleven agent/session.* interfaces (create, attach, list, refresh, run, cancel, history, delete, run_status, frames, catalog), so the Agent Session Demo app can drive the same session over Reverse RPC instead of the Host API.",
+
+  "tool_id": "tool-test-session-via-executa-12345678",
+  "type": "python",
+  "enabled": true,
+
+  "distribution": {
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true
+      }
+    }
+  },
+
+  "_comment": "Publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. This dir is the `session-via-executa` handle referenced by app.json#bundled_executas, and the app lists it under optional_executas — set `enabled` to false to run the app without it (the page then offers the Host API channel only). To ship an installable binary, add a `binary` profile with binary_urls (see anna-app-llm-demo for the full pattern)."
+}

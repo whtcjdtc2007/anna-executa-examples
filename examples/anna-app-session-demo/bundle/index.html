@@ -10,24 +10,37 @@
     <header>
       <h1>anna-app Agent Session Demo</h1>
       <p class="muted">
-        Best practices for driving <code>anna.agent.session</code> when the
-        agent must <strong>read and write workspace files reliably</strong>:
-        pin the session to one filesystem client
-        (<code>submode: "fixed"</code>), discover the workspace root and use
-        <strong>absolute paths only</strong>, verify writes with a
-        <strong>nonce read-back</strong> instead of trusting completion
-        claims, treat structured filesystem errors
-        (<code>PATH_OUTSIDE_SANDBOX</code> / <code>NOT_FOUND</code>) as a
-        stop signal — never a cue to fall back to a similar path — and
-        <strong>classify every terminal state</strong>: retry on
-        <code>empty_completion</code>, treat <code>task_cancelled</code> as an
-        outcome, and rely on <code>cancel</code>/<code>delete</code> to really
-        stop runaway runs.
+        The reference for <code>anna.agent.session</code>: <strong>every
+        session interface over both channels</strong> — the
+        <strong>Host API</strong> (the page calls the host) and
+        <strong>Reverse RPC</strong> (the page invokes a bundled Executa,
+        which calls the host) — driven by <strong>the same code</strong>.
+        Inside an App the page and its Executas share sessions, so you can
+        switch channel mid-session and keep going. The sections below also
+        carry the practices that make agent file IO reliable: pin the
+        session to one filesystem client, use <strong>absolute paths
+        only</strong>, verify writes with a <strong>nonce read-back</strong>,
+        stop on structured filesystem errors, and <strong>classify every
+        terminal state</strong> of a run.
       </p>
     </header>
 
     <section>
-      <h2>1. Session setup</h2>
+      <h2>Interfaces × channels</h2>
+      <div class="mode-row">
+        <label for="channel-sel">Channel:</label>
+        <select id="channel-sel">
+          <option value="host" selected>Host API — the page calls anna.agent.session.*</option>
+          <option value="executa">Reverse RPC — anna.tools.invoke → bundled Executa → agent/session.*</option>
+        </select>
+      </div>
+      <p class="muted mode-hint" id="channel-hint"></p>
+      <p class="muted lifecycle" id="channel-status"></p>
+      <table id="interface-table" class="interfaces"></table>
+    </section>
+
+    <section>
+      <h2>1. Session management</h2>
       <div class="mode-row">
         <label for="submode-sel">Submode:</label>
         <select id="submode-sel">
@@ -57,17 +70,25 @@
           id="session-uuid-input"
           type="text"
           class="uuid-input"
-          placeholder="app_session_uuid — create, type, or pick from list()"
+          placeholder="app_session_uuid — create, type + attach, or pick from list()"
           autocomplete="off"
           spellcheck="false"
         />
       </div>
       <div class="btn-row">
+        <button id="attach-btn" disabled>attach</button>
         <button id="refresh-btn" disabled>refresh</button>
         <button id="delete-btn" disabled>delete</button>
         <button id="list-btn">list</button>
         <button id="history-btn" disabled>history</button>
+        <button id="catalog-btn">catalog</button>
       </div>
+      <p class="muted mode-hint">
+        <strong>attach</strong> proves the uuid in the box is reachable over
+        the selected channel (it is also what a channel switch does);
+        <strong>catalog</strong> answers "which tools would a session
+        created right now resolve" — no session needed.
+      </p>
       <p class="muted" id="session-status">no session</p>
       <p class="muted lifecycle" id="session-lifecycle">lifecycle: (none)</p>
       <p class="muted lifecycle" id="session-tools">tools: (unknown — create a session to find out)</p>
@@ -151,12 +172,15 @@
         starts, a running run stops at the next checkpoint — confirm via the
         stream's <code>task_cancelled</code> + <code>end</code> frames.
         <strong>delete</strong> (section 1) also cancels all active runs of
-        the session. In mock mode, send the text
-        <code>EMPTY_COMPLETION_DEMO</code> to see the retry path.
+        the session. The app chooses the <code>run_id</code> before it
+        starts a run, so the same id cancels it and looks it up later on
+        either channel. In mock mode, send the text
+        <code>EMPTY_COMPLETION_DEMO</code> to see the retry path and
+        <code>TASK_CANCELLED_DEMO</code> to see a cancelled run.
       </p>
       <textarea id="run-input" rows="2">List the files at your workspace root. Reply with their canonical absolute paths.</textarea>
       <div class="btn-row">
-        <button id="run-btn" disabled>run (streamed)</button>
+        <button id="run-btn" disabled>run</button>
         <button id="cancel-btn" disabled>cancel</button>
       </div>
       <pre id="run-out" class="out">(no output yet)</pre>
@@ -172,10 +196,12 @@
         answers queued / running / completed / failed / cancelled for the last
         <code>run_id</code>; if it completed, <strong>replay frames</strong>
         (<code>agent.session.frames</code>) recovers the full output from the
-        archive by <code>seq</code> — no re-run, no double billing. SDK ≥
-        0.18.0 also arms this automatically inside <code>run()</code>
-        (<code>firstFrameTimeoutMs</code>, default 20s). Try it: run something
-        in section 3, then use both buttons here.
+        archive by <code>seq</code> — no re-run, no double billing. The
+        browser SDK ≥ 0.18.0 also arms this automatically inside
+        <code>run()</code> (<code>firstFrameTimeoutMs</code>, default 20s).
+        Over Reverse RPC this is also how a run that outlives its
+        <code>tools.invoke</code> is recovered. Try it: run something in
+        section 3, then use both buttons here.
       </p>
       <div class="btn-row">
         <button id="status-btn" disabled>run status</button>
@@ -189,6 +215,11 @@
       <pre id="errors" class="out err">(none)</pre>
     </section>
 
+    <!-- anna-tool-ids.js is AUTO-GENERATED by `anna-app dev` / `apps publish`.
+         It assigns `window.__ANNA_TOOL_IDS__`, mapping the bundled handle
+         "session-via-executa" to the server-minted tool_id. Loaded as a
+         classic script BEFORE the deferred module so app.js can read it. -->
+    <script src="anna-tool-ids.js"></script>
     <!-- app.js is a native ES module that imports the runtime SDK directly.
          No inline script — the bundle CSP is `script-src 'self' <sdk-origin>`,
          which blocks inline scripts but allows this external module and its

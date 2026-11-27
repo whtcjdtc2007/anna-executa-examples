@@ -2,7 +2,7 @@
   "name": "anna-app-session-demo",
   "private": true,
   "version": "0.1.0",
-  "description": "Anna app demonstrating agent.session workspace best practices: fixed-client affinity, absolute-path discipline, nonce-verified writes, structured fs errors.",
+  "description": "Reference anna-app for agent sessions: every agent.session interface over the Host API and over Reverse RPC (bundled Executa), plus workspace best practices.",
   "scripts": {
     "dev:mock": "anna-app dev --mock-llm fixtures/happy-path.jsonl",
     "dev:real": "anna-app dev",

@@ -18,9 +18,9 @@ to reach an LLM:
   `SAMPLING_INVALID_REQUEST`; the demo blocks the request client-side
   with a hint instead of round-tripping a known rejection.
   The Executa also exposes `method: "sample_chain"` — N sequential
-  sampling calls in a single invoke — to exercise the host's
-  `max_calls` quota **and** the sampling-token renewal that keeps a
-  long-running invoke alive past the token's 10-minute TTL.
+  sampling calls in a single invoke — to exercise multi-call sampling
+  and the sampling-token renewal that keeps a long-running invoke alive
+  past the token's 10-minute TTL.
 
 and the **full `agent.session` surface** — create / run / cancel /
 history / **refresh** / delete / **list** — over **two switchable

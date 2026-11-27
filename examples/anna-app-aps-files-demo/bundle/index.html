@@ -96,6 +96,21 @@
     </section>
 
     <section>
+      <h2>3. Storage quota</h2>
+      <p class="muted">
+        Quota is enforced <em>per user</em> across every scope, so both modes
+        read the same numbers: <strong>Tool invoke</strong> asks the Executa
+        (<code>storage/quota_status</code> reverse-RPC),
+        <strong>HOST API</strong> calls <code>anna.storage.quota()</code>.
+        Locally this needs <code>anna-app dev --storage aps</code> &mdash; the
+        in-memory harness reports &ldquo;not enabled&rdquo; rather than
+        inventing numbers.
+      </p>
+      <button id="quota-btn">Read quota</button>
+      <pre id="quota-out" class="out">(not read yet)</pre>
+    </section>
+
+    <section>
       <h2>Status</h2>
       <pre id="status" class="out">(idle)</pre>
       <details>

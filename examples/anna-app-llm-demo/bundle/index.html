@@ -14,7 +14,7 @@
         <code>{type:'image'}</code> content blocks for vision models),
         <code>anna.tools.invoke</code> against an Executa that calls
         <code>sampling/createMessage</code> (single-shot <em>and</em> an N-step
-        <code>sample_chain</code> that exercises <code>max_calls</code> +
+        <code>sample_chain</code> that exercises multi-call sampling +
         sampling-token renewal), and the full
         <code>agent.session</code> surface
         (create/run/cancel/history/refresh/delete/list)
@@ -140,8 +140,8 @@
       <p class="muted">
         Invokes the Executa's <code>sample_chain</code> tool, which fires
         <strong>N sequential</strong> <code>sampling/createMessage</code> calls
-        inside a <em>single</em> invoke. This exercises the host's
-        <code>max_calls</code> quota and — with enough steps/delay to outlast the
+        inside a <em>single</em> invoke. This exercises multi-call sampling
+        and — with enough steps/delay to outlast the
         10-minute sampling-token TTL — the <strong>token-renewal</strong> path
         (forum <code>/t/83</code> "Signature has expired"). Requires the
         <code>--real</code> LLM bridge; mock fixtures do not serve reverse

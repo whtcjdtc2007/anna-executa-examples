@@ -34,6 +34,14 @@ saved in one mode are **not** visible from the other — that is faithful
 to production, where files are always self-owned by whoever the host
 mints the `storage_token` for.
 
+**Storage quota** is the one thing both modes agree on: quota is enforced
+per user across every scope, so **Read quota** shows the same numbers either
+way — Tool invoke mode asks the Executa (`quota` tool →
+`storage/quota_status` reverse-RPC), HOST API mode calls
+`anna.storage.quota()`. Locally this needs `pnpm dev:aps` and
+`@anna-ai/cli` ≥ 0.1.68; the in-memory harness answers `not_implemented`
+(shown as “not enabled”) instead of inventing numbers.
+
 ## Why this is the recommended pattern
 
 An Anna App that wants to put bytes in object storage has two options:

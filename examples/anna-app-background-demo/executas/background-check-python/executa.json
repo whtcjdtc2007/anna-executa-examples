@@ -1,0 +1,23 @@
+{
+  "slug": "background-check",
+  "name": "Background Check",
+  "version": "0.1.0",
+  "executa_type": "tool",
+  "description": "Runs a capability health check as a backend-owned task: check_start returns a task id at once, the checks run outside any invoke, and check_status / check_list return the task's complete current state.",
+
+  "tool_id": "tool-test-background-check-12345678",
+  "type": "python",
+  "enabled": true,
+
+  "distribution": {
+    "active": "local",
+    "profiles": {
+      "local": {
+        "type": "local",
+        "supports_protocol": true
+      }
+    }
+  },
+
+  "_comment": "Publish metadata (slug/name/version/executa_type) is read by `anna-app apps publish`; the dev fields (tool_id/type/enabled) are read by `anna-app dev`. This dir is the `background-check` handle referenced by app.json#bundled_executas. To ship an installable binary, add a `binary` profile with binary_urls (see anna-app-llm-demo for the full pattern)."
+}

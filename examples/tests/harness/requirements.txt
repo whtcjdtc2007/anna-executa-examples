@@ -1,0 +1,5 @@
+# Reverse-RPC smoke for the bundled demo Executas (see test_reverse_rpc_smoke.py).
+# 0.2.0a39 is the first runtime whose reverse-RPC surface equals production
+# (forum #598); older versions answer -32601 for the methods under test.
+anna-app-runtime-local>=0.2.0a39
+pytest>=8

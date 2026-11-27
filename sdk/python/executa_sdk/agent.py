@@ -3,7 +3,9 @@
 Brings stdio plugins to **parity** with anna-app iframes for LLM access:
 
 - ``AgentSessionClient.create(...)``    →  reverse-RPC ``agent/session.create``
-- ``AgentSession.run(content, ...)``    →  ``agent/session.run`` (buffered stream)
+- ``AgentSessionClient.attach(uuid)``   →  ``agent/session.refresh`` + handle for an existing session
+- ``AgentSessionClient.catalog()``      →  ``agent/session.catalog`` (which tools a session would get)
+- ``AgentSession.run(content, ...)``    →  ``agent/session.run`` (frames delivered live)
 - ``AgentSession.cancel(run_id)``       →  ``agent/session.cancel``
 - ``AgentSession.history()``            →  ``agent/session.history``
 - ``AgentSession.refresh(...)``         →  ``agent/session.refresh`` (re-mint token + slide idle window)
@@ -15,15 +17,23 @@ Brings stdio plugins to **parity** with anna-app iframes for LLM access:
 Wire / auth model (plugin POV):
 - Plugin **never** sees an ``app_session_token`` — the host ``matrix``
   caches it internally, keyed by ``app_session_uuid``.
-- ``run`` is *buffered* in v2: the host accumulates SSE frames and
-  returns them as a list once ``done==True``. Iterate with
-  ``async for frame in session.run(...)``.
+- ``run`` delivers frames **while the run is in flight**: the host pushes
+  each one as an ``agent/session.frame`` notification and still answers
+  with the complete ``frames`` list, which stays authoritative. Iterate
+  with ``async for frame in session.run(...)``. Against a host that does
+  not push (or with an unwired stdin loop, see below) the same code simply
+  receives every frame when the run completes.
 
 Threading: shares the same dispatch infrastructure as
 :class:`SamplingClient` — the plugin's stdin loop must call
 :meth:`dispatch_response` on every JSON message that has no ``method``
-field. A single shared :func:`dispatch_message` helper is provided for
-plugins that mount both clients.
+field, and :meth:`AgentSessionClient.dispatch_notification` on the ones
+that do (live frames)::
+
+    if "method" not in msg:
+        ...  # route the reverse-RPC response
+    elif agent_client.dispatch_notification(msg):
+        return
 """
 
 from __future__ import annotations
@@ -54,7 +64,13 @@ METHOD_AGENT_SESSION_LIST = "agent/session.list"
 METHOD_AGENT_SESSION_REFRESH = "agent/session.refresh"
 METHOD_AGENT_SESSION_RUN_STATUS = "agent/session.run.status"
 METHOD_AGENT_SESSION_FRAMES = "agent/session.frames"
+METHOD_AGENT_SESSION_CATALOG = "agent/session.catalog"
 METHOD_AGENT_COMPLETE = "agent/complete"
+# Host → plugin notification (no ``id``): one live frame of an in-flight run.
+METHOD_AGENT_SESSION_FRAME = "agent/session.frame"
+
+# Queue sentinel: the ``run`` response (or its error) has arrived.
+_RUN_DONE = object()
 
 # Mirror matrix/src/executa/protocol.py AGENT_ERR_*
 AGENT_ERR_NOT_GRANTED = -32041
@@ -117,13 +133,19 @@ class AgentSession:
         allowed_tools: Optional[List[str]] = None,
         timeout: float = 300.0,
     ) -> AsyncIterator[dict]:
-        """Run one agent turn and yield each SSE frame from the host.
+        """Run one agent turn and yield each frame as the host produces it.
 
-        v2 wire format is *buffered*: the host returns a single
-        ``{run_id, stream_id, frames: [...], final}`` response after the
-        run completes. We yield each frame in order so callers can write
-        the same ``async for frame in session.run(...)`` code that an
-        anna-app's ``llm.runAgent()`` uses.
+        The host pushes frames live (``agent/session.frame``) and still
+        answers with the complete ``{run_id, stream_id, frames: [...],
+        final}`` response. Frames are yielded in ``seq`` order as soon as
+        they form a contiguous prefix; whatever was not delivered live is
+        yielded from the response, so the sequence you iterate always equals
+        the response's ``frames`` — no duplicates, no gaps — whether or not
+        the host pushes at all. A failed run raises :class:`AgentError`
+        after the frames that had already arrived.
+
+        Leaving the loop early (``break`` / exception) cancels the upstream
+        run on a best-effort basis so it stops consuming quota.
 
         ``system_prompt`` (optional) overrides the session-level system
         prompt for **this turn only**; it does not change the stored
@@ -142,12 +164,16 @@ class AgentSession:
         """
         if self._client is None:
             raise RuntimeError("AgentSession was not created via AgentSessionClient")
+        # ``run_id`` is the only key tying live frames to this run before the
+        # response arrives, so it is always sent.
+        run_id = run_id or f"run_{uuid.uuid4().hex[:16]}"
         body = {
             "app_session_uuid": self.uuid,
             "content": content,
             "attachments": attachments,
             "recursion_limit": recursion_limit,
             "run_id": run_id,
+            "stream": True,
         }
         if system_prompt is not None:
             body["systemPrompt"] = system_prompt
@@ -155,13 +181,45 @@ class AgentSession:
             body["modelPreferences"] = model_preferences
         if allowed_tools:
             body["allowed_tools"] = list(allowed_tools)
-        result = await self._client._call(
-            METHOD_AGENT_SESSION_RUN,
-            body,
-            timeout=timeout,
+        client = self._client
+        queue: asyncio.Queue = asyncio.Queue()
+        with client._lock:
+            client._streams[run_id] = queue
+        call = asyncio.ensure_future(
+            client._call(METHOD_AGENT_SESSION_RUN, body, timeout=timeout)
         )
-        for frame in result.get("frames") or []:
-            yield frame
+        call.add_done_callback(lambda _t: queue.put_nowait(_RUN_DONE))
+
+        next_seq = 0
+        early: Dict[int, dict] = {}
+        finished = False
+        try:
+            while True:
+                item = await queue.get()
+                if item is _RUN_DONE:
+                    break
+                seq = item.get("seq")
+                if isinstance(seq, int) and seq >= next_seq:
+                    early[seq] = item.get("frame")
+                # Reorder by seq: a plugin may read stdin on a thread pool.
+                while next_seq in early:
+                    yield early.pop(next_seq)
+                    next_seq += 1
+            result = call.result()  # a failed run raises AgentError here
+            for frame in (result.get("frames") or [])[next_seq:]:
+                yield frame
+            finished = True
+        finally:
+            with client._lock:
+                client._streams.pop(run_id, None)
+            if not finished and not call.done():
+                # The caller left the loop early: stop waiting, and stop the
+                # upstream run so it does not keep burning quota.
+                call.cancel()
+                try:
+                    await self.cancel(run_id)
+                except Exception:
+                    pass
 
     async def cancel(self, run_id: str) -> dict:
         return await self._client._call(
@@ -236,6 +294,8 @@ class AgentSessionClient:
         self._lock = threading.Lock()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._disabled_reason: Optional[str] = None
+        # In-flight runs awaiting live frames, keyed by ``run_id``.
+        self._streams: Dict[str, asyncio.Queue] = {}
 
     # — wiring (mirrors SamplingClient API) —
 
@@ -291,6 +351,29 @@ class AgentSessionClient:
                     )
                 else:
                     pending.future.set_result(msg.get("result") or {})
+        return True
+
+    def dispatch_notification(self, msg: dict) -> bool:
+        """Route a host → plugin notification (a live ``agent/session.frame``).
+
+        Call it from the stdin loop for every message that carries a
+        ``method``. Returns True when the message was an agent frame — even
+        if no run is waiting for it any more — so the loop can stop looking
+        for another handler. Safe to call from any thread.
+        """
+        if not isinstance(msg, dict) or msg.get("method") != METHOD_AGENT_SESSION_FRAME:
+            return False
+        params = msg.get("params")
+        if not isinstance(params, dict):
+            return True
+        with self._lock:
+            queue = self._streams.get(params.get("run_id"))
+        loop = self._loop
+        if queue is not None and loop is not None:
+            try:
+                loop.call_soon_threadsafe(queue.put_nowait, params)
+            except RuntimeError:
+                pass  # loop closed — the response path still delivers every frame
         return True
 
     # — internal —
@@ -377,6 +460,56 @@ class AgentSessionClient:
         sess._client = self
         return sess
 
+    async def attach(
+        self,
+        app_session_uuid: str,
+        *,
+        ttl_seconds: int = 600,
+        timeout: float = 15.0,
+    ) -> AgentSession:
+        """Return a usable handle for a session that already exists.
+
+        Works for a session this plugin created earlier (e.g. before a
+        restart, found via :meth:`list`) and for one created by someone else
+        inside the same App — the App's page, or another Executa it invokes.
+        It refreshes first, which makes the host obtain and cache the
+        session's ticket; ``run`` / ``cancel`` / ``history`` / ``delete`` on
+        the returned handle then work as usual. A session this plugin may
+        not access raises ``AGENT_ERR_SESSION_NOT_FOUND``.
+
+        The refresh response does not describe the tool surface, so
+        ``granted_tools`` / ``inherit_host_tools`` are only filled when the
+        host reports them; read the ``run_meta`` frame of a run instead.
+        """
+        result = await self.refresh(
+            app_session_uuid, ttl_seconds=ttl_seconds, timeout=timeout
+        )
+        granted = list(result.get("granted_tools") or [])
+        sess = AgentSession(
+            uuid=str(result.get("app_session_uuid") or app_session_uuid),
+            expires_in=int(result.get("expires_in") or ttl_seconds),
+            kind=str(result.get("kind") or "agent"),
+            agent_submode=result.get("agent_submode"),
+            fixed_client_id=result.get("fixed_client_id"),
+            granted_tools=granted,
+            inherit_host_tools=bool(result.get("inherit_host_tools", "*" in granted)),
+            thread_id=result.get("thread_id"),
+            system_prompt=result.get("system_prompt"),
+        )
+        sess._client = self
+        return sess
+
+    async def catalog(self, *, timeout: float = 15.0) -> dict:
+        """Which platform tools a session created right now would resolve.
+
+        The reverse-RPC twin of the page's ``anna.agent.session.catalog()``.
+        Returns ``{"platform_tools": [{name, description, eligible,
+        blocked_by?, ...}], "manifest_declared": [...], "declared_wildcard":
+        bool}``; ``"inherit_host_tools": True`` is added when sessions would
+        also inherit the conversation's tool kit. Read-only, no quota.
+        """
+        return await self._call(METHOD_AGENT_SESSION_CATALOG, {}, timeout=timeout)
+
     async def list(
         self,
         *,
@@ -384,12 +517,13 @@ class AgentSessionClient:
         limit: int = 50,
         timeout: float = 15.0,
     ) -> List[dict]:
-        """Enumerate this plugin's active sessions for the current user.
+        """Enumerate the active sessions this plugin can reach for the current user.
 
-        Account/executa-scoped (NOT per-session): authenticates with the
-        invoke ``sampling_token`` host-side, so it works even after a
-        process restart wiped the in-memory token cache — the canonical
-        way to recover and clean up orphaned sessions.
+        Inside an App that is every session of that App (shared with its
+        page); in the conversation it is the sessions this plugin created
+        there. Authenticates with the invoke ``sampling_token`` host-side,
+        so it works even after a process restart wiped the in-memory token
+        cache — the canonical way to recover and clean up orphaned sessions.
 
         Returns a list of summary dicts::
 
@@ -525,6 +659,8 @@ __all__ = [
     "METHOD_AGENT_SESSION_REFRESH",
     "METHOD_AGENT_SESSION_RUN_STATUS",
     "METHOD_AGENT_SESSION_FRAMES",
+    "METHOD_AGENT_SESSION_CATALOG",
+    "METHOD_AGENT_SESSION_FRAME",
     "METHOD_AGENT_COMPLETE",
     "AGENT_ERR_NOT_GRANTED",
     "AGENT_ERR_SESSION_NOT_FOUND",

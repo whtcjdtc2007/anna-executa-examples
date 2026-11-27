@@ -106,7 +106,7 @@ AUDIO_ERR_PROVIDER_ERROR = -32144
 AUDIO_ERR_VOICE_INVALID = -32145
 AUDIO_ERR_MODEL_UNAVAILABLE = -32146
 AUDIO_ERR_CONTENT_REJECTED = -32147
-AUDIO_ERR_INVOKE_BUDGET_EXCEEDED = -32148  # audio/transcribe per-invoke seconds budget
+AUDIO_ERR_INVOKE_BUDGET_EXCEEDED = -32148  # reserved; no longer returned
 MUSIC_ERR_NOT_GRANTED = -32160
 MUSIC_ERR_PROVIDER_ERROR = -32161
 MUSIC_ERR_INVALID_REQUEST = -32162
@@ -575,8 +575,7 @@ class MediaClient:
         Exactly one of ``audio_bytes`` (inline, ≤ 10 MB decoded — the SDK
         base64-encodes it) or ``audio_url`` (public https, ≤ 25 MB) is
         required. ``format`` is mandatory for inline audio:
-        ``wav|mp3|webm|ogg|flac|m4a``. Max 10 minutes per call; per-invoke
-        total seconds are capped by the host (``-32148``).
+        ``wav|mp3|webm|ogg|flac|m4a``. Max 10 minutes per call.
 
         Requires ``host_capabilities ∋ "llm.audio.transcribe"`` **and** the
         user's ``media_grant.audio.transcribe``. Returns::

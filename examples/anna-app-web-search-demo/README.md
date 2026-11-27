@@ -57,6 +57,12 @@ channel is a billing back door.
 | `web_image_search` | Image search (Phase 2) — safe-search force-enabled host-side.                          | `{ ok, channel, results, quota_consumed, cached, _meta? }` |
 | `web_image_grab`   | Image download (Phase 2) → APS files artifact; returns a reference, **never bytes**.   | `{ ok, channel, path, get_url, mime_type, bytes_size, sha256, … }` |
 
+Every tool has an entry on the page: `web_search` and `web_image_search`
+behind the *Search via Reverse RPC (Executa)* buttons, `web_research` in
+section 3, and `web_image_grab` behind *Download via Reverse RPC (Executa)*
+in section 5 — the *grab* button on an image result downloads over the
+channel that found the image.
+
 The Executa declares `host_capabilities: ["web.search", "web.fetch",
 "web.image_search", "web.image_fetch"]`.
 Without them the host refuses with `WEB_NOT_GRANTED` (-32521); other codes
@@ -88,9 +94,26 @@ pnpm dev             # anna-app dev, signed in
   calls are **never billed**. The harness runs the HOST API channel with a
   keyless local implementation (ddgs + stdlib SSRF fetcher), so search
   works without any provider key.
-- `pnpm dev:mock` replays `fixtures/happy-path.jsonl` for the
-  **Reverse-RPC** channel (`tools.invoke`) without spawning the Executa —
-  handy for pure UI work. The HOST API channel still runs live.
+- `pnpm dev:mock` / `pnpm dev:off` need no account. Both channels still run
+  live on the harness's keyless local implementation, and the Reverse RPC
+  buttons spawn the real Executa — `anna-app dev` does not replay the
+  `tools.invoke` entries of `fixtures/happy-path.jsonl`. The Reverse RPC
+  image tools need `@anna-ai/cli` ≥ 0.1.68 (earlier versions answer
+  `-32601`).
+- Locally (`--web local`, `@anna-ai/cli` ≥ 0.1.68) `web_image_grab` /
+  `anna.web.image_fetch` return a short
+  `http://localhost:<port>/_dev/web-images/…` `get_url`: the harness keeps the
+  image for the run and serves it back. It is a reference like in production,
+  but only reachable from your machine — a platform call (LLM vision,
+  `image.edit`) cannot fetch it — and `path` is a placeholder, not an APS
+  object. Use `--web real` for real artifacts. Older CLI versions returned an
+  inline `data:` URL, which overflowed the 4 MiB tool-result cap over Reverse
+  RPC for images above ~3 MB.
+- Behind a proxy in fake-IP DNS mode (every name resolves to `198.18.x.x`)
+  `@anna-ai/cli` ≥ 0.1.68 verifies fetch targets over DNS-over-HTTPS
+  instead, so fetch and image download keep working and a name that really
+  points at a private address is still refused. Older versions answer
+  `SSRF_BLOCKED … resolves to private IP 198.18.x.x` for every URL.
 - In **production** the first `anna.web.*` call returns `APP_NOT_GRANTED`
   until the user enables Web access in the app's permission card
   (Installed Apps → Permissions); the Executa's grant lives in its own

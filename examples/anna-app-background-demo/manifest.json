@@ -1,0 +1,40 @@
+{
+  "schema": 4,
+  "required_executas": [
+    {
+      "tool_id": "bundled:background-check",
+      "min_version": "0.1.0",
+      "version": "latest"
+    }
+  ],
+  "optional_executas": [],
+  "system_prompt_addendum": "The user has the Background Demo app open. Its bundled background-check Executa owns long-running health-check tasks: check_start returns a task_id immediately and the checks keep running after the call returns and after the window closes; check_status returns one task's complete current state; check_list returns running and recent tasks plus the Executa's heartbeat; check_cancel stops a task. Each check issues one family of reverse RPCs (storage, files, web, sampling, agent session, embeddings, image, audio, upload) outside any invoke. You do not need to summon any windows.",
+  "tags": ["demo", "executa", "background", "long-task", "reverse-rpc"],
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": []
+    },
+    "views": [
+      {
+        "name": "main",
+        "title": "Background Demo",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 480, "h": 560 },
+        "default_size": { "w": 680, "h": 780 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true
+      }
+    ],
+    "csp_overrides": {
+      "script-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "user_id": 1
+  }
+}

@@ -122,6 +122,18 @@ class InvokeContext {
 //       ... // any SDK reverse-RPC call made here is correlated
 //     });
 //   }
+//
+// Outside any invoke. A reverse RPC issued with nothing bound carries no
+// ``invoke_id``; the host serves it with the Executa's background
+// credentials (process start, timers, work that continues after an invoke
+// returned). Async work started inside a handler INHERITS that handler's
+// binding, so work meant to outlive its invoke must detach explicitly:
+//
+//   function startLongRunningWork() {
+//     bindInvoke(null, async () => {
+//       ... // reverse RPCs here are background, not the old invoke
+//     });
+//   }
 
 const { AsyncLocalStorage } = require("node:async_hooks");
 
